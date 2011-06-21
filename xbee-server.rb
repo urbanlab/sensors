@@ -13,8 +13,16 @@ $Serial = SerialPort.new(*opts)
 $Redis = Redis.new
 
 loop do
-	p "eof" if $Serial.eof?
 	msg = $Serial.readline.split("\s")
-	id = msg.shift
-	$Redis.publish(id, msg.join(" "))
+	error = false
+	msg.each do |val|
+		val = Integer(val) rescue error = true
+	end
+	if error
+		puts "invalid msg"
+	else
+		id = msg.shift
+		$Redis.publish(id, msg.join(" "))
+	end
 end
+

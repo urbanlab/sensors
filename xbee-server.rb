@@ -19,7 +19,7 @@ loop do
 		val = Integer(val) rescue error = true
 	end
 	if error
-		puts "invalid msg"
+		puts "Invalid message."
 	else
 		id = msg.shift
 		$Redis.publish(id, msg.join(" "))

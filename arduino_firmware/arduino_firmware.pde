@@ -12,7 +12,7 @@ typedef struct {
   int args[10];
   int period;
   unsigned long lastTime;
-  int space[2]; // espace de variable propre. utile ?
+  int space[2];
 } task;
 
 command commandList[] = {
@@ -108,19 +108,24 @@ boolean process_message(boolean block){
     if (strcmp(msgrcv[0], idstr) == 0) { // identified
       valid = true;
       boolean accepted = false;
-      char resp[msgSize] = "";
+      char resp[msgSize];
       switch (msgrcv[1][0]) {
+        
       case 'l':
+        accepted = true;
+        strcpy(resp, "");
         for (int i=0 ; i < nbCmd ; i++){
           strcat(resp, commandList[i].name);
           strcat(resp, " ");
         }
-        snd_message(resp);
         break;
+        
       case 's':
+        accepted = true;
         set_id(atoi(msgrcv[2]));
-        snd_message("NEW");
+        strcpy(resp, "NEW");
         break;
+        
       case 'a':
         for (int i=0 ; i < nbCmd ; i++){
           if((strcmp(commandList[i].name, msgrcv[2]) == 0) && (commandList[i].nbArgs == nbArgs - 4)){
@@ -129,20 +134,14 @@ boolean process_message(boolean block){
             for (int j = 0 ; j < nbArgs-4 ; j++)
               taskList[nbTask-1].args[j] = atoi(msgrcv[j+4]);   // Assignation des arguments
             commandList[i].configure(taskList[nbTask-1].args, taskList[nbTask-1].space);
-            char message[10] = "OK ";
-            char buff[10] = "";
-            snd_message(strcat(message, itoa(nbTask-1, buff, 10)));
+            strcpy(resp, "OK ");
+            strcat(resp, itoa(nbTask-1, "", 10));
           }
         }
-        if (!accepted) {
-          snd_message("KO");
-        }
-        break;
-      default:
-        snd_message("KO");
         break;
       }
-      
+      if (!accepted) strcpy(resp, "KO");
+      snd_message(resp);
     }
   } while (!valid && block);
   return valid;

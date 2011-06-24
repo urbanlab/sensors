@@ -1,19 +1,32 @@
 #include <EEPROM.h>
 
+const int atomicMsgSize = 202;            //TODO verifier
+const int wordSize = 15;                 // Max size of an argument
+const int maxArgs = 7;                   // Max number of arguments
+const int wordNb = maxArgs+3;            // Max number of words in the message (including id and mode...)
+const int msgSize = (wordSize+1)*wordNb; // Max size of a message transmitted
+const int maxTask = 5;                  // Max number of tasks executed
+const int baudrate = 19200;              // Serial baudrate
+
+typedef void (*looper)(int, int*, int*); // Arguments are : id of the task, list of arguments, personnal space
+typedef void (*setuper)(int*, int*);
 typedef struct {
-  char* name;
-  int nbArgs;
-  void (*function)(int, int*, int*);
-  void (*configure)(int*, int*);
+  char* name;          // Command to call such a task
+  int nbArgs;          // Number of arguments the task require
+  looper function;     // Function that will be called
+  setuper configure;   // Function that will be called one time
 } command;
 
 typedef struct {
-  void (*function)(int, int*, int*);
-  int args[10];
-  int period;
-  unsigned long lastTime;
-  int space[2];
+  looper function;        // Function associated with the task
+  int args[maxArgs];      // Arguments the server gave
+  int period;             // Period of repetition of the task
+  unsigned long lastTime; // Last time the task has been called
+  int space[2];           // Personnal space of the task
 } task;
+
+task taskList[maxTask];
+unsigned int nbTask = 0;
 
 command commandList[] = {
   {"dinput", 1, digit_input_loop, digit_input_setup},
@@ -22,19 +35,10 @@ command commandList[] = {
 };
 
 const int nbCmd = sizeof(commandList) / sizeof(command);            // Number of functions implemented
-
-task taskList[10];
-const int wordSize = 15;  // Max size of arguments transmitted
-const int wordNb = 5;     // Max number of arguments
-const int msgSize = 200;
-const int maxTask = 5;
-
 char idstr[wordSize];
 
-unsigned int nbTask = 0;
-
 void setup(){
-  Serial.begin(19200);
+  Serial.begin(baudrate);
   Serial.flush();
   set_id(EEPROM.read(0));
   snd_message("NEW");
@@ -73,22 +77,21 @@ void add_task(void (*function)(int, int*, int*), int period) {
 }
 
 void snd_message(char* message) {
-  char buff[202]; // Taille maximum atomique
+  char buff[atomicMsgSize];
   strcpy(buff, idstr);
   strcat(buff, " ");
   strcat(buff, message);
   Serial.println(buff);
 }
 
-void snd_message(unsigned int sensor, int message) {
-  char buff[20];
-  char msgbuff[10];
-  itoa(sensor, buff, 10);
-  itoa(message, msgbuff, 10);
-  strcat(buff, " ");
-  strcat(buff, msgbuff);
-  strcat(buff, " ");
-  snd_message(buff);
+void snd_message(unsigned int sensor, int value) {
+  char message[msgSize];
+  char valueBuff[wordSize];
+  itoa(value, valueBuff, 10);
+  itoa(sensor, message, 10);
+  strcat(message, " ");
+  strcat(message, valueBuff);
+  snd_message(message);
 }
 
 // Get and process a message from the server.

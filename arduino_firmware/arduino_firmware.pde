@@ -3,62 +3,52 @@
 typedef struct {
   char* name;
   int nbArgs;
-  void (*function)(int*);
-  void (*configuration)(int*);
+  void (*function)(int, int*, int*);
+  void (*configure)(int*, int*);
 } command;
 
 typedef struct {
-  void (*function)(int*);
+  void (*function)(int, int*, int*);
   int args[10];
   int period;
   unsigned long lastTime;
-  //int space[10]; // espace de variable propre. utile ?
+  int space[2]; // espace de variable propre. utile ?
 } task;
 
 command commandList[] = {
+  {"dinput", 1, digit_input_loop, digit_input_setup},
   {"transm", 1, transm, noconf},
-  {"blinker", 2, blinker, noconf}
+  {"blinker", 1, blinker, noconf}
 };
+
+const int nbCmd = sizeof(commandList) / sizeof(command);            // Number of functions implemented
 
 task taskList[10];
 const int wordSize = 15;  // Max size of arguments transmitted
 const int wordNb = 5;     // Max number of arguments
 const int msgSize = 200;
 const int maxTask = 5;
-const int nbCmd = 2;            // Number of functions implemented
-//const char* CMDS[] =   {"transm", "blink"}; // Command names
-//const int  NBARGS[] =  { 1      , 2}; // Number of arguments for each command
-//void (*FUNC[])(int*) = { transm , blinker}; // Function to call for each command
 
 char idstr[wordSize];
 
-byte read = 0;
-
-//unsigned int period[maxTask];
-//unsigned int tasks[maxTask];
-///unsigned long lastTime[maxTask];
-//unsigned int args_start_at[maxTask];
-
 unsigned int nbTask = 0;
 
-int ARGS[50];
-
 void setup(){
-  Serial.begin(9600);
+  Serial.begin(19200);
   Serial.flush();
   set_id(EEPROM.read(0));
   snd_message("NEW");
-  
-  while(get_id() == 0) {
-    process_message(true);
-  }
+  process_message(true);
+  //while(get_id() == 0) {
+  //  process_message(true);
+  //}
 }
 
 void loop() {
   process_message(false);
   for (int i=0 ; i < nbTask ; i++) {
     if (cycleCheck(taskList[i].lastTime, taskList[i].period))
-      taskList[i].function(taskList[i].args);//FUNC[tasks[i]](ARGS + args_start_at[i]);
+      taskList[i].function(i, taskList[i].args, taskList[i].space);
   }
 }
 
@@ -74,9 +64,8 @@ boolean cycleCheck(unsigned long &lastTime, int period)
     return false;
 }
 
-void add_task(void (*function)(int*), int period) {
+void add_task(void (*function)(int, int*, int*), int period) {
   taskList[nbTask].function = function;
-  //taskList[nbTask].args = args;
   taskList[nbTask].period = period;
   taskList[nbTask].lastTime = 0;
   
@@ -89,6 +78,17 @@ void snd_message(char* message) {
   strcat(buff, " ");
   strcat(buff, message);
   Serial.println(buff);
+}
+
+void snd_message(unsigned int sensor, int message) {
+  char buff[20];
+  char msgbuff[10];
+  itoa(sensor, buff, 10);
+  itoa(message, msgbuff, 10);
+  strcat(buff, " ");
+  strcat(buff, msgbuff);
+  strcat(buff, " ");
+  snd_message(buff);
 }
 
 // Get and process a message from the server.
@@ -105,7 +105,7 @@ boolean process_message(boolean block){
       strcpy(msgrcv[nbArgs++], wrd);
     } while (Serial.available());
 
-    if (strcmp(msgrcv[0], idstr) == 0) {
+    if (strcmp(msgrcv[0], idstr) == 0) { // identified
       valid = true;
       boolean accepted = false;
       char resp[msgSize] = "";
@@ -128,12 +128,19 @@ boolean process_message(boolean block){
             add_task(commandList[i].function, atoi(msgrcv[3]));
             for (int j = 0 ; j < nbArgs-4 ; j++)
               taskList[nbTask-1].args[j] = atoi(msgrcv[j+4]);   // Assignation des arguments
+            commandList[i].configure(taskList[nbTask-1].args, taskList[nbTask-1].space);
+            char message[10] = "OK ";
+            char buff[10] = "";
+            snd_message(strcat(message, itoa(nbTask-1, buff, 10)));
           }
-          if (!accepted) snd_message("KO");
+        }
+        if (!accepted) {
+          snd_message("KO");
         }
         break;
       default:
         snd_message("KO");
+        break;
       }
       
     }
@@ -141,6 +148,9 @@ boolean process_message(boolean block){
   return valid;
 }
 
+// Get a word from serial line.
+// Return true if something was available
+// arg block define if the function shourd wait for a word
 boolean get_word(char* wrd, boolean block){
   int i=0;
   boolean valid = false;
@@ -169,20 +179,38 @@ boolean get_id(){
 }
 
 // Fonctions supportees :
-void noconf(int* args) {
+void noconf(int* args, int* space) {
 }
 
-void transm(int* ARGS) {
-  Serial.println(ARGS[0]);
+void digit_input_setup(int* args, int* space) {
+  pinMode(args[0], INPUT);
+  space[0] = 2;
 }
 
-void blinker(int* ARGS) {
-  if (ARGS[1] == 0){
-    digitalWrite(ARGS[0], HIGH);
-    ARGS[1] = 1;
+void digit_input_loop(int num, int* args, int* space) {
+  space[1] = digitalRead(args[0]);
+  if (space[1] != space[0]) {
+    snd_message(num, space[1]);
+    space[0] = space[1];
+  }
+}
+
+void transm(int num, int* args, int* space) {
+  snd_message(num, args[0]);
+}
+
+void blinkerconf(int num, int* args, int* space) {
+  pinMode(args[0], OUTPUT);
+  space[0] = 0;
+}
+
+void blinker(int num, int* args, int* space) {
+  if (space[0] == 0){
+    digitalWrite(args[0], HIGH);
+    space[0] = 1;
   }
   else {
-    digitalWrite(ARGS[0], LOW);
-    ARGS[1] = 0;
+    digitalWrite(args[0], LOW);
+    space[0] = 0;
   }
 }

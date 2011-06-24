@@ -1,6 +1,6 @@
 command commandList[] = {
   {"dinput", 1, digit_input_loop, input_setup},
-  {"transm", 1, transm, noconf},
+  {"mem", 0, memory, noconf},
   {"blinker", 1, blinker, output_setup}
 };
 
@@ -33,9 +33,9 @@ void digit_input_loop(int num, int* args, int* space) {
   }
 }
 
-// Transmit a message
-void transm(int num, int* args, int* space) {
-  snd_message(num, args[0]);
+// Transmit free memory
+void memory(int num, int* args, int* space) {
+  snd_message(num, availableMemory());
 }
 
 

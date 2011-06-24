@@ -17,6 +17,15 @@ void loop() {
   }
 }
 
+int availableMemory()
+{
+ int size = 8192;
+ byte *buf;
+ while ((buf = (byte *) malloc(--size)) == NULL);
+ free(buf);
+ return size;
+} 
+
 boolean cycleCheck(unsigned long &lastTime, int period)
 {
   unsigned long currentTime = millis();

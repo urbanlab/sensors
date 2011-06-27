@@ -55,6 +55,11 @@ boolean add_task(unsigned int pin, void (*function)(int, int*, int*), int period
   }
 }
 
+void delete_task(unsigned int pin) {
+  free(taskList[pin]);
+  taskList[pin] = NULL;
+}
+
 void snd_message(char* message) {
   char buff[atomicMsgSize];
   strcpy(buff, idstr);
@@ -126,7 +131,7 @@ boolean process_message(boolean block){
       case 'a':
         for (int i=0 ; i < nbCmd ; i++){
           if((strcmp(commandList[i].name, msgrcv[2]) == 0) && (commandList[i].nbArgs == nbArgs - 4)){
-            int pin = atoi(msgrcv[4]);
+            unsigned int pin = atoi(msgrcv[4]);
             accepted = add_task(pin, commandList[i].function, atoi(msgrcv[3]), commandList[i].name);
             if (accepted) {
               for (int j = 0 ; j < nbArgs-4 ; j++)
@@ -137,6 +142,12 @@ boolean process_message(boolean block){
             }
           }
         }
+        break;
+        
+      case 'd':
+        accepted = true;
+        strcpy(resp, "OK");
+        delete_task(atoi(msgrcv[2]));
         break;
       }
       if (!accepted) strcpy(resp, "KO");

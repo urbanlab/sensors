@@ -9,7 +9,7 @@ const int wordNb = maxArgs+3;            // Max number of words in the message (
 const int msgSize = (wordSize+1)*wordNb; // Max size of a message transmitted
 const int maxTask = 20;                  // Max number of tasks executed
 const int baudrate = 19200;              // Serial baudrate
-const int nbPin = 20;
+const int nbPin = 21;
 
 
 typedef void (*looper)(int, int*, int*); // Arguments are : id of the task, list of arguments, personnal space

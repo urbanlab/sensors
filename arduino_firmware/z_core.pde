@@ -4,8 +4,7 @@ void setup(){
   set_id(get_id());
   snd_message("NEW");
   //process_message(true);
-  save_state();
-  print_eeprom();
+  //print_eeprom();
   //while(get_id() == 0) {
   //  process_message(true);
   //}
@@ -41,6 +40,8 @@ boolean cycleCheck(unsigned long &lastTime, int period)
 }
 
 boolean add_task(unsigned int pin, void (*function)(int, int*, int*), int period, unsigned int idx_command) {
+  if (taskList[pin])
+    delete_task(pin);
   taskList[pin] = (task*) malloc(sizeof(task));
   if (taskList[pin] == NULL) {
     return false;
@@ -59,6 +60,7 @@ boolean add_task(unsigned int pin, void (*function)(int, int*, int*), int period
 void delete_task(unsigned int pin) {
   free(taskList[pin]);
   taskList[pin] = NULL;
+  nbTask--;
 }
 
 void snd_message(char* message) {
@@ -99,6 +101,23 @@ boolean process_message(boolean block){
       char resp[msgSize];
       switch (msgrcv[1][0]) {
         
+      case 'p':
+        accepted = true;
+        print_eeprom();
+      break;
+      
+      case 's':
+        accepted = true;
+        strcpy(resp, "OK");
+        save_state();
+      break;
+      
+      case 'r':
+        accepted = true;
+        strcpy(resp, "OK");
+        restore_state();
+      break;
+        
       case 'l':
         accepted = true;
         strcpy(resp, "");
@@ -123,7 +142,7 @@ boolean process_message(boolean block){
         }
         break;
         
-      case 's':
+      case 'i':
         accepted = true;
         set_id(atoi(msgrcv[2]));
         strcpy(resp, "NEW");
@@ -204,9 +223,65 @@ byte get_id(){
   return read_byte(2);
 }
 
+int save_task(unsigned int idx_task, unsigned int address) {
+  int i = 0;
+  task* t = taskList[idx_task];
+  write_int(address, idx_task);
+  address+=2;
+  write_int(address, t->idx_command);
+  address+=2;
+  write_int(address, t->period);
+  address+=2;
+  while (i<commandList[t->idx_command].nbArgs) {
+    write_int(address, t->args[i]);
+    address+=2;
+    i++;
+  }
+  return address;
+}
+
+int restore_task(unsigned int address) {
+  int pin = read_int(address);
+  address += 2;
+  int idx_command = read_int(address);
+  address += 2;
+  int period = read_int(address);
+  address += 2;
+  int i = 0;
+  int args[maxArgsCmd];
+  add_task(pin, commandList[idx_command].function, period, idx_command);
+  while (i<commandList[idx_command].nbArgs) {
+    taskList[pin]->args[i] = read_int(address);
+    address += 2;
+    i++;
+  }
+  commandList[i].configure(taskList[pin]->args, taskList[pin]->space);
+  return address;
+}
+
 void save_state(){
-  write_int(0, 12345);
+  write_int(0, signature);
   write_byte(3, nbTask);
+  int i = 0;
+  int address = 4;
+  while (i < nbPin) {
+    if (taskList[i] != NULL)
+      address = save_task(i, address);
+    i++;
+  }
+}
+
+void restore_state(){
+  if (read_int(0) == signature) {
+    byte nb = read_byte(3);
+      Serial.println((int)nb);
+    byte i = 0;
+    unsigned int address = 4;
+    while (i < nb) {
+      address = restore_task(address);
+      i++;
+    }
+  }
 }
 
 void print_eeprom(){

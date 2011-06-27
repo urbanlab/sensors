@@ -1,5 +1,6 @@
 #include <avr/eeprom.h>
 
+const int signature = 12345;
 const int atomicMsgSize = 202;            //TODO verifier
 const int wordSize = 15;                 // Max size of an argument
 const int maxArgs = 7;                   // Max number of arguments
@@ -26,7 +27,7 @@ typedef struct {
   int args[maxArgsCmd];   // Arguments the server gave
   int period;             // Period of repetition of the task
   unsigned long lastTime; // Last time the task has been called
-  int space[2];           // Personnal space of the task
+  int space[spaceSize];           // Personnal space of the task
   int idx_command;
 } task;
 

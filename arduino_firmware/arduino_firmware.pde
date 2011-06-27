@@ -1,4 +1,4 @@
-#include <EEPROM.h>
+#include <avr/eeprom.h>
 
 const int atomicMsgSize = 202;            //TODO verifier
 const int wordSize = 15;                 // Max size of an argument
@@ -15,7 +15,7 @@ const int nbPin = 21;
 typedef void (*looper)(int, int*, int*); // Arguments are : id of the task, list of arguments, personnal space
 typedef void (*setuper)(int*, int*);
 typedef struct {
-  char name[4];          // Command to call such a task
+  char name[4];        // Command to call such a task
   int nbArgs;          // Number of arguments the task require
   looper function;     // Function that will be called
   setuper configure;   // Function that will be called one time
@@ -27,12 +27,12 @@ typedef struct {
   int period;             // Period of repetition of the task
   unsigned long lastTime; // Last time the task has been called
   int space[2];           // Personnal space of the task
-  unsigned int idx_command;
+  int idx_command;
 } task;
 
 task* taskList[nbPin];
 
-unsigned int nbTask = 0;
+byte nbTask = 0;
 
 char idstr[wordSize];
 

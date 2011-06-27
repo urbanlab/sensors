@@ -1,9 +1,11 @@
 void setup(){
   Serial.begin(baudrate);
   Serial.flush();
-  set_id(EEPROM.read(0));
+  set_id(get_id());
   snd_message("NEW");
-  process_message(true);
+  //process_message(true);
+  save_state();
+  print_eeprom();
   //while(get_id() == 0) {
   //  process_message(true);
   //}
@@ -12,9 +14,8 @@ void setup(){
 void loop() {
   process_message(false);
   for (int i=0 ; i < nbPin ; i++) {
-    if ((taskList[i] != NULL) && cycleCheck(taskList[i]->lastTime, taskList[i]->period)){
-
-      taskList[i]->function(i, taskList[i]->args, taskList[i]->space);}
+    if ((taskList[i] != NULL) && cycleCheck(taskList[i]->lastTime, taskList[i]->period))
+      taskList[i]->function(i, taskList[i]->args, taskList[i]->space);
   }
 }
 
@@ -109,7 +110,7 @@ boolean process_message(boolean block){
         
       case 't':
         accepted = true;
-        strcpy(resp, "");
+        strcpy(resp, "T ");
         for (int i=0 ; i < nbPin ; i++){
           if (taskList[i] != NULL) {
             char pin[3] = "";
@@ -178,12 +179,46 @@ boolean get_word(char* wrd, boolean block){
   return valid;
 }
 
+byte read_byte(int address) {
+  return eeprom_read_byte((unsigned char *) address);
+}
+
+void write_byte(unsigned int address, byte value) {
+  eeprom_write_byte((unsigned char *) address, value);
+}
+
+unsigned int read_int(unsigned int address) {
+  return eeprom_read_word((unsigned int *) address);
+}
+
+void write_int(int address, unsigned int value) {
+  eeprom_write_word((unsigned int *) address, value);
+}
+
 void set_id(byte id){
-  EEPROM.write(0, id);
+  write_byte(2, id);
   itoa(id, idstr, 10);
 }
 
-boolean get_id(){
-  return EEPROM.read(0);
+byte get_id(){
+  return read_byte(2);
+}
+
+void save_state(){
+  write_int(0, 12345);
+  write_byte(3, nbTask);
+}
+
+void print_eeprom(){
+  int i = 0;
+  while(i<512){
+    Serial.print(i);
+    Serial.print("\t");
+    Serial.print((int)read_byte(i));
+    Serial.print("\t");
+    Serial.print(read_int(i));
+    Serial.println();
+    i++;
+  }
 }
 

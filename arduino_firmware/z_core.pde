@@ -11,9 +11,10 @@ void setup(){
 
 void loop() {
   process_message(false);
-  for (int i=0 ; i < nbTask ; i++) {
-    if (cycleCheck(taskList[i].lastTime, taskList[i].period))
-      taskList[i].function(i, taskList[i].args, taskList[i].space);
+  for (int i=0 ; i < nbPin ; i++) {
+    if ((taskList[i] != NULL) && cycleCheck(taskList[i]->lastTime, taskList[i]->period)){
+
+      taskList[i]->function(i, taskList[i]->args, taskList[i]->space);}
   }
 }
 
@@ -38,12 +39,20 @@ boolean cycleCheck(unsigned long &lastTime, int period)
     return false;
 }
 
-void add_task(void (*function)(int, int*, int*), int period) {
-  taskList[nbTask].function = function;
-  taskList[nbTask].period = period;
-  taskList[nbTask].lastTime = 0;
-  
+boolean add_task(unsigned int pin, void (*function)(int, int*, int*), int period, char* name) {
+  taskList[pin] = (task*) malloc(sizeof(task));
+  if (taskList[pin] == NULL) {
+    return false;
+  }
+  else {
+  taskList[pin]->function = function;
+  taskList[pin]->period = period;
+  taskList[pin]->lastTime = 0;
+  taskList[pin]->name = name;
+    
   nbTask++;
+  return true;
+  }
 }
 
 void snd_message(char* message) {
@@ -93,6 +102,21 @@ boolean process_message(boolean block){
         }
         break;
         
+      case 't':
+        accepted = true;
+        strcpy(resp, "");
+        for (int i=0 ; i < nbPin ; i++){
+          if (taskList[i] != NULL) {
+            char pin[3] = "";
+            itoa(i, pin, 10);
+            strcat(resp, pin);
+            strcat(resp, ":");
+            strcat(resp, taskList[i]->name);
+            strcat(resp, " ");
+          }
+        }
+        break;
+        
       case 's':
         accepted = true;
         set_id(atoi(msgrcv[2]));
@@ -102,13 +126,15 @@ boolean process_message(boolean block){
       case 'a':
         for (int i=0 ; i < nbCmd ; i++){
           if((strcmp(commandList[i].name, msgrcv[2]) == 0) && (commandList[i].nbArgs == nbArgs - 4)){
-            accepted = true;
-            add_task(commandList[i].function, atoi(msgrcv[3]));
-            for (int j = 0 ; j < nbArgs-4 ; j++)
-              taskList[nbTask-1].args[j] = atoi(msgrcv[j+4]);   // Assignation des arguments
-            commandList[i].configure(taskList[nbTask-1].args, taskList[nbTask-1].space);
-            strcpy(resp, "OK ");
-            strcat(resp, itoa(nbTask-1, "", 10));
+            int pin = atoi(msgrcv[4]);
+            accepted = add_task(pin, commandList[i].function, atoi(msgrcv[3]), commandList[i].name);
+            if (accepted) {
+              for (int j = 0 ; j < nbArgs-4 ; j++)
+                taskList[pin]->args[j] = atoi(msgrcv[j+4]);   // Assignation des arguments
+              commandList[i].configure(taskList[pin]->args, taskList[pin]->space);
+              strcpy(resp, "OK ");
+              strcat(resp, msgrcv[4]);
+            }
           }
         }
         break;

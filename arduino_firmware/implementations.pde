@@ -1,7 +1,7 @@
 command commandList[] = {
-  {"dinput", 1, digit_input_loop, input_setup},
-  {"mem", 0, memory, noconf},
-  {"blinker", 1, blinker, output_setup}
+  {"din", 1, digit_input_loop, input_setup},
+  {"mem", 1, memory, noconf},
+  {"bli", 1, blinker, output_setup}
 };
 
 const int nbCmd = sizeof(commandList) / sizeof(command);            // Number of functions implemented

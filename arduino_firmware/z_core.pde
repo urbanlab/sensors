@@ -39,19 +39,19 @@ boolean cycleCheck(unsigned long &lastTime, int period)
     return false;
 }
 
-boolean add_task(unsigned int pin, void (*function)(int, int*, int*), int period, char* name) {
+boolean add_task(unsigned int pin, void (*function)(int, int*, int*), int period, unsigned int idx_command) {
   taskList[pin] = (task*) malloc(sizeof(task));
   if (taskList[pin] == NULL) {
     return false;
   }
   else {
-  taskList[pin]->function = function;
-  taskList[pin]->period = period;
-  taskList[pin]->lastTime = 0;
-  taskList[pin]->name = name;
-    
-  nbTask++;
-  return true;
+    taskList[pin]->function = function;
+    taskList[pin]->period = period;
+    taskList[pin]->lastTime = 0;
+    taskList[pin]->idx_command = idx_command;
+      
+    nbTask++;
+    return true;
   }
 }
 
@@ -116,7 +116,7 @@ boolean process_message(boolean block){
             itoa(i, pin, 10);
             strcat(resp, pin);
             strcat(resp, ":");
-            strcat(resp, taskList[i]->name);
+            strcat(resp, commandList[taskList[i]->idx_command].name);
             strcat(resp, " ");
           }
         }
@@ -132,7 +132,7 @@ boolean process_message(boolean block){
         for (int i=0 ; i < nbCmd ; i++){
           if((strcmp(commandList[i].name, msgrcv[2]) == 0) && (commandList[i].nbArgs == nbArgs - 4)){
             unsigned int pin = atoi(msgrcv[4]);
-            accepted = add_task(pin, commandList[i].function, atoi(msgrcv[3]), commandList[i].name);
+            accepted = add_task(pin, commandList[i].function, atoi(msgrcv[3]), i);
             if (accepted) {
               for (int j = 0 ; j < nbArgs-4 ; j++)
                 taskList[pin]->args[j] = atoi(msgrcv[j+4]);   // Assignation des arguments

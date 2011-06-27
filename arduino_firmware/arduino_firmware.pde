@@ -27,7 +27,7 @@ typedef struct {
   int period;             // Period of repetition of the task
   unsigned long lastTime; // Last time the task has been called
   int space[2];           // Personnal space of the task
-  char* name;
+  unsigned int idx_command;
 } task;
 
 task* taskList[nbPin];

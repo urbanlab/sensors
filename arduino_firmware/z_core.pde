@@ -3,11 +3,10 @@ void setup(){
   Serial.flush();
   set_id(get_id());
   snd_message("NEW");
-  //process_message(true);
-  //print_eeprom();
-  //while(get_id() == 0) {
-  //  process_message(true);
-  //}
+  restore_state();
+  while(get_id() == 0) {
+    process_message(true);
+  }
 }
 
 void loop() {
@@ -17,15 +16,6 @@ void loop() {
       taskList[i]->function(i, taskList[i]->args, taskList[i]->space);
   }
 }
-
-int availableMemory()
-{
- int size = 8192;
- byte *buf;
- while ((buf = (byte *) malloc(--size)) == NULL);
- free(buf);
- return size;
-} 
 
 boolean cycleCheck(unsigned long &lastTime, int period)
 {
@@ -255,7 +245,7 @@ int restore_task(unsigned int address) {
     address += 2;
     i++;
   }
-  commandList[i].configure(taskList[pin]->args, taskList[pin]->space);
+  commandList[idx_command].configure(taskList[pin]->args, taskList[pin]->space);
   return address;
 }
 
@@ -274,7 +264,6 @@ void save_state(){
 void restore_state(){
   if (read_int(0) == signature) {
     byte nb = read_byte(3);
-      Serial.println((int)nb);
     byte i = 0;
     unsigned int address = 4;
     while (i < nb) {

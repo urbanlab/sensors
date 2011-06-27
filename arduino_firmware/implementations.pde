@@ -1,7 +1,7 @@
 command commandList[] = {
   {"din", 1, digit_input_loop, input_setup},
-  {"mem", 1, memory, noconf},
-  {"bli", 1, blinker, output_setup}
+  {"bli", 1, blinker, output_setup},
+  {"ain", 1, analog_input_loop, input_setup}
 };
 
 const int nbCmd = sizeof(commandList) / sizeof(command);            // Number of functions implemented
@@ -33,11 +33,10 @@ void digit_input_loop(int num, int* args, int* space) {
   }
 }
 
-// Transmit free memory
-void memory(int num, int* args, int* space) {
-  snd_message(num, availableMemory());
+// Read analog input on pin args[0]
+void analog_input_loop(int num, int* args, int* space){
+  snd_message(num, analogRead(args[0]));
 }
-
 
 // Blink the pin args[0]
 void blinker(int num, int* args, int* space) {

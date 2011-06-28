@@ -17,7 +17,7 @@ void loop() {
   }
 }
 
-boolean cycleCheck(unsigned long &lastTime, int period)
+boolean cycleCheck(unsigned long &lastTime, unsigned int period)
 {
   unsigned long currentTime = millis();
   if(currentTime - lastTime >= period)
@@ -29,7 +29,7 @@ boolean cycleCheck(unsigned long &lastTime, int period)
     return false;
 }
 
-boolean add_task(unsigned int pin, void (*function)(int, int*, int*), int period, unsigned int idx_command) {
+boolean add_task(unsigned int pin, byte idx_command, unsigned int period, int* args) {
   if (taskList[pin])
     delete_task(pin);
   taskList[pin] = (task*) malloc(sizeof(task));
@@ -37,20 +37,25 @@ boolean add_task(unsigned int pin, void (*function)(int, int*, int*), int period
     return false;
   }
   else {
-    taskList[pin]->function = function;
+    taskList[pin]->function = commandList[idx_command].function;
     taskList[pin]->period = period;
     taskList[pin]->lastTime = 0;
+    for (int i = 0; i<commandList[idx_command].nbArgs; i++)
+      taskList[pin]->args[i] = args[i];
     taskList[pin]->idx_command = idx_command;
-      
+    commandList[idx_command].configure(pin, taskList[pin]->args, taskList[pin]->space);
+    
     nbTask++;
     return true;
   }
 }
 
 void delete_task(unsigned int pin) {
-  free(taskList[pin]);
-  taskList[pin] = NULL;
-  nbTask--;
+  if (taskList[pin]) {
+    free(taskList[pin]);
+    taskList[pin] = NULL;
+    nbTask--;
+  }
 }
 
 void snd_message(char* message) {
@@ -140,13 +145,15 @@ boolean process_message(boolean block){
         
       case 'a':
         for (int i=0 ; i < nbCmd ; i++){
-          if((strcmp(commandList[i].name, msgrcv[2]) == 0) && (commandList[i].nbArgs == nbArgs - 4)){
+          if((strcmp(commandList[i].name, msgrcv[2]) == 0) && (commandList[i].nbArgs == nbArgs - 5)){ // Same name and same number of args
+            unsigned int period = atoi(msgrcv[3]);
             unsigned int pin = atoi(msgrcv[4]);
-            accepted = add_task(pin, commandList[i].function, atoi(msgrcv[3]), i);
+            int args[maxArgsCmd];
+            for (int j = 0 ; j < commandList[i].nbArgs ; j++) {
+              args[j] = atoi(msgrcv[j+5]);
+            }
+            accepted = add_task(pin, i, period, args);
             if (accepted) {
-              for (int j = 0 ; j < nbArgs-4 ; j++)
-                taskList[pin]->args[j] = atoi(msgrcv[j+4]);   // Assignation des arguments
-              commandList[i].configure(taskList[pin]->args, taskList[pin]->space);
               strcpy(resp, "OK ");
               strcat(resp, msgrcv[4]);
             }
@@ -213,63 +220,53 @@ byte get_id(){
   return read_byte(2);
 }
 
-int save_task(unsigned int idx_task, unsigned int address) {
-  int i = 0;
+unsigned int save_task(unsigned int idx_task, unsigned int address) {
   task* t = taskList[idx_task];
   write_int(address, idx_task);
   address+=2;
-  write_int(address, t->idx_command);
-  address+=2;
+  write_byte(address, t->idx_command);
+  address+=1;
   write_int(address, t->period);
   address+=2;
-  while (i<commandList[t->idx_command].nbArgs) {
+  for (int i = 0; i < commandList[t->idx_command].nbArgs; i++){
     write_int(address, t->args[i]);
     address+=2;
-    i++;
   }
   return address;
 }
 
-int restore_task(unsigned int address) {
+unsigned int restore_task(unsigned int address) {
   int pin = read_int(address);
   address += 2;
-  int idx_command = read_int(address);
-  address += 2;
+  int idx_command = read_byte(address);
+  address += 1;
   int period = read_int(address);
   address += 2;
-  int i = 0;
   int args[maxArgsCmd];
-  add_task(pin, commandList[idx_command].function, period, idx_command);
-  while (i<commandList[idx_command].nbArgs) {
+  for (int i=0; i<commandList[idx_command].nbArgs; i++){
     taskList[pin]->args[i] = read_int(address);
     address += 2;
-    i++;
   }
-  commandList[idx_command].configure(taskList[pin]->args, taskList[pin]->space);
+  add_task(pin, idx_command, period, args);
   return address;
 }
 
 void save_state(){
   write_int(0, signature);
   write_byte(3, nbTask);
-  int i = 0;
   int address = 4;
-  while (i < nbPin) {
-    if (taskList[i] != NULL)
+  for (byte i=0; i < nbPin; i++){
+    if (taskList[i])
       address = save_task(i, address);
-    i++;
   }
 }
 
 void restore_state(){
   if (read_int(0) == signature) {
     byte nb = read_byte(3);
-    byte i = 0;
     unsigned int address = 4;
-    while (i < nb) {
+    for (byte i=0; i<nb; i++)
       address = restore_task(address);
-      i++;
-    }
   }
 }
 

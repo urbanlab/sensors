@@ -1,8 +1,9 @@
 // {"command", nb of arguments, core function, configuration function}
 command commandList[] = {
-  {"din", 0, digit_input_loop, input_setup},
-  {"bli", 0, blinker, output_setup},
-  {"ain", 0, analog_input_loop, input_setup}
+  {"din", 0, digit_input_loop,  input_setup},
+  {"bli", 0, blinker,           output_setup},
+  {"ain", 0, analog_input_loop, input_setup},
+  {"1wi", 0, one_wire_loop,     one_wire_setup}
 };
 
 const byte nbCmd = sizeof(commandList) / sizeof(command);            // Number of functions implemented
@@ -11,6 +12,33 @@ const byte nbCmd = sizeof(commandList) / sizeof(command);            // Number o
 
 // Useful for task that don't need configuration
 void noconf(int pin, int* args, int* space) {
+}
+
+void one_wire_setup(int pin, int* args, int* space){
+  OneWire one = OneWire(pin);
+//  new OneWire(uint8_t(pin));
+//  space[0] = (int)one;
+  one.reset();
+  one.skip();
+  one.write(0x44);
+}
+
+void one_wire_loop(int pin, int* args, int* space){
+  int data0;
+  int data1;
+  OneWire one = OneWire(pin);
+  one.reset();
+  one.skip();
+  one.write(0xBE);
+  data0 = one.read();
+  data1 = one.read();
+  int temp = (data1<<8) + data0;
+  if (bitRead(data1, 0) == 1)
+    temp = -1*((temp^0xffff) + 1);
+  snd_message(pin, temp);
+  one.reset();
+  one.skip();
+  one.write(0x44);
 }
 
 // Put the pin in input mode

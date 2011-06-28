@@ -1,3 +1,5 @@
+#include <OneWire.h>
+
 #include <avr/eeprom.h>
 
 const int signature = 12345;

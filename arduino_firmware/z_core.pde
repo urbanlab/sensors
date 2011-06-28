@@ -17,6 +17,10 @@ void loop() {
   }
 }
 
+void* operator new(size_t size) {return malloc(size); }
+
+void operator delete(void* ptr) { free(ptr); }
+
 boolean cycleCheck(unsigned long &lastTime, unsigned int period)
 {
   unsigned long currentTime = millis();
@@ -39,7 +43,7 @@ boolean add_task(unsigned int pin, byte idx_command, unsigned int period, int* a
   else {
     taskList[pin]->function = commandList[idx_command].function;
     taskList[pin]->period = period;
-    taskList[pin]->lastTime = 0;
+    taskList[pin]->lastTime = millis();
     for (int i = 0; i<commandList[idx_command].nbArgs; i++)
       taskList[pin]->args[i] = args[i];
     taskList[pin]->idx_command = idx_command;

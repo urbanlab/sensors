@@ -1,5 +1,4 @@
 #include <OneWire.h>
-
 #include <avr/eeprom.h>
 
 const int signature = 12345;             // Should change at each firmware modification

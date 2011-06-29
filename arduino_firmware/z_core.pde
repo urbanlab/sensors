@@ -100,20 +100,18 @@ void snd_message(unsigned int sensor, int value) {
 // Return true if a message for the arduino arrived
 boolean process_message(boolean block){
   boolean valid = false;
-  char* msgrcv[wordNb];
-  char msg[msgSize] = "";
-  char car = ' ';
-  int nbArgs;
   do {
-    nbArgs = 1;
-    int i=0;
-    int j=0;
+    char car = ' ';
+    int nbArgs = 1;
+    char* msgrcv[wordNb];
+    char msg[msgSize] = "";
     boolean rcvd = false;
     do {                                  // Reception message
       rcvd = get_message(msg, block);
     } while (!rcvd && block);
     
     msgrcv[0] = msg;
+    int i=0;
     while (car != '\0') {                 // Decoupage message
       car = msg[i];
       if (car == ' '){
@@ -127,7 +125,7 @@ boolean process_message(boolean block){
       valid = true;
       boolean accepted = false;
       char resp[msgSize];
-      switch (msgrcv[1][0]) {
+      switch (msgrcv[1][0]) {             // Traitement
         
       /*case 'p':
         accepted = true;
@@ -178,7 +176,7 @@ boolean process_message(boolean block){
         
       case 'a':
         for (int i = 0 ; i < nbCmd ; i++){
-          if((strcmp(commandList[i].name, msgrcv[2]) == 0) && (commandList[i].nbArgs == nbArgs - 5)){ // Same name and same number of args
+          if((strcmp(commandList[i].name, msgrcv[2]) == 0) && (commandList[i].nbArgs == nbArgs - 5) && atoi(msgrcv[4]) < nbPin){ // Meme nom et meme nombre d'arg
             unsigned int period = atoi(msgrcv[3]);
             unsigned int pin = atoi(msgrcv[4]);
             int args[maxArgsCmd];

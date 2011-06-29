@@ -17,8 +17,6 @@ void noconf(int pin, int* args, int* space) {
 
 void one_wire_setup(int pin, int* args, int* space){
   OneWire one = OneWire(pin);
-//  new OneWire(uint8_t(pin));
-//  space[0] = (int)one;
   one.reset();
   one.skip();
   one.write(0x44);

@@ -3,7 +3,6 @@ void setup(){
   Serial.flush();
   //Serial.println(availableMemory());
   restore_state();
-  set_id(get_id());
   snd_message("NEW");
   while(get_id() == 0) {
     process_message(true);
@@ -314,13 +313,18 @@ void save_state(){
 
 void restore_state(){
   if (read_int(0) == signature) {
+    set_id(get_id());
     byte nb = read_byte(3);
     unsigned int address = 4;
     for (byte i=0; i<nb; i++)
       address = restore_task(address);
   }
+  else {
+    set_id(0);
+    save_state();
+  }
 }
-
+/*
 void print_eeprom(){
   int i = 0;
   while(i<512){
@@ -333,4 +337,4 @@ void print_eeprom(){
     i++;
   }
 }
-
+*/

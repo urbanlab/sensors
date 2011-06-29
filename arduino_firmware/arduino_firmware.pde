@@ -2,8 +2,8 @@
 
 #include <avr/eeprom.h>
 
-const int signature = 12345;
-const int atomicMsgSize = 202;            //TODO verifier
+const int signature = 12345;             // Should change at each firmware modification
+const int atomicMsgSize = 202;           //TODO verifier
 const int wordSize = 15;                 // Max size of an argument
 const int maxArgs = 7;                   // Max number of arguments
 const int maxArgsCmd = 2;                // Max arguments of unique command

@@ -1,11 +1,10 @@
 void setup(){
   Serial.begin(baudrate);
   Serial.flush();
-  Serial.println(availableMemory());
+  //Serial.println(availableMemory());
+  restore_state();
   set_id(get_id());
   snd_message("NEW");
-  restore_state();
-  process_message(true);
   while(get_id() == 0) {
     process_message(true);
   }
@@ -18,10 +17,10 @@ void loop() {
       taskList[i]->function(i, taskList[i]->args, taskList[i]->space);
   }
 }
-
+/*
 void* operator new(size_t size) {return malloc(size); }
 
-void operator delete(void* ptr) { free(ptr); }
+void operator delete(void* ptr) { free(ptr); }*/
 
 boolean cycleCheck(unsigned long &lastTime, unsigned int period)
 {
@@ -38,6 +37,7 @@ boolean cycleCheck(unsigned long &lastTime, unsigned int period)
 // this function will return the number of bytes currently free in RAM
 // written by David A. Mellis
 // based on code by Rob Faludi http://www.faludi.com
+/*
 int availableMemory() {
   int size = 1024; // Use 2048 with ATmega328
   byte *buf;
@@ -48,7 +48,7 @@ int availableMemory() {
   free(buf);
 
   return size;
-}
+}*/
 
 boolean add_task(unsigned int pin, byte idx_command, unsigned int period, int* args) {
   if (taskList[pin])
@@ -101,7 +101,7 @@ void snd_message(unsigned int sensor, int value) {
 // Return true if a message for the arduino arrived
 boolean process_message(boolean block){
   boolean valid = false;
-  char* msgrcv[wordNb];//[wordNb][wordSize];
+  char* msgrcv[wordNb];
   char msg[msgSize] = "";
   char car = ' ';
   int nbArgs;
@@ -110,12 +110,12 @@ boolean process_message(boolean block){
     int i=0;
     int j=0;
     boolean rcvd = false;
-    do {
+    do {                                  // Reception message
       rcvd = get_message(msg, block);
     } while (!rcvd && block);
     
     msgrcv[0] = msg;
-    while (car != '\0') {
+    while (car != '\0') {                 // Decoupage message
       car = msg[i];
       if (car == ' '){
         msg[i] = '\0';
@@ -124,16 +124,16 @@ boolean process_message(boolean block){
       i++;
     }    
 
-    if (strcmp(msgrcv[0], idstr) == 0) { // identified
+    if (strcmp(msgrcv[0], idstr) == 0) {  // Identification
       valid = true;
       boolean accepted = false;
       char resp[msgSize];
       switch (msgrcv[1][0]) {
         
-      case 'p':
+      /*case 'p':
         accepted = true;
         print_eeprom();
-      break;
+      break;*/
       
       case 's':
         accepted = true;
@@ -141,11 +141,11 @@ boolean process_message(boolean block){
         save_state();
       break;
       
-      case 'r':
+      /*case 'r':
         accepted = true;
         strcpy(resp, "OK");
         restore_state();
-      break;
+      break;*/
         
       case 'l':
         accepted = true;
@@ -154,7 +154,6 @@ boolean process_message(boolean block){
           strcat(resp, commandList[j].name);
           strcat(resp, " ");
         }
-        //Serial.println("ya");
         break;
         
       case 't':

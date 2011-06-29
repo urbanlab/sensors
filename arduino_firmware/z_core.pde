@@ -1,9 +1,11 @@
 void setup(){
   Serial.begin(baudrate);
   Serial.flush();
+  Serial.println(availableMemory());
   set_id(get_id());
   snd_message("NEW");
   restore_state();
+  process_message(true);
   while(get_id() == 0) {
     process_message(true);
   }
@@ -31,6 +33,21 @@ boolean cycleCheck(unsigned long &lastTime, unsigned int period)
   }
   else
     return false;
+}
+
+// this function will return the number of bytes currently free in RAM
+// written by David A. Mellis
+// based on code by Rob Faludi http://www.faludi.com
+int availableMemory() {
+  int size = 1024; // Use 2048 with ATmega328
+  byte *buf;
+
+  while ((buf = (byte *) malloc(--size)) == NULL)
+    ;
+
+  free(buf);
+
+  return size;
 }
 
 boolean add_task(unsigned int pin, byte idx_command, unsigned int period, int* args) {
@@ -84,15 +101,28 @@ void snd_message(unsigned int sensor, int value) {
 // Return true if a message for the arduino arrived
 boolean process_message(boolean block){
   boolean valid = false;
-  char msgrcv[wordNb][wordSize];
-  char wrd[wordSize] = "";
+  char* msgrcv[wordNb];//[wordNb][wordSize];
+  char msg[msgSize] = "";
+  char car = ' ';
   int nbArgs;
   do {
-    nbArgs = 0;
+    nbArgs = 1;
+    int i=0;
+    int j=0;
+    boolean rcvd = false;
     do {
-      get_word(wrd, block);
-      strcpy(msgrcv[nbArgs++], wrd);
-    } while (Serial.available());
+      rcvd = get_message(msg, block);
+    } while (!rcvd && block);
+    
+    msgrcv[0] = msg;
+    while (car != '\0') {
+      car = msg[i];
+      if (car == ' '){
+        msg[i] = '\0';
+        msgrcv[nbArgs++] = msg+i+1;
+      }
+      i++;
+    }    
 
     if (strcmp(msgrcv[0], idstr) == 0) { // identified
       valid = true;
@@ -120,16 +150,17 @@ boolean process_message(boolean block){
       case 'l':
         accepted = true;
         strcpy(resp, "");
-        for (int i=0 ; i < nbCmd ; i++){
-          strcat(resp, commandList[i].name);
+        for (byte j = 0 ; j < nbCmd ; j++){
+          strcat(resp, commandList[j].name);
           strcat(resp, " ");
         }
+        //Serial.println("ya");
         break;
         
       case 't':
         accepted = true;
         strcpy(resp, "T ");
-        for (int i=0 ; i < nbPin ; i++){
+        for (int i = 0 ; i < nbPin ; i++){
           if (taskList[i] != NULL) {
             char pin[3] = "";
             itoa(i, pin, 10);
@@ -148,7 +179,7 @@ boolean process_message(boolean block){
         break;
         
       case 'a':
-        for (int i=0 ; i < nbCmd ; i++){
+        for (int i = 0 ; i < nbCmd ; i++){
           if((strcmp(commandList[i].name, msgrcv[2]) == 0) && (commandList[i].nbArgs == nbArgs - 5)){ // Same name and same number of args
             unsigned int period = atoi(msgrcv[3]);
             unsigned int pin = atoi(msgrcv[4]);
@@ -178,9 +209,26 @@ boolean process_message(boolean block){
   return valid;
 }
 
+boolean get_message(char* msg, boolean block){
+  int i=0;
+  boolean valid = false;
+  do{
+    if(Serial.available()){
+       delay(100);
+       while( Serial.available() && i< msgSize-1) {
+          msg[i++] = Serial.read();
+       }
+       msg[i++]='\0';
+       valid = true;
+    }
+  } while(!valid && block);
+  return valid;
+}
+
 // Get a word from serial line.
 // Return true if something was available
 // arg block define if the function shourd wait for a word
+/*
 boolean get_word(char* wrd, boolean block){
   int i=0;
   boolean valid = false;
@@ -197,7 +245,7 @@ boolean get_word(char* wrd, boolean block){
     }
   } while (!valid && block);
   return valid;
-}
+}*/
 
 byte read_byte(int address) {
   return eeprom_read_byte((unsigned char *) address);

@@ -3,17 +3,14 @@
 #include <avr/eeprom.h>
 
 const int signature = 12345;             // Should change at each firmware modification
-const int atomicMsgSize = 202;           //TODO verifier
+const int atomicMsgSize = 202;           // TODO verifier
 const int wordSize = 15;                 // Max size of an argument
-const int maxArgs = 7;                   // Max number of arguments
 const int maxArgsCmd = 2;                // Max arguments of unique command
 const int spaceSize = 2;                 // Size of personnal space of the tasks
-const int wordNb = maxArgs+3;            // Max number of words in the message (including id and mode...)
+const int wordNb = 10;                   // Max number of words in the message (including id and mode...)
 const int msgSize = (wordSize+1)*wordNb; // Max size of a message transmitted
-const int maxTask = 20;                  // Max number of tasks executed
 const int baudrate = 19200;              // Serial baudrate
-const int nbPin = 21;
-
+const int nbPin = 21;                    // Nb of pin (and max nb of task)
 
 typedef void (*looper)(int, int*, int*); // Arguments are : pin, list of arguments, personnal space
 typedef void (*setuper)(int, int*, int*);

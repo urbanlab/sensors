@@ -37,7 +37,7 @@ boolean cycleCheck(unsigned long &lastTime, unsigned int period)
 // this function will return the number of bytes currently free in RAM
 // written by David A. Mellis
 // based on code by Rob Faludi http://www.faludi.com
-/*
+
 int availableMemory() {
   int size = 1024; // Use 2048 with ATmega328
   byte *buf;
@@ -48,7 +48,7 @@ int availableMemory() {
   free(buf);
 
   return size;
-}*/
+}
 
 boolean add_task(unsigned int pin, byte idx_command, unsigned int period, int* args) {
   if (taskList[pin])

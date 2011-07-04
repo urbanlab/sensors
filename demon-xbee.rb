@@ -23,36 +23,39 @@ class Xbee_Demon
 		r_start_interface(redis_host, redis_port, network)
 		@serial = SerialPort.new serial_port, baudrate
 		@supported = []
-		serial_listener = Thread.new do
+		serial_listener = Thread.new {
 			listen_serial
-		end
+		}
+		
 	
 		serial_listener.join()
 	end
 	
 	def listen_serial
 		loop do
-			id_multi, command, *args = s_get_message()@serial.readline.delete("\r\n").split("\s")
+			id_multi, command, *args = @serial.readline.delete("\r\n").split("\s")
 			if id_multi.is_integer?
 				case command
 					when "SENS"
+						# TODO check if the pin is registered
 						#rpn = JSON.parse(@redis.hget(get_redis_path(id_multi), args[0]))[:rpn]#"network:#{@network}:multiplexers:#{id_multi}:sensors:#{args[0]}"))[:rpn]
 						value = args[1]#rpn_solve(args[1], rpn)
-						r_publish_value(id_multi, args[0], value) if (r_get_multi_keys).include? id_multi
+						r_publish_value(id_multi, args[0], value)# if (r_get_multi_keys).include? id_multi.to_s
 					when "NEW"
 						puts "new id " << id_multi.to_s
-						if (id_multi == "0" or id_multi == "255") #unconfigured, must set an id.
-							new_id = (Array("1".."255") - r_get_multi_keys)[0]
+						if (id_multi == "0" or id_multi == "255")              # unconfigured, must set an id.
+							new_id = (Array("1".."255") - r_get_multi_keys)[0] # first unused id
 							@serial.write(id_multi.to_s << " i " << new_id.to_s)
 						elsif not ((r_get_multi_keys).include? id_multi) #unconfigured with a valid id
 							new_multi(id_multi.to_i)	
 						else
-							p r_get_multi_config id_multi
-							p JSON.parse(@redis.hget(get_redis_path() << ":multiplexers", id_multi))["supported"]
+							# TODO Check if the tasks correspond
 						end
 					when "LIST"
-						@supported[id_multi.to_i].write(args.join(" "))# if (@supported[id_multi.to_i])
-						@supported[id_multi.to_i].close
+						if (@supported[id_multi.to_i])
+							@supported[id_multi.to_i].write(args.join(" "))
+							@supported[id_multi.to_i].close
+						end
 				end
 			end
 		end
@@ -61,13 +64,18 @@ class Xbee_Demon
 	def new_multi(id_multi)
 		rd, wr = IO.pipe
 		@supported[id_multi] = wr
-		waiting = Thread.new{
-			supported = rd.read
-			rd.close
-			supported = supported.split("\s")
-			r_set_multi_config(id_multi, {"description" => "unconfigured", "supported" => supported})
+		wait_for(rd) { |supported|
+			r_set_multi_config(id_multi, {"description" => "unconfigured", "supported" => supported.split("\s")})
 		}
 		@serial.write(id_multi.to_s + " l")
+	end
+	
+	def wait_for(pipe, &block)
+		Thread.new{
+			message = pipe.read
+			pipe.close
+			yield message
+		}
 	end
 
 end

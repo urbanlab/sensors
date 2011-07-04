@@ -2,6 +2,7 @@ require 'rubygems'
 require 'json'
 require 'serialport'
 require 'redis-interface.rb'
+require 'serial-interface.rb'
 
 
 =begin
@@ -31,13 +32,13 @@ class Xbee_Demon
 	
 	def listen_serial
 		loop do
-			id_multi, command, *args = @serial.readline.delete("\r\n").split("\s")
+			id_multi, command, *args = s_get_message()@serial.readline.delete("\r\n").split("\s")
 			if id_multi.is_integer?
 				case command
 					when "SENS"
 						#rpn = JSON.parse(@redis.hget(get_redis_path(id_multi), args[0]))[:rpn]#"network:#{@network}:multiplexers:#{id_multi}:sensors:#{args[0]}"))[:rpn]
 						value = args[1]#rpn_solve(args[1], rpn)
-						r_publish_value(id_multi, args[0], value)
+						r_publish_value(id_multi, args[0], value) if (r_get_multi_keys).include? id_multi
 					when "NEW"
 						puts "new id " << id_multi.to_s
 						if (id_multi == "0" or id_multi == "255") #unconfigured, must set an id.

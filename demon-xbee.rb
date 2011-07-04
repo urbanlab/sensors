@@ -21,6 +21,7 @@ class Xbee_Demon
 		@network = network
 		@serial = SerialPort.new serial_port, baudrate
 		@redis = Redis.new :host => redis_host, :port => redis_port
+		@supported = []
 
 		serial_listener = Thread.new do
 			listen_serial
@@ -47,13 +48,33 @@ class Xbee_Demon
 							@serial.write(id_multi.to_s << " i " << new_id.to_s)
 						elsif not (@redis.hkeys(get_redis_path() << ":multiplexers").include? id_multi) #unconfigured with a valid id
 							puts "new ard"
-							@redis.hset(get_redis_path() << ":multiplexers", id_multi, {:description => "unconfigured", :supported => ["dunno", "yup"]}.to_json)
+							new_multi(id_multi.to_i)
+							#@redis.hset(get_redis_path() << ":multiplexers", id_multi, {:description => "unconfigured", :supported => ["dunno", "yup"]}.to_json)
 						else
 							puts "known ard"
+							puts "he supports"
+							p @redis.hget(get_redis_path() << ":multiplexers", id_multi)
+							p JSON.parse(@redis.hget(get_redis_path() << ":multiplexers", id_multi))["supported"]
 						end
+					when "LIST"
+						@supported[id_multi.to_i].write(args.join(" "))# if (@supported[id_multi.to_i])
+						@supported[id_multi.to_i].close
 				end
 			end
 		end
+	end
+	
+	def new_multi(id_multi)
+		rd, wr = IO.pipe
+		@supported[id_multi] = wr
+		waiting = Thread.new{
+			supported = rd.read
+			rd.close
+			supported = supported.split("\s")
+			@redis.hset(get_redis_path() << ":multiplexers", id_multi, {:description => "unconfigured", :supported => supported}.to_json)
+		}
+		@serial.write(id_multi.to_s + " l")
+		p "alive"
 	end
 	
 	def publish_value(multiplexer, sensor, value)

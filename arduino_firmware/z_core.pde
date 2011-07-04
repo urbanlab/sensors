@@ -87,13 +87,17 @@ void snd_message(char* message) {
 }
 
 void snd_message(unsigned int sensor, int value) {
+  char buff[atomicMsgSize];
   char message[msgSize];
   char valueBuff[wordSize];
   itoa(value, valueBuff, 10);
   itoa(sensor, message, 10);
   strcat(message, " ");
   strcat(message, valueBuff);
-  snd_message(message);
+  strcpy(buff, idstr);
+  strcat(buff, " SENS ");
+  strcat(buff, message);
+  Serial.println(buff);
 }
 
 // Get and process a message from the server.
@@ -146,7 +150,7 @@ boolean process_message(boolean block){
         
       case 'l':
         accepted = true;
-        strcpy(resp, "");
+        strcpy(resp, "LIST ");
         for (byte j = 0 ; j < nbCmd ; j++){
           strcat(resp, commandList[j].name);
           strcat(resp, " ");
@@ -155,7 +159,7 @@ boolean process_message(boolean block){
         
       case 't':
         accepted = true;
-        strcpy(resp, "T ");
+        strcpy(resp, "TASKS ");
         for (int i = 0 ; i < nbPin ; i++){
           if (taskList[i] != NULL) {
             char pin[3] = "";

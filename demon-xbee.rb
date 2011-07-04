@@ -32,13 +32,25 @@ class Xbee_Demon
 	def listen_serial
 		loop do
 			id_multi, command, *args = @serial.readline.delete("\r\n").split("\s")
-			p *args
 			if id_multi.is_integer?
 				case command
 					when "SENS"
 						#rpn = JSON.parse(@redis.hget(get_redis_path(id_multi), args[0]))[:rpn]#"network:#{@network}:multiplexers:#{id_multi}:sensors:#{args[0]}"))[:rpn]
 						value = args[1]#rpn_solve(args[1], rpn)
 						publish_value(id_multi, args[0], value)
+					when "NEW"
+						puts "new id " << id_multi.to_s
+						if (id_multi == "0" or id_multi == "255") #unconfigured, must set an id.
+							puts "no id"
+							new_id = (Array("1".."255") - @redis.hkeys(get_redis_path() << ":multiplexers"))[0]
+							p @redis.hkeys(get_redis_path() << ":multiplexers")
+							@serial.write(id_multi.to_s << " i " << new_id.to_s)
+						elsif not (@redis.hkeys(get_redis_path() << ":multiplexers").include? id_multi) #unconfigured with a valid id
+							puts "new ard"
+							@redis.hset(get_redis_path() << ":multiplexers", id_multi, {:description => "unconfigured", :supported => ["dunno", "yup"]}.to_json)
+						else
+							puts "known ard"
+						end
 				end
 			end
 		end

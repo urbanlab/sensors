@@ -20,6 +20,8 @@ Sur network:<network>:multiplexers:<multipl-id>:actuators = hash (pin, objet act
 class Xbee_Demon
 	include Redis_interface
 	def initialize(network, serial_port = '/dev/ttyUSB0', baudrate = 19200, redis_host = 'localhost', redis_port = 6379)
+	
+		Thread.abort_on_exception = true
 		r_start_interface(redis_host, redis_port, network)
 		@serial = SerialPort.new serial_port, baudrate
 		@supported = []
@@ -27,6 +29,10 @@ class Xbee_Demon
 			listen_serial
 		}
 		
+		r_on_new_sensor do |id_multi, sensor, config|
+			puts id_multi.to_s + " a " + config["function"] + " " + config["period"].to_s + " " + sensor.to_s
+			@serial.write(id_multi.to_s + " a " + config["function"] + " " + config["period"].to_s + " " + sensor.to_s + "\n")
+		end
 	
 		serial_listener.join()
 	end
@@ -34,6 +40,7 @@ class Xbee_Demon
 	def listen_serial
 		loop do
 			id_multi, command, *args = @serial.readline.delete("\r\n").split("\s")
+			p id_multi
 			if id_multi.is_integer?
 				case command
 					when "SENS"

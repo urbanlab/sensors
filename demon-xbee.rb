@@ -40,8 +40,7 @@ class Xbee_Demon
 	def listen_serial
 		loop do
 			id_multi, command, *args = @serial.readline.delete("\r\n").split("\s")
-			p id_multi
-			if id_multi.is_integer?
+			if id_multi and id_multi.is_integer?
 				case command
 					when "SENS"
 						# TODO check if the pin is registered
@@ -49,7 +48,6 @@ class Xbee_Demon
 						value = args[1]#rpn_solve(args[1], rpn)
 						r_publish_value(id_multi, args[0], value)# if (r_get_multi_keys).include? id_multi.to_s
 					when "NEW"
-						puts "new id " << id_multi.to_s
 						if (id_multi == "0" or id_multi == "255")              # unconfigured, must set an id.
 							new_id = (Array("1".."255") - r_get_multi_keys)[0] # first unused id
 							@serial.write(id_multi.to_s << " i " << new_id.to_s)

@@ -10,6 +10,7 @@ Sur network:<network>:multiplexers:<multipl-id>:actuators = hash (pin, objet act
 
 =end
 require 'rubygems'
+require 'redis/connection/hiredis'
 require 'redis'
 
 PREFIX = "network"
@@ -56,7 +57,8 @@ module Redis_interface
 
 	def r_on_new_sensor(&block)
 		Thread.new{
-			@redis.psubscribe("#{@prefix}:#{MULTI}:*:#{SENS}:*:#{CONF}") do |on|
+			redis = Redis.new
+			redis.psubscribe("#{@prefix}:#{MULTI}:*:#{SENS}:*:#{CONF}") do |on|
 				on.pmessage do |pattern, channel, message|
 					parse = Hash[ *channel.split(":")[0..-2] ]
 					yield parse[MULTI], parse[SENS], JSON.parse(message)

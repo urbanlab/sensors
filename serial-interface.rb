@@ -7,14 +7,15 @@ ANS = { :sensor => "SENS", :new => "NEW", :implementations => "LIST", :tasks => 
 
 class Serial_interface
 	attr_accessor :thr
-	def initialize port, baudrate, timeout = 5
+	def initialize port, baudrate, timeout = 1, retry_nb = 3
 		@serial = SerialPort.new port, baudrate
-		@read_queue = Queue.new
 		@values = Queue.new
+		@news = Queue.new
 		@list = []
 		@tasks = []
 		@oks = []
 		@timeout = timeout
+		@retry = retry_nb
 		Thread.abort_on_exception = true
 		listener = Thread.new {
 			process_messages
@@ -35,8 +36,10 @@ class Serial_interface
 						@tasks[id_multi].push(Hash[*args.join(" ").scan(/\w+/).collect {|i| (i.is_integer?)? i.to_i : i}]) if @tasks[id_multi]
 					when ANS[:oks]
 						@oks[id_multi].push(id_multi) if @oks[id_multi]
+					when ANS[:new]
+						@news.push(id_multi)
 					else
-						puts "ignored command #{id_multi} #{command}"
+						#puts "ignored command #{id_multi} #{command}"
 				end
 			end
 		end
@@ -56,20 +59,42 @@ class Serial_interface
 		snd_message(multi, :remove, pin)
 	end
 	
+	def change_id(old, new)
+		snd_message(old, :id, new)
+	end
+	
+	def timeout_try(queue)
+		i = 0
+		begin
+			Timeout.timeout(@timeout){queue.pop}
+		rescue Timeout::Error => e
+			((i+=1) < @retry)? retry : raise(e)
+		end
+	end
+	
 	def list_implementations(multi)
 		@list[multi] = Queue.new
 		snd_message(multi, :list)
-		Timeout::timeout(@timeout){@list[multi].pop}
+		timeout_try(@list[multi])
 	end
 	
 	def list_tasks(multi)
 		@tasks[multi] = Queue.new
 		snd_message(multi, :tasks)
-		Timeout::timeout(@timeout){@tasks[multi].pop}
+		timeout_try(@tasks[multi])
+	end
+	
+	def on_new_multi(&block)
+		Thread.new do
+			loop do
+				id = @news.pop
+				yield(id)
+			end
+		end
 	end
 	
 	def on_sensor_value(&block)
-		@thr = Thread.new do
+		Thread.new do
 			loop do
 				message = @values.pop
 				yield(message[:multi], message[:sensor], message[:value])
@@ -87,16 +112,20 @@ end
 =begin
 serial = Serial_interface.new('/dev/ttyUSB0', 19200)
 serial.on_sensor_value do |multi, sensor, value|
-	p "got"
-	p multi
-	p sensor
-	p value
+	puts "got a value by #{multi} on #{sensor} of #{value}"
 end
-p serial.list_implementations(1)
-p serial.list_tasks(1)
-serial.add_task(1, 14, {"function" => "1wi", "period" => 1000})
+
+serial.on_new_multi do |id|
+	imp = serial.list_implementations(id)
+	tasks = serial.list_tasks(id)
+	puts "new multi : #{id}"
+	p imp
+	p tasks
+	serial.add_task(id, 14, {"function" => "ain", "period" => 1000})
+end
+
 loop do
-	sleep 1
+	sleep 5
 	p "alive"
 end
 =end

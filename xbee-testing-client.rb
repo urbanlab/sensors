@@ -12,17 +12,7 @@ Sur network:<network>:multiplexers:<multipl-id>:sensors = hash (pin, objet senso
 Sur network:<network>:multiplexers:<multipl-id>:actuators = hash (pin, objet actuator)
 
 =end
-class Client
-	include Redis_interface
-	def initialize
-		r_start_interface('localhost', 6379, 1)
-	end
-	
-	def snd
-		r_set_sens_config(1, 14, {"description" => "temperature", "function" => "ain", "period" => 3000, "unit" => "Volt", "rpn" => "X"})
-	end
-end
 
-cli = Client.new
-cli.snd
+cli = Redis_interface.new('localhost', 6379, 1)
+cli.set_sensor_config(3, 11, {"description" => "bouton", "function" => "din", "period" => 10, "unit" => "Bool", "rpn" => "X"})
 

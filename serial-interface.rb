@@ -4,7 +4,7 @@ require 'timeout'
 
 CMD = { :list => "l", :add => "a", :remove => "d", :tasks => "t" , :id => "i" }
 ANS = { :sensor => "SENS", :new => "NEW", :implementations => "LIST", :tasks => "TASKS" , :ok => "OK"}
-
+#TODO verify the execution of add, id and remove
 class Serial_interface
 	attr_accessor :thr
 	def initialize port, baudrate, timeout = 1, retry_nb = 3

@@ -29,7 +29,7 @@ class Redis_interface
 	end
 	
 	def get_multi_keys
-		@redis.hkeys("#{@prefix}:#{MULTI}:#{CONF}")
+		@redis.hkeys("#{@prefix}:#{MULTI}:#{CONF}").collect{|k| k.to_i}
 	end
 	
 	def get_multi_config multi_id
@@ -40,6 +40,11 @@ class Redis_interface
 		path = "#{@prefix}:#{MULTI}"
 		@redis.hset("#{path}:#{CONF}", multi_id, config.to_json)
 		@redis.publish("#{path}:#{multi_id}:#{CONF}", config.to_json)
+	end
+	
+	def knows_multi? multi_id
+		path = "#{@prefix}:#{MULTI}:#{CONF}"
+		@redis.hexists(path, multi_id)
 	end
 	
 	def publish_value(multi_id, sensor, value)

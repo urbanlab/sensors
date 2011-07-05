@@ -10,6 +10,7 @@ Sur network:<network>:multiplexers:<multipl-id>:actuators = hash (pin, objet act
 
 =end
 require 'rubygems'
+require 'json'
 require 'redis/connection/hiredis'
 require 'redis'
 
@@ -86,3 +87,4 @@ class Redis_interface
 		}
 	end
 end
+

@@ -15,7 +15,7 @@ Sur network:<network>:multiplexers:<multipl-id>:actuators = hash (pin, objet act
 
 cli = Redis_interface.new('localhost', 6379, 1)
 #cli.set_sensor_config(3, 11, {"description" => "bouton", "function" => "din", "period" => 10, "unit" => "Bool", "rpn" => "X"})
-cli.on_published_value(4) do |multi, pin, valeur|
+cli.on_published_value do |multi, pin, valeur|
 	p multi
 	p pin
 	p valeur

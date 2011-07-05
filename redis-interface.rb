@@ -51,7 +51,7 @@ class Redis_interface
 	
 	def publish_value(multi_id, sensor, value)
 		path = "#{@prefix}:#{MULTI}:#{multi_id}:#{SENS}"
-		key = {"value" => value,"timestamp" => Time.now.to_i}.to_json
+		key = {"value" => value,"timestamp" => Time.now.to_f}.to_json
 		@redis.hset("#{path}:#{VALUE}", sensor, key)
 		@redis.publish("#{path}:#{sensor}:#{VALUE}", key)
 	end

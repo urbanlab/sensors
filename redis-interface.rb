@@ -23,6 +23,8 @@ CONF   = "config"
 class Redis_interface
 	
 	def initialize(host, port, network)
+		@host = host
+		@port = port
 		@redis = Redis.new :host => host, :port => port
 		@network = network
 		@prefix = "#{PREFIX}:#{@network}"
@@ -59,10 +61,22 @@ class Redis_interface
 		@redis.hset("#{path}:#{CONF}", pin, config.to_json)
 		@redis.publish("#{path}:#{pin}:#{CONF}", config.to_json)
 	end
+	
+	def on_published_value(multi = "*", pin = "*", &block)
+		Thread.new{
+			redis = Redis.new
+			redis.psubscribe("#{@prefix}:#{MULTI}:#{multi}:#{SENS}:#{pin}:value") do |on|
+				on.pmessage do |pattern, channel, message|
+					parse = Hash[ *channel.split(":")[0..-2] ]
+					yield parse[MULTI], parse[SENS], JSON.parse(message)
+				end
+			end
+		}
+	end
 
 	def on_new_sensor(&block)
 		Thread.new{
-			redis = Redis.new
+			redis = Redis.new :host => @host, :port => @port
 			redis.psubscribe("#{@prefix}:#{MULTI}:*:#{SENS}:*:#{CONF}") do |on|
 				on.pmessage do |pattern, channel, message|
 					parse = Hash[ *channel.split(":")[0..-2] ]

@@ -18,19 +18,17 @@ Sur network:<network>:multiplexers:<multipl-id>:actuators = hash (pin, objet act
 =end
 
 class Xbee_Demon
-	include Redis_interface
 	def initialize(network, serial_port = '/dev/ttyUSB0', baudrate = 19200, redis_host = 'localhost', redis_port = 6379)
 	
 		Thread.abort_on_exception = true
-		r_start_interface(redis_host, redis_port, network)
+		@redis = Redis_interface.new(redis_host, redis_port, network)
 		@serial = SerialPort.new serial_port, baudrate
 		@supported = []
 		serial_listener = Thread.new {
 			listen_serial
 		}
 		
-		r_on_new_sensor do |id_multi, sensor, config|
-			puts id_multi.to_s + " a " + config["function"] + " " + config["period"].to_s + " " + sensor.to_s
+		@redis.on_new_sensor do |id_multi, sensor, config|
 			@serial.write(id_multi.to_s + " a " + config["function"] + " " + config["period"].to_s + " " + sensor.to_s + "\n")
 		end
 	
@@ -46,12 +44,12 @@ class Xbee_Demon
 						# TODO check if the pin is registered
 						#rpn = JSON.parse(@redis.hget(get_redis_path(id_multi), args[0]))[:rpn]#"network:#{@network}:multiplexers:#{id_multi}:sensors:#{args[0]}"))[:rpn]
 						value = args[1]#rpn_solve(args[1], rpn)
-						r_publish_value(id_multi, args[0], value)# if (r_get_multi_keys).include? id_multi.to_s
+						@redis.publish_value(id_multi, args[0], value)# if (@redis.get_multi_keys).include? id_multi.to_s
 					when "NEW"
 						if (id_multi == "0" or id_multi == "255")              # unconfigured, must set an id.
-							new_id = (Array("1".."255") - r_get_multi_keys)[0] # first unused id
+							new_id = (Array("1".."255") - @redis.get_multi_keys)[0] # first unused id
 							@serial.write(id_multi.to_s << " i " << new_id.to_s)
-						elsif not ((r_get_multi_keys).include? id_multi) #unconfigured with a valid id
+						elsif not ((@redis.get_multi_keys).include? id_multi) #unconfigured with a valid id
 							new_multi(id_multi.to_i)	
 						else
 							# TODO Check if the tasks correspond
@@ -70,7 +68,7 @@ class Xbee_Demon
 		rd, wr = IO.pipe
 		@supported[id_multi] = wr
 		wait_for(rd) { |supported|
-			r_set_multi_config(id_multi, {"description" => "unconfigured", "supported" => supported.split("\s")})
+			@redis.set_multi_config(id_multi, {"description" => "unconfigured", "supported" => supported.split("\s")})
 		}
 		@serial.write(id_multi.to_s + " l")
 	end

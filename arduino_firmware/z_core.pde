@@ -135,6 +135,10 @@ boolean process_message(boolean block){
         accepted = true;
         print_eeprom();
       break;*/
+      case 'p':
+        accepted = true;
+        strcpy(resp, "PONG");
+      break;
       
       case 's':
         accepted = true;

@@ -20,6 +20,7 @@ SENS   = "sensors"
 ACTU   = "actuators"
 VALUE  = "value"
 CONF   = "config"
+DEL    = "delete"
 
 class Redis_interface
 	
@@ -75,6 +76,12 @@ class Redis_interface
 		@redis.publish("#{path}:#{pin}:#{CONF}", config.to_json)
 	end
 	
+	def remove_sensor multi_id, pin
+		path = "#{@prefix}:#{MULTI}:#{multi_id}:#{SENS}"
+		@redis.hdel("#{path}:#{CONF}", pin)
+		@redis.publish("#{path}:#{pin}:#{DEL}", pin)
+	end
+	
 	def get_sensors_config multi_id #TODO test
 		path = "#{@prefix}:#{MULTI}:#{multi_id}:#{SENS}:#{CONF}"
 		ans = {}
@@ -104,6 +111,18 @@ class Redis_interface
 				on.pmessage do |pattern, channel, message|
 					parse = Hash[ *channel.split(":")[0..-2] ]
 					yield parse[MULTI], parse[SENS], JSON.parse(message)
+				end
+			end
+		}
+	end
+	
+	def on_deleted_sensor(&block)
+		Thread.new{
+			redis = Redis.new :host => @host, :port => @port
+			redis.psubscribe("#{@prefix}:#{MULTI}:*:#{SENS}:*:#{DEL}") do |on|
+				on.pmessage do |pattern, channel, message|
+					parse = Hash[ *channel.split(":")[0..-2] ]
+					yield parse[MULTI], parse[SENS]
 				end
 			end
 		}

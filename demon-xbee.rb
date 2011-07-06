@@ -24,10 +24,11 @@ class Xbee_Demon
 		@serial = Serial_interface.new serial_port, baudrate
 		
 		@redis.on_new_sensor do |id_multi, sensor, config|
-			p id_multi
-			p sensor
-			p config
 			@serial.add_task(id_multi, sensor, config) #TODO must check if multi not registered
+		end
+		
+		@redis.on_deleted_sensor do |id_multi, sensor|
+			@serial.rem_task(id_multi, sensor) #TODO registered ? task exists ?
 		end
 		
 		@redis.on_published_value(:actuator) do |multi, pin, value|

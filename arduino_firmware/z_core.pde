@@ -142,7 +142,7 @@ boolean process_message(boolean block){
       
       case 's':
         accepted = true;
-        strcpy(resp, "OK");
+        strcpy(resp, "SAVED");
         save_state();
       break;
       
@@ -193,7 +193,7 @@ boolean process_message(boolean block){
             }
             accepted = add_task(pin, i, period, args);
             if (accepted) {
-              strcpy(resp, "OK ");
+              strcpy(resp, "ADD ");
               strcat(resp, msgrcv[4]);
             }
           }
@@ -202,7 +202,7 @@ boolean process_message(boolean block){
         
       case 'd':
         accepted = true;
-        strcpy(resp, "OK");
+        strcpy(resp, "DEL");
         delete_task(atoi(msgrcv[2]));
         break;
       }

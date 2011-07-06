@@ -24,7 +24,7 @@ class Serial_interface
 	
 	def process_messages
 		loop do
-			id_multi, command, *args = @serial.readline.delete("\r\n").split("\s")
+			id_multi, command, *args = @serial.gets.delete("\r\n").split("\s")
 			if (id_multi and id_multi.is_integer?)
 				id_multi = id_multi.to_i
 				case command
@@ -108,6 +108,7 @@ class String
     begin Integer(self) ; true end rescue false
   end
 end
+
 
 =begin
 serial = Serial_interface.new('/dev/ttyUSB0', 19200)

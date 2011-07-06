@@ -1,8 +1,8 @@
 require 'rubygems'
 require 'json'
 require 'serialport'
-require 'redis-interface.rb'
-require 'serial-interface.rb'
+require './redis-interface.rb'
+require './serial-interface.rb'
 
 
 =begin

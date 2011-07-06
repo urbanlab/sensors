@@ -39,6 +39,11 @@ class Redis_interface
 		JSON.parse(@redis.hget("#{@prefix}:#{MULTI}:#{CONF}", multi_id))
 	end
 	
+	def get_multis_config
+		configs = @redis.hgetall("#{@prefix}:#{MULTI}:#{CONF}")
+		Hash[*configs.collect{|conf| [conf[0].to_i, JSON.parse(conf[1])]}.flatten]
+	end
+	
 	def set_multi_config multi_id, config
 		path = "#{@prefix}:#{MULTI}"
 		@redis.hset("#{path}:#{CONF}", multi_id, config.to_json)
@@ -61,6 +66,15 @@ class Redis_interface
 		path = "#{@prefix}:#{MULTI}:#{multi_id}:#{SENS}"
 		@redis.hset("#{path}:#{CONF}", pin, config.to_json)
 		@redis.publish("#{path}:#{pin}:#{CONF}", config.to_json)
+	end
+	
+	def get_sensors_config multi_id #TODO test
+		path = "#{@prefix}:#{MULTI}:#{multi_id}:#{SENS}:#{CONF}"
+		ans = {}
+		@redis.hgetall(path).each do |k, v|
+			ans[k.to_i] = JSON.parse(v)
+		end
+		ans
 	end
 	
 	def on_published_value(multi = "*", pin = "*", &block)

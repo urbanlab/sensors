@@ -1,6 +1,8 @@
 require 'rubygems'
 require 'serialport'
 require 'timeout'
+require 'thread'
+require 'io/wait'
 
 CMD = { :list => "l", :add => "a", :remove => "d", :tasks => "t" , :id => "i" }
 ANS = { :sensor => "SENS", :new => "NEW", :implementations => "LIST", :tasks => "TASKS" , :ok => "OK"}
@@ -24,7 +26,13 @@ class Serial_interface
 	
 	def process_messages
 		loop do
-			id_multi, command, *args = @serial.gets.delete("\r\n").split("\s")
+			buff = ""
+			while not buff.end_with?("\r\n")
+				@serial.wait
+				buff << @serial.readline
+			end
+			id_multi, command, *args = buff.delete("\r\n").split("\s")
+			#p id_multi, command, *args
 			if (id_multi and id_multi.is_integer?)
 				id_multi = id_multi.to_i
 				case command

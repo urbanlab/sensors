@@ -23,7 +23,7 @@ CONF   = "config"
 
 class Redis_interface
 	
-	def initialize(host, port, network)
+	def initialize(network, host = 'localhost', port = 6379)
 		@host = host
 		@port = port
 		@redis = Redis.new :host => host, :port => port
@@ -59,7 +59,14 @@ class Redis_interface
 		path = "#{@prefix}:#{MULTI}:#{multi_id}:#{SENS}"
 		key = {"value" => value,"timestamp" => Time.now.to_f}.to_json
 		@redis.hset("#{path}:#{VALUE}", sensor, key)
-		@redis.publish("#{path}:#{sensor}:#{VALUE}", key)
+		@redis.publish("#{path}:#{sensor}:#{VALUE}", value)
+	end
+	
+	def set_actuator_value(multi_id, actuator, value)
+		path = "#{@prefix}:#{MULTI}:#{multi_id}:#{ACTU}"
+		key = {"value" => value,"timestamp" => Time.now.to_f}.to_json
+		@redis.hset("#{path}:#{VALUE}", actuator, key)
+		@redis.publish("#{path}:#{actuator}:#{VALUE}", value)
 	end
 	
 	def set_sensor_config multi_id, pin, config
@@ -77,13 +84,14 @@ class Redis_interface
 		ans
 	end
 	
-	def on_published_value(multi = "*", pin = "*", &block)
+	def on_published_value(type, multi = "*", pin = "*", &block)
 		Thread.new{
+			type = {:sensor => SENS, :actuator => ACTU}[type]
 			redis = Redis.new
-			redis.psubscribe("#{@prefix}:#{MULTI}:#{multi}:#{SENS}:#{pin}:value") do |on|
-				on.pmessage do |pattern, channel, message|
+			redis.psubscribe("#{@prefix}:#{MULTI}:#{multi}:#{type}:#{pin}:value") do |on|
+				on.pmessage do |pattern, channel, valeur|
 					parse = Hash[ *channel.split(":")[0..-2] ]
-					yield parse[MULTI], parse[SENS], JSON.parse(message)
+					yield parse[MULTI], parse[SENS], valeur
 				end
 			end
 		}

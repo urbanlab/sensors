@@ -20,11 +20,23 @@ Sur network:<network>:multiplexers:<multipl-id>:actuators = hash (pin, objet act
 class Xbee_Demon
 	def initialize(network, serial_port = '/dev/ttyUSB0', baudrate = 19200, redis_host = 'localhost', redis_port = 6379)
 		Thread.abort_on_exception = true
-		@redis = Redis_interface.new(redis_host, redis_port, network)
+		@redis = Redis_interface.new(network, redis_host, redis_port)
 		@serial = Serial_interface.new serial_port, baudrate
 		
 		@redis.on_new_sensor do |id_multi, sensor, config|
+			p id_multi
+			p sensor
+			p config
 			@serial.add_task(id_multi, sensor, config) #TODO must check if multi not registered
+		end
+		
+		@redis.on_published_value(:actuator) do |multi, pin, value|
+			case value
+				when 1
+					@serial.snd_command(multi, :add, 100, pin)
+				when 0
+					@serial.snd_command(multi, :remove, pin)
+			end
 		end
 		
 		@serial.on_new_multi do |id|

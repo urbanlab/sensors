@@ -8,7 +8,6 @@ CMD = { :list => "l", :add => "a", :remove => "d", :tasks => "t" , :id => "i" }
 ANS = { :sensor => "SENS", :new => "NEW", :implementations => "LIST", :tasks => "TASKS" , :ok => "OK"}
 #TODO verify the execution of add, id and remove
 class Serial_interface
-	attr_accessor :thr
 	def initialize port, baudrate, timeout = 1, retry_nb = 3
 		@serial = SerialPort.new port, baudrate
 		@values_callback = []
@@ -47,7 +46,7 @@ class Serial_interface
 					when ANS[:new]
 						@news_callback.each { |cb| cb.call id_multi }
 					else
-						#puts "ignored command #{id_multi} #{command}"
+						#puts "ignored command #{buff}"
 				end
 			end
 		end
@@ -109,25 +108,4 @@ class String
   end
 end
 
-
-=begin
-serial = Serial_interface.new('/dev/ttyUSB0', 19200)
-serial.on_sensor_value do |multi, sensor, value|
-	puts "got a value by #{multi} on #{sensor} of #{value}"
-end
-
-serial.on_new_multi do |id|
-	imp = serial.list_implementations(id)
-	tasks = serial.list_tasks(id)
-	puts "new multi : #{id}"
-	p imp
-	p tasks
-	serial.add_task(id, 14, {"function" => "ain", "period" => 1000})
-end
-
-loop do
-	sleep 5
-	p "alive"
-end
-=end
 

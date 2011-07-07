@@ -10,8 +10,10 @@ ANS = { :sensor => "SENS", :new => "NEW", :implementations => "LIST", :tasks => 
 class Serial_interface
 	def initialize port, baudrate, timeout = 1, retry_nb = 3
 		@serial = SerialPort.new port, baudrate
-		@values_callback = []
-		@news_callback = []
+#		@values_callback = []
+#		@news_callback = []
+		@values = Queue.new
+		@news = Queue.new
 		@list = []
 		@tasks = []
 		@oks = []
@@ -28,7 +30,7 @@ class Serial_interface
 			buff = ""
 			while not buff.end_with?("\r\n")
 				@serial.wait
-				buff << @serial.readline
+				buff << @serial.gets
 			end
 			id_multi, command, *args = buff.delete("\r\n").split("\s")
 			#p id_multi, command, *args
@@ -36,7 +38,8 @@ class Serial_interface
 				id_multi = id_multi.to_i
 				case command
 					when ANS[:sensor]
-						@values_callback.each { |cb| cb.call id_multi, args[0].to_i, args[1].to_i }
+						@values.push({:multi => id_multi, :sensor => args[0].to_i, :value => args[1].to_i})
+#						@values_callback.each { |cb| Thread.new(cb.call id_multi, args[0].to_i, args[1].to_i) }
 					when ANS[:implementations]
 						@list[id_multi].push(args) if @list[id_multi]
 					when ANS[:tasks]
@@ -44,7 +47,8 @@ class Serial_interface
 					when ANS[:oks]
 						@oks[id_multi].push(id_multi) if @oks[id_multi]
 					when ANS[:new]
-						@news_callback.each { |cb| cb.call id_multi }
+						@news.push(id_multi)
+#						@news_callback.each { |cb| Thread.new(cb.call id_multi) }
 					else
 						#puts "ignored command #{buff}"
 				end
@@ -93,12 +97,24 @@ class Serial_interface
 	
 	# block has 1 int argument : multiplexer's id.
 	def on_new_multi(&block)
-		@news_callback.push(block)
+		Thread.new do
+			loop do
+				id = @news.pop
+				yield(id)
+			end
+		end
+
+		#@news_callback.push(block)
 	end
 	
 	# block has 3 int arguments : the multiplexer's id, pin number and value.
 	def on_sensor_value(&block)
-		@values_callback.push(block)
+		Thread.new do
+			loop do
+				message = @values.pop
+				yield(message[:multi], message[:sensor], message[:value])
+			end
+		end
 	end
 end
 

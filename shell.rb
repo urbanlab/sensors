@@ -13,7 +13,7 @@ module Redis_client
 	
 		def list_multi
 			@redis.list_multis.each do |multi, config|
-				puts "#{multi} : #{config["description"]} (supports : #{config["supported"].join(" ")}, #{@redis.list_sensors(multi).size} task(s) running)"
+				puts "#{multi} : #{config["description"]} (supports : #{@redis.support(config["supported"]).join(", ")}, #{@redis.list_sensors(multi).size} task(s) running)"
 			end
 		end
 		
@@ -24,7 +24,11 @@ module Redis_client
 		end
 		
 		def add_sensor(device, pin, description, profile, period)
-			@redis.add_sensor(device, pin, {"description" => description, "profile" => profile, "period" => period})
+			if @redis.add_sensor(device, pin, {"description" => description, "profile" => profile, "period" => period})
+				puts "OK"
+			else
+				puts "Missing profile or multiplexor"
+			end
 		end
 		
 		def set_description(device, description)

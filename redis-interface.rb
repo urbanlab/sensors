@@ -29,6 +29,14 @@ class Redis_interface
 		@prefix = "#{PREFIX}:#{@network}"
 	end
 	
+	# Return the list of supported profile from a list of arduino functions
+	#
+	def support(functions)
+		list_profiles.select { |name, profile|
+			functions.include? profile["function"]
+		}.keys
+	end
+	
 	##### Multiplexer management #####
 	
 

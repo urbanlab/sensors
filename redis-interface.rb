@@ -168,7 +168,7 @@ class Redis_interface
 			redis.psubscribe("#{@prefix}.#{MULTI}:#{multi}.#{type}:#{pin}.value") do |on|
 				on.pmessage do |pattern, channel, valeur|
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ]
-					yield parse[MULTI], parse[SENS], valeur
+					yield parse[MULTI].to_i, parse[SENS].to_i, valeur.to_f
 				end
 			end
 		}
@@ -189,7 +189,6 @@ class Redis_interface
 	#
 	def publish_value(multi_id, sensor, value)
 		return false unless knows_sensor? multi_id, sensor
-		p value
 		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}"
 		rpn = get_profile(get_sensor_config(multi_id, sensor)["profile"])["rpn"].sub("X", value.to_s)
 		value_norm = solve_rpn(rpn)
@@ -209,7 +208,7 @@ class Redis_interface
 			redis.psubscribe("#{@prefix}.#{MULTI}:*.#{SENS}:*.#{CONF}") do |on|
 				on.pmessage do |pattern, channel, message|
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ]
-					yield parse[MULTI], parse[SENS], JSON.parse(message)
+					yield parse[MULTI].to_i, parse[SENS].to_i, JSON.parse(message)
 				end
 			end
 		}
@@ -224,7 +223,7 @@ class Redis_interface
 			redis.psubscribe("#{@prefix}.#{MULTI}:*.#{SENS}:*.#{DEL}") do |on|
 				on.pmessage do |pattern, channel, message|
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ]
-					yield parse[MULTI], parse[SENS]
+					yield parse[MULTI].to_i, parse[SENS].to_i
 				end
 			end
 		}

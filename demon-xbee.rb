@@ -42,7 +42,7 @@ class Xbee_Demon
 		
 		@serial.on_new_multi do |id|
 			if (id == 0 or id == 255)  # Unconfigured, bad id
-				new_id = (Array(1..255) - @redis.get_multi_keys)[0] # first unused id
+				new_id = (Array(1..255) - @redis.list_multis.keys)[0] # first unused id
 				@serial.change_id(id, new_id)
 			elsif (not (@redis.knows_multi? id))   # valid id, but not registered
 				@redis.set_multi_config(id, {"description" => "no description", "supported" => @serial.list_implementations(id)})

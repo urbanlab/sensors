@@ -189,10 +189,13 @@ class Redis_interface
 	#
 	def publish_value(multi_id, sensor, value)
 		return false unless knows_sensor? multi_id, sensor
+		p value
 		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}"
-		key = {"value" => value,"timestamp" => Time.now.to_f}.to_json
+		rpn = get_profile(get_sensor_config(multi_id, sensor)["profile"])["rpn"].sub("X", value.to_s)
+		value_norm = solve_rpn(rpn)
+		key = {"value" => value_norm,"timestamp" => Time.now.to_f}.to_json
 		@redis.hset("#{path}.#{VALUE}", sensor, key)
-		@redis.publish("#{path}:#{sensor}.#{VALUE}", value)
+		@redis.publish("#{path}:#{sensor}.#{VALUE}", value_norm)
 		return true
 	end
 	
@@ -225,6 +228,28 @@ class Redis_interface
 				end
 			end
 		}
+	end
+	
+	private
+	
+	def solve_rpn(s)
+		stack = []
+		s.split(" ").each do |e|
+			case e
+				when "+"
+					stack.push(stack.pop + stack.pop)
+				when "-"
+					stack.push(-stack.pop + stack.pop)
+				when "*"
+					stack.push(stack.pop * stack.pop)
+				when "/"
+					a, b = stack.pop, stack.pop
+					stack.push(b / a)
+				else
+					stack.push(e.to_f)
+			end
+		end
+		stack[0]
 	end
 end
 

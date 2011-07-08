@@ -11,35 +11,55 @@ module Redis_client
 			@redis = Redis_interface.new 1
 		end
 	
-		def list
-			@redis.get_multis_config.each do |multi, config|
-				puts "#{multi} : #{config["description"]} (supports : #{config["supported"].join(" ")}, #{@redis.get_sensors_config(multi).size} task(s) running)"
+		def list_multi
+			@redis.list_multis.each do |multi, config|
+				puts "#{multi} : #{config["description"]} (supports : #{config["supported"].join(" ")}, #{@redis.list_sensors(multi).size} task(s) running)"
 			end
 		end
 		
 		def list_unconfigured
-			@redis.get_multis_config.select {|multi, config| @redis.get_sensors_config(multi).size == 0}.each do |multi, config|
+			@redis.list_multis.select {|multi, config| @redis.list_sensors(multi).size == 0}.each do |multi, config|
 				puts "#{multi} : #{config["description"]} (supports : #{config["supported"].join(" ")})"
 			end
 		end
 		
-		def add_sensor(device, pin, function, period)
-			@redis.set_sensor_config(device, pin, {"function" => function, "period" => period.to_i})
+		def add_sensor(device, pin, description, profile, period)
+			@redis.add_sensor(device, pin, {"description" => description, "profile" => profile, "period" => period})
 		end
 		
 		def set_description(device, description)
-			config = @redis.get_multi_config(device)
-			config["description"] = description
-			@redis.set_multi_config(device, config)
+			if @redis.set_description(device, description)
+				puts "OK"
+			else
+				puts "The multiplexer doesn't exist"
+			end
 		end
 		
 		def remove_sensor(device, pin)
-			@redis.remove_sensor device, pin
+			if @redis.remove_sensor device, pin
+				puts "OK"
+			else
+				puts "The multiplexer doesn't exist"
+			end
 		end
 		
-		def get_sensors_config(device)
-			@redis.get_sensors_config(device).each do |k, v|
-				puts "#{k} : #{v["function"]} (period : #{v["period"]})"
+		def list_sensors(device)
+			if (list = @redis.list_sensors(device))
+				list.each do |k, v|
+					puts "#{k} : #{v["description"]}, #{v["profile"]} (period : #{v["period"]})"
+				end
+			else
+				puts "The multiplexer doesn't exist"
+			end
+		end
+		
+		def add_profile name, function, rpn, unit
+			@redis.add_profile name, {"function" => function, "rpn" => rpn, "unit" => unit}
+		end
+		
+		def list_profiles
+			@redis.list_profiles.each do |name, profile|
+				puts "#{name} : #{profile["function"]}, #{profile["rpn"]}, #{profile["unit"]}"
 			end
 		end
 	end

@@ -62,8 +62,8 @@ class Serial_interface
 	end
 	
 	
-	def add_task(multi, pin, task)
-		snd_message(multi, :add, task["function"], task["period"], pin)
+	def add_task(multi, pin, function, period)
+		snd_message(multi, :add, function, period, pin)
 	end
 	
 	def rem_task(multi, pin)

@@ -125,6 +125,10 @@ class Redis_interface
 		@redis.hset("#{CONF}.#{PROF}", name, profile.to_json)
 	end
 	
+	# Unregister a profile TODO : check if users ?
+	#
+	
+	
 	# get all profile in a hash {name => profile}
 	#
 	def list_profiles

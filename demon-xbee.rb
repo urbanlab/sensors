@@ -24,7 +24,7 @@ class Xbee_Demon
 		@serial = Serial_interface.new serial_port, baudrate
 		
 		@redis.on_new_sensor do |id_multi, sensor, config|
-			@serial.add_task(id_multi, sensor, config) #TODO must check if multi not registered
+			@serial.add_task(id_multi, sensor, @redis.get_profile(config["profile"])["function"], config["period"]) #TODO must check if multi not registered
 		end
 		
 		@redis.on_deleted_sensor do |id_multi, sensor|

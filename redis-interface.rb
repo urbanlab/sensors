@@ -31,25 +31,20 @@ class Redis_interface
 	
 	##### Multiplexer management #####
 	
-	# List all the registered multiplexers' ids in an array.
+
+	# get all the multiplexers config in a hash {id => config}
 	#
-	def get_multi_keys
-		@redis.hkeys("#{@prefix}.#{MULTI}.#{CONF}").collect{|k| k.to_i}
+	def list_multis
+		configs = @redis.hgetall("#{@prefix}.#{MULTI}.#{CONF}")
+		return Hash[*configs.collect{|id, conf| [id.to_i, JSON.parse(conf)]}.flatten]
 	end
 	
-	# With integer id as parameter : get the multiplexer config or {} if does no exist
-	# Without parameter : get all the multiplexers config in a hash {id => config}
+	# get the multiplexer config or nil if does no exist
 	#
-	def get_multi_config(multi_id = nil)
-		if multi_id
-			return JSON.parse(@redis.hget("#{@prefix}.#{MULTI}.#{CONF}", multi_id)) if knows_multi? multi_id
-			return {}
-		else
-			configs = @redis.hgetall("#{@prefix}.#{MULTI}.#{CONF}")
-			return Hash[*configs.collect{|id, conf| [id.to_i, JSON.parse(conf)]}.flatten]
-		end
+	def get_multi_config( multi_id )
+		return nil unless knows_multi? multi_id
+		JSON.parse(@redis.hget("#{@prefix}.#{MULTI}.#{CONF}", multi_id)) if knows_multi? multi_id
 	end
-
 	
 	# Register description of a multiplexer. Return false if the multi doesn't exist
 	#
@@ -81,6 +76,13 @@ class Redis_interface
 		(knows_multi? multi_id) && @redis.hexists("#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}.#{CONF}", pin)
 	end
 	
+	# Get a sensor's config
+	#
+	def get_sensor_config multi_id, pin
+		return nil unless knows_sensor? multi_id, pin
+		JSON.parse(@redis.hget("#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}.#{CONF}", pin))
+	end
+	
 	# Register a sensor.
 	# return true if this was a success
 	#
@@ -103,7 +105,7 @@ class Redis_interface
 	# Get all sensors config of a multi, in form {pin => config}
 	# Return {} if there were no sensor, return nil if the multi does not exists
 	#
-	def get_sensors_config multi_id
+	def list_sensors multi_id
 		return nil unless knows_multi? multi_id
 		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}.#{CONF}"
 		Hash[*@redis.hgetall(path).collect {|id, config| [id.to_i, JSON.parse(config)]}.flatten]
@@ -123,17 +125,17 @@ class Redis_interface
 		@redis.hset("#{CONF}.#{PROF}", name, profile.to_json)
 	end
 	
-	# List the profiles' names
+	# get all profile in a hash {name => profile}
 	#
-	def list_profile
-		@redis.hkeys("#{CONF}.#{PROF}")
+	def list_profiles
+		Hash[*@redis.hgetall("#{CONF}.#{PROF}").collect{|name, profile| [name, JSON.parse(profile)]}.flatten]
 	end
 	
 	# With string parameter : get a profile
-	# Without : get all profile in a hash {name => profile}
 	#
-	def get_profile(profile = nil)
-		profile ? @redis.hget("#{CONF}.#{PROF}", profile) : @redis.hgetall("#{CONF}.#{PROF}")
+	def get_profile(profile)
+		return nil unless knows_profile? profile
+		JSON.parse(@redis.hget("#{CONF}.#{PROF}", profile))
 	end
 	
 	##### Actuator management #####
@@ -179,10 +181,10 @@ class Redis_interface
 		@redis.publish("#{path}:#{multi_id}.#{CONF}", config.to_json)
 	end
 	
-	# Publish a sensor's value TODO test
+	# Publish a sensor's value
 	#
 	def publish_value(multi_id, sensor, value)
-		return false unless knows_sensor? sensor
+		return false unless knows_sensor? multi_id, sensor
 		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}"
 		key = {"value" => value,"timestamp" => Time.now.to_f}.to_json
 		@redis.hset("#{path}.#{VALUE}", sensor, key)

@@ -1,29 +1,25 @@
 =begin
-- multiplexer : {"description" => "bla", "supported" => ["ain", "din"]}
-Sur network:<network>:multiplexers = hash(multipl-id, objet multiplexer)
-
-- sensor : {"description" => "verbose", "function" => "din", "period" => 1000, "unit" => "°C", "rpn" => "X 7 *"}
-Sur network:<network>:multiplexers:<multipl-id>:sensors = hash (pin, objet sensor)
-
-- actuator : {"pin" => 13, "fonction" => "bli"}
-Sur network:<network>:multiplexers:<multipl-id>:actuators = hash (pin, objet actuator)
-
+- Multiplexer's config mean : {"description" => "descriptive goes here", "supported" => ["profile1", "profile2"]}
+- Sensor's config mean : {"description" => "descriptive", "profile" => "profile_name", "period" => 1000 (ms)}
+- Actuator's config mean : TODO
+- Profile mean : { "function" => "firmware function", "description" => "Get temperature !", "rpn" => "2 X *", "unit" => "Celsius"}
 =end
 require 'rubygems'
 require 'json'
 require 'redis/connection/hiredis'
 require 'redis'
 
-PREFIX = "network"
-MULTI  = "multiplexer"
-SENS   = "sensor"
-ACTU   = "actuator"
-VALUE  = "value"
-CONF   = "config"
-DEL    = "delete"
-PROF   = "profile"
 
 class Redis_interface
+	
+	PREFIX = "network"
+	MULTI  = "multiplexer"
+	SENS   = "sensor"
+	ACTU   = "actuator"
+	VALUE  = "value"
+	CONF   = "config"
+	DEL    = "delete"
+	PROF   = "profile"
 	
 	def initialize(network, host = 'localhost', port = 6379)
 		@host = host
@@ -35,29 +31,39 @@ class Redis_interface
 	
 	##### Multiplexer management #####
 	
-	# List all the registered multiplexers key in an array.
+	# List all the registered multiplexers' ids in an array.
 	#
 	def get_multi_keys
 		@redis.hkeys("#{@prefix}.#{MULTI}.#{CONF}").collect{|k| k.to_i}
 	end
 	
-	# With integer id as parameter : get the multiplexer config
+	# With integer id as parameter : get the multiplexer config or {} if does no exist
 	# Without parameter : get all the multiplexers config in a hash {id => config}
 	#
 	def get_multi_config(multi_id = nil)
 		if multi_id
-			JSON.parse(@redis.hget("#{@prefix}.#{MULTI}.#{CONF}", multi_id))
+			return JSON.parse(@redis.hget("#{@prefix}.#{MULTI}.#{CONF}", multi_id)) if knows_multi? multi_id
+			return {}
 		else
-			Hash[*configs.collect{|id, conf| [id.to_i, JSON.parse(conf)]}.flatten]
+			configs = @redis.hgetall("#{@prefix}.#{MULTI}.#{CONF}")
+			return Hash[*configs.collect{|id, conf| [id.to_i, JSON.parse(conf)]}.flatten]
 		end
 	end
+
 	
-	# Assign a config to a multiplexer TODO : verify if the multi exist
+	# Register description of a multiplexer. Return false if the multi doesn't exist
 	#
-	def set_multi_config multi_id, config
-		path = "#{@prefix}.#{MULTI}"
-		@redis.hset("#{path}.#{CONF}", multi_id, config.to_json)
-		@redis.publish("#{path}:#{multi_id}.#{CONF}", config.to_json)
+	def set_description multi_id, description
+		if knows_multi? multi_id
+			path = "#{@prefix}.#{MULTI}"
+			config = JSON.parse(@redis.hget("#{path}.#{CONF}", multi_id))
+			config["description"] = description
+			@redis.hset("#{path}.#{CONF}", multi_id, config.to_json)
+			@redis.publish("#{path}:#{multi_id}.#{CONF}", config.to_json)
+			return true
+		else
+			return false
+		end
 	end
 	
 	# Return true if a multi is registered
@@ -69,35 +75,47 @@ class Redis_interface
 	
 	##### Sensor management #####
 	
-	# Configure a sensor. TODO verify if the multi exist, adapt to profile system
-	# return true if this was a new sensor
+	# Return true if the sensor exist.
 	#
-	def set_sensor_config multi_id, pin, config
+	def knows_sensor? multi_id, pin
+		(knows_multi? multi_id) && @redis.hexists("#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}.#{CONF}", pin)
+	end
+	
+	# Register a sensor.
+	# return true if this was a success
+	#
+	def add_sensor multi_id, pin, config
+		return false unless (knows_multi? multi_id) && (knows_profile? config[PROF])
 		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}"
 		@redis.publish("#{path}:#{pin}.#{CONF}", config.to_json)
 		@redis.hset("#{path}.#{CONF}", pin, config.to_json)
+		return true
 	end
 	
-	# Unregister a sensor. TODO separate client side (publish) and demon side (hdel)
-	#
+	# Unregister a sensor. Return true if something was removed
+	# TODO does not publish if no multi ?
 	def remove_sensor multi_id, pin
 		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}"
 		@redis.publish("#{path}:#{pin}.#{DEL}", pin)
-		@redis.hdel("#{path}.#{CONF}", pin)
+		@redis.hdel("#{path}.#{CONF}", pin) == 1
 	end
 	
 	# Get all sensors config of a multi, in form {pin => config}
+	# Return {} if there were no sensor, return nil if the multi does not exists
 	#
 	def get_sensors_config multi_id
+		return nil unless knows_multi? multi_id
 		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}.#{CONF}"
-		ans = {}
-		@redis.hgetall(path).each do |k, v| # TODO ugly
-			ans[k.to_i] = JSON.parse(v)
-		end
-		ans
+		Hash[*@redis.hgetall(path).collect {|id, config| [id.to_i, JSON.parse(config)]}.flatten]
 	end
 
 	##### Profile utilitie #####
+	
+	# Return true if the profile exist
+	#
+	def knows_profile? name
+		@redis.hexists("#{CONF}.#{PROF}", name)
+	end
 	
 	# Register a sensor/actuator profile
 	#
@@ -152,14 +170,24 @@ class Redis_interface
 
 	
 	##### Demon's utilities #####
+
+	# Assign a config to a multiplexer
+	#
+	def set_multi_config multi_id, config
+		path = "#{@prefix}.#{MULTI}"
+		@redis.hset("#{path}.#{CONF}", multi_id, config.to_json)
+		@redis.publish("#{path}:#{multi_id}.#{CONF}", config.to_json)
+	end
 	
-	# Publish a sensor's value TODO verify if the sensor and the multi are registered
+	# Publish a sensor's value TODO test
 	#
 	def publish_value(multi_id, sensor, value)
+		return false unless knows_sensor? sensor
 		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}"
 		key = {"value" => value,"timestamp" => Time.now.to_f}.to_json
 		@redis.hset("#{path}.#{VALUE}", sensor, key)
 		@redis.publish("#{path}:#{sensor}.#{VALUE}", value)
+		return true
 	end
 	
 		

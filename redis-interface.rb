@@ -176,6 +176,10 @@ class Redis_interface
 
 	
 	##### Demon's utilities #####
+	
+	def flushdb
+		@redis.flushdb
+	end
 
 	# Assign a config to a multiplexer
 	#
@@ -228,6 +232,17 @@ class Redis_interface
 			end
 		}
 	end
+
+	def on_new_config(&block)
+		Thread.new{
+			redis = Redis.new :host => @host, :port => @port
+			redis.subscribe("config") do |on|
+				on.message do |channel, message|
+					yield JSON.parse(message)
+				end
+			end
+		}
+	end			
 	
 	private
 	

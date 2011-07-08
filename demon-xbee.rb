@@ -40,6 +40,20 @@ class Xbee_Demon
 			end
 		end
 		
+		@redis.on_new_config do |config|
+			@redis.flushdb
+			config["profile"].each do |name, profile|
+				@redis.add_profile(name, profile)
+			end
+			config["multiplexers"].each do |multi_id, multi_config|
+				multi_config["supported"] = @serial.list_implementations(multi_id.to_i)
+				@redis.set_multi_config(multi_id.to_i, multi_config)
+				multi_config["sensors"].each do |sens_id, sens_config|
+					@redis.add_sensor(multi_id.to_i, sens_id.to_i, sens_config)
+				end
+			end
+		end
+		
 		@serial.on_new_multi do |id|
 			if (id == 0 or id == 255)  # Unconfigured, bad id
 				new_id = (Array(1..255) - @redis.list_multis.keys)[0] # first unused id

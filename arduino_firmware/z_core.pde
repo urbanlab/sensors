@@ -176,7 +176,13 @@ boolean process_message(boolean block){
       case 'i':
         set_id(atoi(msgrcv[2]));
         strcpy(resp, "ID");
-        break;
+      break;
+      
+      case 'r':
+        for (unsigned int i = 0 ; i < nbPin ; i++)
+          delete_task(i);
+        strcpy(resp, "RST");
+      break;
         
       case 'a':
         for (int i = 0 ; i < nbCmd ; i++){
@@ -193,13 +199,13 @@ boolean process_message(boolean block){
         strcpy(resp, "ADD ");
         strcat(resp, msgrcv[4]);
         strcat(resp, accepted ? " OK" : " KO");
-        break;
+      break;
         
       case 'd':
         strcpy(resp, "DEL ");
         strcat(resp, msgrcv[2]);
         strcat(resp, delete_task(atoi(msgrcv[2])) ? " OK" : " KO");
-        break;
+      break;
       }
       snd_message(resp);
     }

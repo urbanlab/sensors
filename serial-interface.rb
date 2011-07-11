@@ -4,7 +4,7 @@ require 'timeout'
 require 'thread'
 require 'io/wait'
 
-CMD = { :list => "l", :add => "a", :remove => "d", :tasks => "t" , :id => "i" }
+CMD = { :list => "l", :add => "a", :remove => "d", :tasks => "t" , :id => "i", :reset => "r" }
 ANS = { :sensor => "SENS", :new => "NEW", :implementations => "LIST", :tasks => "TASKS" , :ok => "OK", :add => "ADD", :remove => "DEL"}
 #TODO verify the execution of add, id and remove
 class Serial_interface
@@ -33,6 +33,11 @@ class Serial_interface
 				end
 			end
 		end
+	end
+	
+	def reset(multi)
+		snd_message(multi, :reset)
+		wait_for(/^#{multi} RST/)
 	end
 	
 	def add_task(multi, pin, function, period)

@@ -70,12 +70,14 @@ boolean add_task(unsigned int pin, byte idx_command, unsigned int period, int* a
   }
 }
 
-void delete_task(unsigned int pin) {
+boolean delete_task(unsigned int pin) {
   if (taskList[pin]) {
     free(taskList[pin]);
     taskList[pin] = NULL;
     nbTask--;
+    return true;
   }
+  return false;
 }
 
 void snd_message(char* message) {
@@ -127,21 +129,18 @@ boolean process_message(boolean block){
 
     if (strcmp(msgrcv[0], idstr) == 0) {  // Identification
       valid = true;
-      boolean accepted = false;
       char resp[msgSize];
+      boolean accepted = false;
       switch (msgrcv[1][0]) {             // Traitement
-        
       /*case 'p':
         accepted = true;
         print_eeprom();
       break;*/
       case 'p':
-        accepted = true;
         strcpy(resp, "PONG");
       break;
       
       case 's':
-        accepted = true;
         strcpy(resp, "SAVED");
         save_state();
       break;
@@ -153,7 +152,6 @@ boolean process_message(boolean block){
       break;*/
         
       case 'l':
-        accepted = true;
         strcpy(resp, "LIST ");
         for (byte j = 0 ; j < nbCmd ; j++){
           strcat(resp, commandList[j].name);
@@ -162,7 +160,6 @@ boolean process_message(boolean block){
         break;
         
       case 't':
-        accepted = true;
         strcpy(resp, "TASKS ");
         for (int i = 0 ; i < nbPin ; i++){
           if (taskList[i] != NULL) {
@@ -177,9 +174,8 @@ boolean process_message(boolean block){
         break;
         
       case 'i':
-        accepted = true;
         set_id(atoi(msgrcv[2]));
-        strcpy(resp, "NEW");
+        strcpy(resp, "ID");
         break;
         
       case 'a':
@@ -192,21 +188,19 @@ boolean process_message(boolean block){
               args[j] = atoi(msgrcv[j+5]);
             }
             accepted = add_task(pin, i, period, args);
-            if (accepted) {
-              strcpy(resp, "ADD ");
-              strcat(resp, msgrcv[4]);
-            }
           }
         }
+        strcpy(resp, "ADD ");
+        strcat(resp, msgrcv[4]);
+        strcat(resp, accepted ? " OK" : " KO");
         break;
         
       case 'd':
-        accepted = true;
-        strcpy(resp, "DEL");
-        delete_task(atoi(msgrcv[2]));
+        strcpy(resp, "DEL ");
+        strcat(resp, msgrcv[2]);
+        strcat(resp, delete_task(atoi(msgrcv[2])) ? " OK" : " KO");
         break;
       }
-      if (!accepted) strcpy(resp, "KO");
       snd_message(resp);
     }
   } while (!valid && block);

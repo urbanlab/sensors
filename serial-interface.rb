@@ -5,21 +5,15 @@ require 'thread'
 require 'io/wait'
 
 CMD = { :list => "l", :add => "a", :remove => "d", :tasks => "t" , :id => "i" }
-ANS = { :sensor => "SENS", :new => "NEW", :implementations => "LIST", :tasks => "TASKS" , :ok => "OK"}
+ANS = { :sensor => "SENS", :new => "NEW", :implementations => "LIST", :tasks => "TASKS" , :ok => "OK", :add => "ADD", :remove => "DEL"}
 #TODO verify the execution of add, id and remove
 class Serial_interface
 	def initialize port, baudrate, timeout = 1, retry_nb = 3
 		@serial = SerialPort.new port, baudrate
-#		@values_callback = []
-#		@news_callback = []
-		@values = Queue.new
-		@news = Queue.new
-		@list = []
-		@tasks = []
-		@oks = []
+		@wait_for = {} # {pattern => wpipe}
 		@timeout = timeout
 		@retry = retry_nb
-		Thread.abort_on_exception = true
+		# Thread.abort_on_exception = true
 		listener = Thread.new {
 			process_messages
 		}
@@ -32,46 +26,28 @@ class Serial_interface
 				@serial.wait
 				buff << @serial.gets
 			end
-			id_multi, command, *args = buff.delete("\r\n").split("\s")
-			#p id_multi, command, *args
-			if (id_multi and id_multi.is_integer?)
-				id_multi = id_multi.to_i
-				case command
-					when ANS[:sensor]
-						@values.push({:multi => id_multi, :sensor => args[0].to_i, :value => args[1].to_i})
-#						@values_callback.each { |cb| Thread.new(cb.call id_multi, args[0].to_i, args[1].to_i) }
-					when ANS[:implementations]
-						@list[id_multi].push(args) if @list[id_multi]
-					when ANS[:tasks]
-						@tasks[id_multi].push(Hash[*args.join(" ").scan(/\w+/).collect {|i| (i.is_integer?)? i.to_i : i}]) if @tasks[id_multi]
-					when ANS[:oks]
-						@oks[id_multi].push(id_multi) if @oks[id_multi]
-					when ANS[:new]
-						@news.push(id_multi)
-#						@news_callback.each { |cb| Thread.new(cb.call id_multi) }
-					else
-						#puts "ignored command #{buff}"
+			@wait_for.each do |pattern, pipe|
+				if (buff.match(pattern))
+					pipe.write(buff)
+					pipe.close
 				end
 			end
 		end
 	end
 	
-	def snd_message(multi, command, *args)
-		message = "#{multi} #{CMD[command]} #{args.join(" ")}\n"
-		@serial.write(message)
-	end
-	
-	
 	def add_task(multi, pin, function, period)
 		snd_message(multi, :add, function, period, pin)
+		wait_for(/^#{multi} ADD #{pin}/) == "KO" ? false : true
 	end
 	
 	def rem_task(multi, pin)
 		snd_message(multi, :remove, pin)
+		wait_for(/^#{multi} DEL #{pin}/) == "KO" ? false : true
 	end
 	
 	def change_id(old, new)
 		snd_message(old, :id, new)
+		wait_for(/^#{new} ID}/)
 	end
 	
 	def timeout_try(queue)
@@ -84,37 +60,61 @@ class Serial_interface
 	end
 	
 	def list_implementations(multi)
-		@list[multi] = Queue.new
 		snd_message(multi, :list)
-		timeout_try(@list[multi])
+		wait_for(/^#{multi} LIST/).scan(/\w+/)
 	end
 	
 	def list_tasks(multi)
-		@tasks[multi] = Queue.new
 		snd_message(multi, :tasks)
-		timeout_try(@tasks[multi])
+		ans = wait_for(/^#{multi} TASKS/)
+		Hash[*ans.scan(/(\d+):(\w+)/).collect{|p| [p[0].to_i, p[1]]}.flatten]
 	end
 	
 	# block has 1 int argument : multiplexer's id.
 	def on_new_multi(&block)
 		Thread.new do
 			loop do
-				id = @news.pop
-				yield(id)
+				yield(brutal_wait_for(/^\d+ NEW/).scan(/^\d+/)[0].to_i)
 			end
 		end
-
-		#@news_callback.push(block)
 	end
 	
 	# block has 3 int arguments : the multiplexer's id, pin number and value.
 	def on_sensor_value(&block)
 		Thread.new do
 			loop do
-				message = @values.pop
-				yield(message[:multi], message[:sensor], message[:value])
+				id, sensor, value = brutal_wait_for(/^\d+ SENS/).scan(/\d+/)
+				yield(id.to_i, sensor.to_i, value.to_i)
 			end
 		end
+	end
+	
+	private
+	
+	def snd_message(multi, command, *args)
+		@serial.write "#{multi} #{CMD[command]} #{args.join(" ")}\n"
+	end
+	
+	def wait_for(pattern)
+		i = 0
+		rd, wr = IO.pipe
+		@wait_for[pattern] = wr
+		begin
+			Timeout.timeout(@timeout){rd.read.match(pattern).post_match.lstrip.chomp}
+		rescue Timeout::Error => e
+			((i+=1) < @retry)? retry : raise(e)
+		ensure
+			@wait_for.delete(pattern)
+		end
+	end
+	
+	def brutal_wait_for (pattern)
+		i = 0
+		rd, wr = IO.pipe
+		@wait_for[pattern] = wr
+		ans = rd.read
+		@wait_for.delete(pattern)
+		ans
 	end
 end
 

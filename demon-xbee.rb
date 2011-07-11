@@ -49,6 +49,8 @@ class Xbee_Demon
 				multi_config["supported"] = @serial.list_implementations(multi_id.to_i)
 				@redis.set_multi_config(multi_id.to_i, multi_config)
 				multi_config["sensors"].each do |sens_id, sens_config|
+				#TODO don't work
+					@serial.add_task(multi_id.to_i, sens_id.to_i, @redis.get_profile(sens_config["profile"])["function"], sens_config["period"])
 					@redis.add_sensor(multi_id.to_i, sens_id.to_i, sens_config)
 				end
 			end

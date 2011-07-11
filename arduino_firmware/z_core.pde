@@ -72,6 +72,7 @@ boolean add_task(unsigned int pin, byte idx_command, unsigned int period, int* a
 
 boolean delete_task(unsigned int pin) {
   if (taskList[pin]) {
+    commandList[taskList[pin]->idx_command].clean(pin, taskList[pin]->args, taskList[pin]->space);
     free(taskList[pin]);
     taskList[pin] = NULL;
     nbTask--;
@@ -115,7 +116,6 @@ boolean process_message(boolean block){
     do {                                  // Reception message
       rcvd = get_message(msg, block);
     } while (!rcvd && block);
-    
     msgrcv[0] = msg;
     int i=0;
     while (car != '\0') {                 // Decoupage message
@@ -125,8 +125,7 @@ boolean process_message(boolean block){
         msgrcv[nbArgs++] = msg+i+1;
       }
       i++;
-    }    
-
+    }
     if (strcmp(msgrcv[0], idstr) == 0) {  // Identification
       valid = true;
       char resp[msgSize];
@@ -229,7 +228,23 @@ boolean get_message(char* msg, boolean block){
   } while(!valid && block);
   return valid;
 }
-
+/* For science, you monster.
+boolean get_message(char* msg, boolean block){
+  int i=0;
+  boolean valid = false;
+  do{
+    if(Serial.available()){
+       delay(100);
+       while(i< msgSize-1 && Serial.available()) {
+           msg[i++] = Serial.read();
+       }
+       msg[i++]='\0';
+       valid = true;
+    }
+  } while(!valid && block);
+  return valid;
+}
+*/
 // Get a word from serial line.
 // Return true if something was available
 // arg block define if the function shourd wait for a word

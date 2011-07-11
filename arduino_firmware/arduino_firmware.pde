@@ -13,11 +13,13 @@ const int nbPin = 21;                    // Nb of pin (and max nb of task)
 
 typedef void (*looper)(int, int*, int*); // Arguments are : pin, list of arguments, personnal space
 typedef void (*setuper)(int, int*, int*);
+typedef void (*destroyer)(int, int*, int*);
 typedef struct {
   char name[4];        // Command to call such a task
   int nbArgs;          // Number of arguments the task require
-  looper function;     // Function that will be called
-  setuper configure;   // Function that will be called one time
+  looper function;     // Function that will be called to send the infos
+  setuper configure;   // Function that will be called first
+  destroyer clean;     // Function that will be called when deleting the task
 } command;
 
 typedef struct {

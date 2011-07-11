@@ -1,10 +1,10 @@
 // {"command", nb of arguments, core function, configuration function}
 command commandList[] = {
-  {"din", 0, digit_input_loop,  input_setup},
-  {"bli", 0, blinker,           output_setup},
-  {"ain", 0, analog_input_loop, input_setup},
-  {"1wi", 0, one_wire_loop,     one_wire_setup},
-  {"mem", 0, snd_memory_loop,   noconf}
+  {"din", 0, digit_input_loop,  input_setup,    noconf        },
+  {"bli", 0, blinker,           output_setup,   output_cleaner},
+  {"ain", 0, analog_input_loop, input_setup,    noconf        },
+  {"1wi", 0, one_wire_loop,     one_wire_setup, noconf        },
+  {"mem", 0, snd_memory_loop,   noconf,         noconf        }
 };
 
 const byte nbCmd = sizeof(commandList) / sizeof(command);            // Number of functions implemented
@@ -52,12 +52,17 @@ void output_setup(int pin, int* args, int* space) {
   space[0] = 0;
 }
 
+// Put the pin at low state
+void output_cleaner(int pin, int* args, int* space) {
+  digitalWrite(pin, LOW);
+}
+
 // Read digital input on pin
 void digit_input_loop(int pin, int* args, int* space) {
-  space[1] = digitalRead(pin);
-  if (space[1] != space[0]) {
-    snd_message(pin, space[1]);
-    space[0] = space[1];
+  int val = digitalRead(pin);
+  if (val != space[0]) {
+    snd_message(pin, val);
+    space[0] = val;
   }
 }
 

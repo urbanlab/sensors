@@ -50,7 +50,6 @@ class Xbee_Demon
 				multi_config["supported"] = @serial.list_implementations(multi_id.to_i)
 				@redis.set_multi_config(multi_id.to_i, multi_config)
 				multi_config["sensors"].each do |sens_id, sens_config|
-				#TODO don't work
 					@serial.add_task(multi_id.to_i, sens_id.to_i, @redis.get_profile(sens_config["profile"])["function"], sens_config["period"])
 					@redis.add_sensor(multi_id.to_i, sens_id.to_i, sens_config)
 				end
@@ -63,8 +62,11 @@ class Xbee_Demon
 				@serial.change_id(id, new_id)
 			elsif (not (@redis.knows_multi? id))   # valid id, but not registered
 				@redis.set_multi_config(id, {"description" => "no description", "supported" => @serial.list_implementations(id)})
-			else
-				# TODO Check if the tasks correspond
+			else                                   # Known multi that has been reseted
+				@redis.list_sensors( id ).each do |pin, config|
+					profile = @redis.get_profile(config["profile"])
+					@serial.add_task(id, pin, profile["function"], config["period"])
+				end				
 			end
 		end
 		

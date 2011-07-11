@@ -23,10 +23,10 @@ if ARGV.size == 0
 	require 'rubygems'
 	require 'shell'
 	Bombshell.launch(Redis_client::Shell) if ARGV.size == 0
-#elsif ARGV[0] && ARGV[0] = "-o"
-#	f = File.new(ARGV[1],"w")
-#	f << redis_to_json
-#	f.close
+elsif ARGV[0] && ARGV[0] == "-o"
+	f = File.new(ARGV[1],"w")
+	f << redis_to_json
+	f.close
 else
 	require 'redis'
 	redis = Redis.new

@@ -219,10 +219,11 @@ boolean get_message(char* msg, boolean block){
   do{
     if(Serial.available()){
        delay(100);
-       while( Serial.available() && i< msgSize-1) {
-          msg[i++] = Serial.read();
+       while(i< msgSize-1 && (msg[i-1] != '\n')) {
+          if (Serial.available())
+            msg[i++] = Serial.read();
        }
-       msg[i++]='\0';
+       msg[i-1]='\0';
        valid = true;
     }
   } while(!valid && block);

@@ -46,6 +46,7 @@ class Xbee_Demon
 				@redis.add_profile(name, profile)
 			end
 			config["multiplexers"].each do |multi_id, multi_config|
+				@serial.reset multi_id
 				multi_config["supported"] = @serial.list_implementations(multi_id.to_i)
 				@redis.set_multi_config(multi_id.to_i, multi_config)
 				multi_config["sensors"].each do |sens_id, sens_config|

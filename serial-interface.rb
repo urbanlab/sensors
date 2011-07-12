@@ -40,8 +40,8 @@ class Serial_interface
 		wait_for(/^#{multi} RST/)
 	end
 	
-	def add_task(multi, pin, function, period)
-		snd_message(multi, :add, function, period, pin)
+	def add_task(multi, pin, function, period, *args)
+		snd_message(multi, :add, function, period, pin, args)
 		wait_for(/^#{multi} ADD #{pin}/) == "KO" ? false : true
 	end
 	

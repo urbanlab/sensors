@@ -24,7 +24,11 @@ class Xbee_Demon
 		@serial = Serial_interface.new serial_port, baudrate
 		
 		@redis.on_new_sensor do |id_multi, sensor, config|
-			@serial.add_task(id_multi, sensor, @redis.get_profile(config["profile"])["function"], config["period"]) #TODO must check if multi not registered
+			@serial.add_task(id_multi, sensor, @redis.get_profile(:sensor, config["profile"])["function"], config["period"]) #TODO must check if multi not registered
+		end
+		
+		@redis.on_new_actu do |id_multi, actu, config|
+		#mmm nothing to do ?
 		end
 		
 		@redis.on_deleted_sensor do |id_multi, sensor|
@@ -32,26 +36,37 @@ class Xbee_Demon
 		end
 		
 		@redis.on_published_value(:actuator) do |multi, pin, value|
-			case value
+			case value.to_i
 				when 1
-					@serial.snd_command(multi, :add, 100, pin)
-				when 0
-					@serial.snd_command(multi, :remove, pin)
+					config = @redis.get_config(:actuator, multi, pin)
+					profile = @redis.get_profile(:actuator, config["profile"])
+					profile.has_key?("period")? period = profile["period"] : period = 10000000 #ugly
+					@serial.add_task(multi, pin, profile["function"], period)
+				else 
+					@serial.rem_task(multi, pin)
+
 			end
 		end
 		
+		# TODO rewrite for actus...
 		@redis.on_new_config do |config|
 			@redis.flushdb
-			config["profile"].each do |name, profile|
-				@redis.add_profile(name, profile)
+			config["profile"]["sensor"].each do |name, profile|
+				@redis.add_profile(:sensor, name, profile)
+			end
+			config["profile"]["actuator"].each do |name, profile|
+				@redis.add_profile(:actuator, name, profile)
 			end
 			config["multiplexers"].each do |multi_id, multi_config|
 				@serial.reset multi_id
 				multi_config["supported"] = @serial.list_implementations(multi_id.to_i)
 				@redis.set_multi_config(multi_id.to_i, multi_config)
 				multi_config["sensors"].each do |sens_id, sens_config|
-					@serial.add_task(multi_id.to_i, sens_id.to_i, @redis.get_profile(sens_config["profile"])["function"], sens_config["period"])
-					@redis.add_sensor(multi_id.to_i, sens_id.to_i, sens_config)
+					@serial.add_task(multi_id.to_i, sens_id.to_i, @redis.get_profile(:sensor, sens_config["profile"])["function"], sens_config["period"])
+					@redis.add(:sensor, multi_id.to_i, sens_id.to_i, sens_config)
+				end
+				multi_config["actuators"].each do |actu_id, actu_config|
+					@redis.add(:actuator, multi_id.to_i, actu_id.to_i, actu_config)
 				end
 			end
 		end

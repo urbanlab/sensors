@@ -1,8 +1,11 @@
 =begin
 - Multiplexer's config mean : {"description" => "descriptive goes here", "supported" => ["profile1", "profile2"]}
 - Sensor's config mean : {"description" => "descriptive", "profile" => "profile_name", "period" => 1000 (ms)}
-- Actuator's config mean : TODO
+- Actuator's config mean : {"description" => "self explanatory", "profile" => "profile_name" }
+- Actuator's profile mean : {"function" => "firm function", "description" => " ", ("period" => 200)}
 - Profile mean : { "function" => "firmware function", "description" => "Get temperature !", "rpn" => "2 X *", "unit" => "Celsius"}
+
+TODO vérifier la validité des config données à base de has_key
 =end
 require 'rubygems'
 require 'json'
@@ -32,7 +35,7 @@ class Redis_interface
 	# Return the list of supported profile from a list of arduino functions
 	#
 	def support(functions)
-		list_profiles.select { |name, profile|
+		list_profiles(:actuator).merge(list_profiles(:sensor)).select { |name, profile|
 			functions.include? profile["function"]
 		}.keys
 	end
@@ -57,46 +60,42 @@ class Redis_interface
 	# Register description of a multiplexer. Return false if the multi doesn't exist
 	#
 	def set_description multi_id, description
-		if knows_multi? multi_id
-			path = "#{@prefix}.#{MULTI}"
-			config = JSON.parse(@redis.hget("#{path}.#{CONF}", multi_id))
-			config["description"] = description
-			@redis.hset("#{path}.#{CONF}", multi_id, config.to_json)
-			@redis.publish("#{path}:#{multi_id}.#{CONF}", config.to_json)
-			return true
-		else
-			return false
-		end
+		return false unless knows_multi? multi_id
+		path = "#{@prefix}.#{MULTI}"
+		config = JSON.parse(@redis.hget("#{path}.#{CONF}", multi_id))
+		config["description"] = description
+		@redis.hset("#{path}.#{CONF}", multi_id, config.to_json)
+		@redis.publish("#{path}:#{multi_id}.#{CONF}", config.to_json)
+		return true
 	end
 	
 	# Return true if a multi is registered
 	#
 	def knows_multi? multi_id
-		path = "#{@prefix}.#{MULTI}.#{CONF}"
-		@redis.hexists(path, multi_id)
+		@redis.hexists("#{@prefix}.#{MULTI}.#{CONF}", multi_id)
 	end
 	
-	##### Sensor management #####
+	##### Device management #####
 	
-	# Return true if the sensor exist.
+	# Return true if the device exists, false if not.
 	#
-	def knows_sensor? multi_id, pin
-		(knows_multi? multi_id) && @redis.hexists("#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}.#{CONF}", pin)
+	def knows? type, multi_id, pin
+		(knows_multi? multi_id) && @redis.hexists("#{@prefix}.#{MULTI}:#{multi_id}.#{type}.#{CONF}", pin)
 	end
 	
-	# Get a sensor's config
+	# Get a device's config
 	#
-	def get_sensor_config multi_id, pin
-		return nil unless knows_sensor? multi_id, pin
-		JSON.parse(@redis.hget("#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}.#{CONF}", pin))
+	def get_config type, multi_id, pin
+		return nil unless knows? type, multi_id, pin
+		JSON.parse(@redis.hget("#{@prefix}.#{MULTI}:#{multi_id}.#{type}.#{CONF}", pin))
 	end
 	
 	# Register a sensor.
 	# return true if this was a success
 	#
-	def add_sensor multi_id, pin, config
-		return false unless (knows_multi? multi_id) && (knows_profile? config[PROF])
-		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}"
+	def add type, multi_id, pin, config
+		return false unless (knows_multi? multi_id) && (knows_profile? type, config[PROF])
+		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{type}"
 		@redis.publish("#{path}:#{pin}.#{CONF}", config.to_json)
 		@redis.hset("#{path}.#{CONF}", pin, config.to_json)
 		return true
@@ -104,8 +103,9 @@ class Redis_interface
 	
 	# Unregister a sensor. Return true if something was removed
 	# TODO does not publish if no multi ?
-	def remove_sensor multi_id, pin
-		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}"
+	def remove type, multi_id, pin
+		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{type}"
+		set_actuator_state(multi_id, pin, 0) if type.to_s == ACTU
 		@redis.publish("#{path}:#{pin}.#{DEL}", pin)
 		@redis.hdel("#{path}.#{CONF}", pin) == 1
 	end
@@ -113,54 +113,53 @@ class Redis_interface
 	# Get all sensors config of a multi, in form {pin => config}
 	# Return {} if there were no sensor, return nil if the multi does not exists
 	#
-	def list_sensors multi_id
+	def list type, multi_id
 		return nil unless knows_multi? multi_id
-		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}.#{CONF}"
+		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{type}.#{CONF}"
 		Hash[*@redis.hgetall(path).collect {|id, config| [id.to_i, JSON.parse(config)]}.flatten]
 	end
 
+	
+	##### Actuator management #####
+
+	def set_actuator_state(multi_id, pin, state)
+		return false unless (knows? :actuator, multi_id, pin)
+		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{ACTU}"
+		@redis.hset("#{path}.#{VALUE}", pin, state)
+		@redis.publish("#{path}:#{pin}.#{VALUE}", state)
+	end
+	
 	##### Profile utilitie #####
 	
 	# Return true if the profile exist
 	#
-	def knows_profile? name
-		@redis.hexists("#{CONF}.#{PROF}", name)
+	def knows_profile?( type, name )
+		@redis.hexists("#{CONF}.#{type}", name)
 	end
 	
-	# Register a sensor/actuator profile
+	# Register a sensor profile
 	#
-	def add_profile(name, profile)
-		@redis.hset("#{CONF}.#{PROF}", name, profile.to_json)
+	def add_profile( type, name, profile )
+		@redis.hset("#{CONF}.#{type}", name, profile.to_json)
 	end
 	
 	# Unregister a profile TODO : check if users ?
 	#
 	
-	
-	# get all profile in a hash {name => profile}
+	# get all sensor/actuators profiles in a hash {name => profile}
+	# Parameter can be :sensor or :actuator
 	#
-	def list_profiles
-		Hash[*@redis.hgetall("#{CONF}.#{PROF}").collect{|name, profile| [name, JSON.parse(profile)]}.flatten]
+	def list_profiles (type)
+		list = @redis.hgetall("#{CONF}.#{type}")
+		list.each { |name, profile| list[name] = JSON.parse(profile) }
 	end
 	
-	# With string parameter : get a profile
+	# With string parameter : get a sensor profile
+	# Parameter can be :sensor or :actuator
 	#
-	def get_profile(profile)
-		return nil unless knows_profile? profile
-		JSON.parse(@redis.hget("#{CONF}.#{PROF}", profile))
-	end
-	
-	##### Actuator management #####
-	# TODO almost everything
-	
-	# Define an actuator's state
-	# TODO rewrite, implement in demon and firmware...
-	#
-	def set_actuator_value(multi_id, actuator, value)
-		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{ACTU}"
-		key = {"value" => value,"timestamp" => Time.now.to_f}.to_json
-		@redis.hset("#{path}.#{VALUE}", actuator, key)
-		@redis.publish("#{path}:#{actuator}.#{VALUE}", value)
+	def get_profile(type, profile)
+		return nil unless knows_profile?(type, profile)
+		JSON.parse(@redis.hget("#{CONF}.#{type}", profile))
 	end
 	
 	##### Callbacks #####
@@ -176,7 +175,7 @@ class Redis_interface
 			redis.psubscribe("#{@prefix}.#{MULTI}:#{multi}.#{type}:#{pin}.value") do |on|
 				on.pmessage do |pattern, channel, valeur|
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ]
-					yield parse[MULTI].to_i, parse[SENS].to_i, valeur.to_f
+					yield parse[MULTI].to_i, parse[type.to_s].to_i, valeur.to_f
 				end
 			end
 		}
@@ -200,9 +199,9 @@ class Redis_interface
 	# Publish a sensor's value
 	#
 	def publish_value(multi_id, sensor, value)
-		return false unless knows_sensor? multi_id, sensor
+		return false unless knows? :sensor, multi_id, sensor
 		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}"
-		rpn = get_profile(get_sensor_config(multi_id, sensor)["profile"])["rpn"].sub("X", value.to_s)
+		rpn = get_profile(:sensor, get_config(:sensor, multi_id, sensor)["profile"])["rpn"].sub("X", value.to_s)
 		value_norm = solve_rpn(rpn)
 		key = {"value" => value_norm,"timestamp" => Time.now.to_f}.to_json
 		@redis.hset("#{path}.#{VALUE}", sensor, key)
@@ -221,6 +220,21 @@ class Redis_interface
 				on.pmessage do |pattern, channel, message|
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ]
 					yield parse[MULTI].to_i, parse[SENS].to_i, JSON.parse(message)
+				end
+			end
+		}
+	end
+	
+	# Callback when a client request to add an actu
+	# block has 3 arguments : multiplexer's id, actu's pin and actu's profile
+	# TODO : useless ?
+	def on_new_actu(&block)
+		Thread.new{
+			redis = Redis.new :host => @host, :port => @port
+			redis.psubscribe("#{@prefix}.#{MULTI}*.#{ACTU}:*.#{CONF}") do |on|
+				on.pmessage do |pattern, channel, profile|
+					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ]
+					yield parse[MULTI].to_i, parse[ACTU].to_i, profile
 				end
 			end
 		}

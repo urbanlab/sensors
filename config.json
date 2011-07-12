@@ -1,0 +1,60 @@
+{
+  "profile": {
+    "sensor": {
+      "button": {
+        "function": "din",
+        "rpn": "X",
+        "unit": "boolean"
+      },
+      "Dallas": {
+        "function": "1wi",
+        "rpn": "0.5 X *",
+        "unit": "°C"
+      },
+      "LM": {
+        "function": "ain",
+        "rpn": "X 0.488 * 273 -",
+        "unit": "°C"
+      },
+      "nbutton": {
+        "function": "din",
+        "rpn": "X -1 * 1 +",
+        "unit": "boolean"
+      }
+    },
+    "actuator": {
+      "alert": {
+        "function": "bli",
+        "period": 50
+      }
+    }
+  },
+  "multiplexers": {
+    "1": {
+      "description": "i'm different",
+      "sensors": {
+        "6": {
+          "description": "DDDDallas",
+          "profile": "Dallas",
+          "period": 3000
+        },
+        "16": {
+          "description": "Tempraritur",
+          "profile": "LM",
+          "period": 3000
+        },
+        "11": {
+          "description": "Le Non Bouton",
+          "profile": "nbutton",
+          "period": 10
+        }
+      },
+      "actuators": {
+        "13": {
+          "description": "EMERGENCY",
+          "profile": "alert"
+        }
+      }
+    }
+  }
+}

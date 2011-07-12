@@ -2,9 +2,10 @@
 - Multiplexer's config mean : {"description" => "descriptive goes here", "supported" => ["profile1", "profile2"]}
 - Sensor's config mean : {"description" => "descriptive", "profile" => "profile_name", "period" => 1000 (ms)}
 - Actuator's config mean : {"description" => "self explanatory", "profile" => "profile_name" }
-- Actuator's profile mean : {"function" => "firm function", "description" => " ", ("period" => 200)}
-- Profile mean : { "function" => "firmware function", "description" => "Get temperature !", "rpn" => "2 X *", "unit" => "Celsius"}
-
+- Actuator's profile mean : {"function" => "firm function", "period" => 200)}
+- Sensor's profile mean : { "function" => "firmware function", "rpn" => "2 X *", "unit" => "Celsius"}
+TODO : default period ? default pin ?
+TODO : bug, on peut ajouter un actuator et un sensor sur le même pin, et la suppression de l'un entraîne la suppression de l'autre sur l'arduino et pas sur redisS
 TODO vérifier la validité des config données à base de has_key
 =end
 require 'rubygems'
@@ -60,7 +61,7 @@ class Redis_interface
 	# Register description of a multiplexer. Return false if the multi doesn't exist
 	#
 	def set_description multi_id, description
-		return false unless knows_multi? multi_id
+		return false unless knows_multi?(multi_id) and description.is_a?(String)
 		path = "#{@prefix}.#{MULTI}"
 		config = JSON.parse(@redis.hget("#{path}.#{CONF}", multi_id))
 		config["description"] = description
@@ -83,6 +84,21 @@ class Redis_interface
 		(knows_multi? multi_id) && @redis.hexists("#{@prefix}.#{MULTI}:#{multi_id}.#{type}.#{CONF}", pin)
 	end
 	
+	# Return true if the config is valid
+	#
+	def is_device_config? type, config
+		return false unless config["description"].is_a?(String) and config["profile"].is_a?(String)
+		case type.to_s
+			when SENS
+				return false unless config["period"].is_a? Integer
+				return true
+			when ACTU
+				return true
+			else
+				return false
+			end
+	end
+	
 	# Get a device's config
 	#
 	def get_config type, multi_id, pin
@@ -94,6 +110,7 @@ class Redis_interface
 	# return true if this was a success
 	#
 	def add type, multi_id, pin, config
+		return false unless (is_device_config? type, config)
 		return false unless (knows_multi? multi_id) && (knows_profile? type, config[PROF])
 		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{type}"
 		@redis.publish("#{path}:#{pin}.#{CONF}", config.to_json)
@@ -137,9 +154,27 @@ class Redis_interface
 		@redis.hexists("#{CONF}.#{type}", name)
 	end
 	
+	# Return true if the profile is a good profile
+	#
+	def is_a_profile? (type, profile)
+		return false unless (profile["function"].is_a?(String))
+		case type.to_s
+			when SENS
+				return false unless is_a_rpn?(profile["rpn"])
+				return false unless profile["unit"].is_a?(String)
+				return true
+			when ACTU
+				return false if (profile.has_key?("period") and not profile["period"].is_a?(Integer))
+				return true
+			else
+				return false
+		end
+	end
+	
 	# Register a sensor profile
 	#
 	def add_profile( type, name, profile )
+		return false unless is_a_profile?(type, profile)
 		@redis.hset("#{CONF}.#{type}", name, profile.to_json)
 	end
 	
@@ -268,6 +303,15 @@ class Redis_interface
 	
 	private
 	
+	def is_a_rpn?(rpn)
+		return false unless (s = String.try_convert(rpn))
+		s.split(" ").each do |e|
+			return false unless (e.is_numeric? or ["+", "-", "*", "/", "X"].include? e)
+		end
+		return true
+	end
+
+	
 	def solve_rpn(s)
 		stack = []
 		s.split(" ").each do |e|
@@ -288,4 +332,13 @@ class Redis_interface
 		stack[0]
 	end
 end
+class String
+  def is_integer?
+    begin Integer(self) ; true end rescue false
+  end
+  def is_numeric?
+    begin Float(self) ; true end rescue false
+  end
+end
+
 

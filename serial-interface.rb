@@ -52,7 +52,8 @@ class Serial_interface
 	
 	def change_id(old, new)
 		snd_message(old, :id, new)
-		wait_for(/^#{new} ID}/)
+		wait_for(/^#{new} ID/)
+		#TODO : register
 	end
 	
 	def timeout_try(queue)
@@ -126,6 +127,9 @@ end
 class String
   def is_integer?
     begin Integer(self) ; true end rescue false
+  end
+  def is_numeric?
+    begin Float(self) ; true end rescue false
   end
 end
 

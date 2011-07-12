@@ -78,10 +78,11 @@ class Xbee_Demon
 			elsif (not (@redis.knows_multi? id))   # valid id, but not registered
 				@redis.set_multi_config(id, {"description" => "no description", "supported" => @serial.list_implementations(id)})
 			else                                   # Known multi that has been reseted
-				@redis.list_sensors( id ).each do |pin, config|
-					profile = @redis.get_profile(config["profile"])
+				@redis.list(:sensor, id ).each do |pin, config|
+					profile = @redis.get_profile(:sensor, config["profile"])
 					@serial.add_task(id, pin, profile["function"], config["period"])
-				end				
+				end
+				#rien à faire pour les actus, sauf peut être remettre dans meme état ?		
 			end
 		end
 		

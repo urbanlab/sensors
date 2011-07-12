@@ -4,7 +4,8 @@ command commandList[] = {
   {"bli", 0, blinker,           output_setup,   output_cleaner},
   {"ain", 0, analog_input_loop, input_setup,    noconf        },
   {"1wi", 0, one_wire_loop,     one_wire_setup, noconf        },
-  {"mem", 0, snd_memory_loop,   noconf,         noconf        }
+  {"mem", 0, snd_memory_loop,   noconf,         noconf        },
+  {"i2c", 2, i2c_loop,          i2c_setup,      noconf        }
 };
 
 const byte nbCmd = sizeof(commandList) / sizeof(command);            // Number of functions implemented
@@ -13,6 +14,23 @@ const byte nbCmd = sizeof(commandList) / sizeof(command);            // Number o
 
 // Useful for task that don't need configuration
 void noconf(int pin, int* args, int* space) {
+}
+
+// args[0] : address (33 pour la boussole)
+// args[1] : get data command (65)
+void i2c_setup(int pin, int* args, int* space) {
+  Wire.begin();
+  Wire.beginTransmission(args[0]);
+  Wire.send(args[1]);
+  Wire.endTransmission();
+}
+
+void i2c_loop(int pin, int* args, int* space) {
+  Wire.requestFrom(args[0], 2);
+  snd_message(pin, (Wire.receive() << 8) + Wire.receive());
+  Wire.beginTransmission(args[0]);
+  Wire.send(args[1]);
+  Wire.endTransmission();
 }
 
 void one_wire_setup(int pin, int* args, int* space){

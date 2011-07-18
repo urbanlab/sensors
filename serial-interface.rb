@@ -26,6 +26,7 @@ class Serial_interface
 				@serial.wait
 				buff << @serial.gets
 			end
+			p buff
 			@wait_for.each do |pattern, pipe|
 				if (buff.match(pattern))
 					pipe.write(buff)
@@ -41,7 +42,8 @@ class Serial_interface
 	end
 	
 	def add_task(multi, pin, function, period, *args)
-		snd_message(multi, :add, function, period, pin, args)
+		args.delete nil
+		snd_message(multi, :add, function, period, pin, *args)
 		wait_for(/^#{multi} ADD #{pin}/) == "KO" ? false : true
 	end
 	
@@ -98,6 +100,7 @@ class Serial_interface
 	private
 	
 	def snd_message(multi, command, *args)
+		p multi, command, args
 		msg = "#{multi} #{CMD[command]} #{args.join(" ")}".chomp(" ") + "\n"
 		p msg
 		@serial.write msg

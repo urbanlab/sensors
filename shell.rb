@@ -13,13 +13,13 @@ module Redis_client
 	
 		def list_multi
 			@redis.list_multis.each do |multi, config|
-				puts "#{multi} : #{config[:description]} (supports : #{@redis.support(config[:supported]).join(", ")}"#, #{@redis.list_sensors(multi).size} task(s) running)"
+				puts "#{multi} : #{config[:description]}"# (supports : #{@redis.support(config[:supported]).join(", ")}"#, #{@redis.list_sensors(multi).size} task(s) running)"
 			end
 		end
 		
 		def list_unconfigured
 			@redis.list_multis.select {|multi, config| @redis.list_sensors(multi).size == 0}.each do |multi, config|
-				puts "#{multi} : #{config[:description]} (supports : #{config[:supported].join(" ")})"
+				puts "#{multi} : #{config[:description]}"# (supports : #{config[:supported].join(" ")})"
 			end
 		end
 		

@@ -53,7 +53,7 @@ class Redis_interface
 	#
 	def get_multi_config( multi_id )
 		return nil unless knows_multi? multi_id
-		JSON.s_parse(@redis.hget("#{@prefix}.#{MULTI}.#{CONF}", multi_id)) if knows_multi? multi_id
+		JSON.s_parse(@redis.hget("#{@prefix}.#{MULTI}.#{CONF}", multi_id))
 	end
 	
 	# Register description of a multiplexer. Return false if the multi doesn't exist
@@ -176,7 +176,7 @@ class Redis_interface
 				can_have.merge!({:period => Integer})
 		end
 		raise_errors(must_have, can_have, args)
-		@redis.hset("#{CONF}.#{args[:type]}", args[:name], args.delete_if{|k,v| v == :type or v == :name}.to_json)
+		@redis.hset("#{CONF}.#{args.delete(:type)}", args.delete(:name), args.to_json)
 	end
 	
 	# Unregister a profile TODO : check if users ?

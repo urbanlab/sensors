@@ -9,12 +9,12 @@ def redis_to_json
 	require 'json'
 	r = Redis_interface.new 1
 	config = {}
-	config["profile"] = {"sensor" => r.list_profiles(:sensor), "actuator" => r.list_profiles(:actuator)}
+	config["profile"] = {:sensor => r.list_profiles(:sensor), :actuator => r.list_profiles(:actuator)}
 	config["multiplexers"] = r.list_multis
 	config["multiplexers"].each_key do |id|
-		config["multiplexers"][id]["sensors"] = r.list(:sensor, id)
-		config["multiplexers"][id]["actuators"] = r.list(:actuator, id)
-		config["multiplexers"][id].delete("supported") #regenerate at launch
+		config["multiplexers"][id][:sensors] = r.list(:sensor, id)
+		config["multiplexers"][id][:actuators] = r.list(:actuator, id)
+		config["multiplexers"][id].delete(:supported) #regenerate at launch
 	end
 	
 	JSON.pretty_generate(config)

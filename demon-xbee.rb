@@ -25,14 +25,15 @@ class Xbee_Demon
 		
 		@redis.on_new_sensor do |config|
 			profile = @redis.get_profile(:sensor, config[:profile])
-			config[:period] = profile[:defaultperiod] unless config.has_key?(:period)
-			config[:sensor] = profile[:defaultpin] unless config.has_key?(:sensor)
-			@serial.add_task(config[:multiplexer], config[:sensor], profile[:function], config[:period])
+			config[:period] = profile[:period] unless config.has_key?(:period)
+			config[:sensor] = profile[:pin] unless config.has_key?(:sensor)
+			options = [profile[:option1], profile[:option2]]
+			@serial.add_task(config[:multiplexer], config[:sensor], profile[:function], config[:period], *options)
 #			@serial.add_task(id_multi, sensor, @redis.get_profile(:sensor, config[:profile])[:function], config[:period]) #TODO must check if multi not registered
 		end
 		
 		@redis.on_new_actu do |id_multi, actu, config|
-		#mmm nothing to do ?
+		#rien à faire ?
 		end
 		
 		@redis.on_deleted_sensor do |id_multi, sensor|
@@ -56,7 +57,7 @@ class Xbee_Demon
 				new_id = (Array(1..255) - @redis.list_multis.keys)[0] # first unused id
 				@serial.change_id(id, new_id)
 			elsif (not (@redis.knows_multi? id))   # valid id, but not registered
-				@redis.set_multi_config(id, {:name => "no name", :supported => @serial.list_implementations(id)})
+				@redis.set_multi_config(id, {:description => "no name", :supported => @serial.list_implementations(id)})
 			else                                   # Known multi that has been reseted
 				@redis.list(:sensor, id ).each do |pin, config|
 					profile = @redis.get_profile(:sensor, config[:profile])

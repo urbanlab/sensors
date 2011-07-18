@@ -228,7 +228,8 @@ boolean get_message(char* msg, boolean block){
   } while(!valid && block);
   return valid;
 }
-/* For science, you monster.
+// For science, you monster.
+/*
 boolean get_message(char* msg, boolean block){
   int i=0;
   boolean valid = false;
@@ -243,8 +244,8 @@ boolean get_message(char* msg, boolean block){
     }
   } while(!valid && block);
   return valid;
-}
-*/
+}*/
+
 // Get a word from serial line.
 // Return true if something was available
 // arg block define if the function shourd wait for a word

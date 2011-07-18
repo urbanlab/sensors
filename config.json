@@ -2,8 +2,8 @@
   "profile": {
     "sensor": {
       "button": {
+        "period": 10,
         "function": "din",
-        "rpn": "X",
         "unit": "boolean"
       },
       "Dallas": {
@@ -17,6 +17,7 @@
         "unit": "°C"
       },
       "nbutton": {
+        "period": 10,
         "function": "din",
         "rpn": "X -1 * 1 +",
         "unit": "boolean"
@@ -34,24 +35,23 @@
       "description": "i'm different",
       "sensors": {
         "6": {
-          "description": "DDDDallas",
+          "name": "Temp1",
           "profile": "Dallas",
           "period": 3000
         },
         "16": {
-          "description": "Tempraritur",
+          "name": "Temp2",
           "profile": "LM",
           "period": 3000
         },
         "11": {
-          "description": "Le Non Bouton",
-          "profile": "nbutton",
-          "period": 10
+          "name": "S",
+          "profile": "nbutton"
         }
       },
       "actuators": {
         "13": {
-          "description": "EMERGENCY",
+          "name": "EMERGENCY",
           "profile": "alert"
         }
       }

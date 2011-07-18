@@ -3,10 +3,8 @@
 - Sensor's config mean : {"description" => "descriptive", "profile" => "profile_name", "period" => 1000 (ms)}
 - Actuator's config mean : {"description" => "self explanatory", "profile" => "profile_name" }
 - Actuator's profile mean : {"function" => "firm function", "period" => 200)}
-- Sensor's profile mean : { "function" => "firmware function", "rpn" => "2 X *", "unit" => "Celsius"}
-TODO : default period ? default pin ?
+- Sensor's profile mean : { "function" => "firmware function", "rpn" => "2 X *", "unit" => "Celsius", ("defaultperiod" => 1000, "defaultpin" => 8, "option1" => 33, "option2" => 65)}
 TODO : bug, on peut ajouter un actuator et un sensor sur le même pin, et la suppression de l'un entraîne la suppression de l'autre sur l'arduino et pas sur redisS
-TODO vérifier la validité des config données à base de has_key
 =end
 require 'rubygems'
 require 'json'
@@ -37,7 +35,7 @@ class Redis_interface
 	#
 	def support(functions)
 		list_profiles(:actuator).merge(list_profiles(:sensor)).select { |name, profile|
-			functions.include? profile["function"]
+			functions.include? profile[:function]
 		}.keys
 	end
 	
@@ -48,23 +46,24 @@ class Redis_interface
 	#
 	def list_multis
 		configs = @redis.hgetall("#{@prefix}.#{MULTI}.#{CONF}")
-		return Hash[*configs.collect{|id, conf| [id.to_i, JSON.parse(conf)]}.flatten]
+		return Hash[*configs.collect{|id, conf| [id.to_i, JSON.s_parse(conf)]}.flatten]
 	end
 	
 	# get the multiplexer config or nil if does no exist
 	#
 	def get_multi_config( multi_id )
 		return nil unless knows_multi? multi_id
-		JSON.parse(@redis.hget("#{@prefix}.#{MULTI}.#{CONF}", multi_id)) if knows_multi? multi_id
+		JSON.s_parse(@redis.hget("#{@prefix}.#{MULTI}.#{CONF}", multi_id)) if knows_multi? multi_id
 	end
 	
 	# Register description of a multiplexer. Return false if the multi doesn't exist
 	#
 	def set_description multi_id, description
-		return false unless knows_multi?(multi_id) and description.is_a?(String)
+		raise ArgumentError "Description must be a string" unless description.is_a?(String)
+		return false unless knows_multi?(multi_id)
 		path = "#{@prefix}.#{MULTI}"
-		config = JSON.parse(@redis.hget("#{path}.#{CONF}", multi_id))
-		config["description"] = description
+		config = JSON.s_parse(@redis.hget("#{path}.#{CONF}", multi_id))
+		config[:description] = description
 		@redis.hset("#{path}.#{CONF}", multi_id, config.to_json)
 		@redis.publish("#{path}:#{multi_id}.#{CONF}", config.to_json)
 		return true
@@ -83,38 +82,36 @@ class Redis_interface
 	def knows? type, multi_id, pin
 		(knows_multi? multi_id) && @redis.hexists("#{@prefix}.#{MULTI}:#{multi_id}.#{type}.#{CONF}", pin)
 	end
-	
-	# Return true if the config is valid
-	#
-	def is_device_config? type, config
-		return false unless config["description"].is_a?(String) and config["profile"].is_a?(String)
-		case type.to_s
-			when SENS
-				return false unless config["period"].is_a? Integer
-				return true
-			when ACTU
-				return true
-			else
-				return false
-			end
-	end
-	
+
 	# Get a device's config
 	#
 	def get_config type, multi_id, pin
 		return nil unless knows? type, multi_id, pin
-		JSON.parse(@redis.hget("#{@prefix}.#{MULTI}:#{multi_id}.#{type}.#{CONF}", pin))
+		JSON.s_parse(@redis.hget("#{@prefix}.#{MULTI}:#{multi_id}.#{type}.#{CONF}", pin))
 	end
 	
-	# Register a sensor.
+	# Register a sensor or an actuator.
 	# return true if this was a success
 	#
-	def add type, multi_id, pin, config
-		return false unless (is_device_config? type, config)
-		return false unless (knows_multi? multi_id) && (knows_profile? type, config[PROF])
-		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{type}"
-		@redis.publish("#{path}:#{pin}.#{CONF}", config.to_json)
-		@redis.hset("#{path}.#{CONF}", pin, config.to_json)
+	def add type, multi_id, args#type, multi_id, pin, config
+		config = args.dup
+		config[:type] = type
+		config[:multiplexer] = multi_id
+		must_have = {type: Symbol, name: String, profile: String, multiplexer: Integer}
+		can_have = {}
+		profile = {}
+		case type
+			when :sensor
+				profile = get_profile :sensor, args[:profile]
+				profile.has_key?(:period)? can_have[:period] = Integer : must_have[:period] = Integer
+				profile.has_key?(:pin)? can_have[:pin] = Integer : must_have[:pin] = Integer
+			when :actuator then {}
+		end
+		raise_errors(must_have, can_have, config)
+		config = {pin: profile[:pin], period: profile[:period]}.merge config
+		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{config.delete(:type)}"
+		@redis.publish("#{path}:#{config[:pin]}.#{CONF}", args.to_json)
+		@redis.hset("#{path}.#{CONF}", config[:pin], args.to_json)
 		return true
 	end
 	
@@ -133,7 +130,7 @@ class Redis_interface
 	def list type, multi_id
 		return nil unless knows_multi? multi_id
 		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{type}.#{CONF}"
-		Hash[*@redis.hgetall(path).collect {|id, config| [id.to_i, JSON.parse(config)]}.flatten]
+		Hash[*@redis.hgetall(path).collect {|id, config| [id.to_i, JSON.s_parse(config)]}.flatten]
 	end
 
 	
@@ -154,28 +151,32 @@ class Redis_interface
 		@redis.hexists("#{CONF}.#{type}", name)
 	end
 	
-	# Return true if the profile is a good profile
-	#
-	def is_a_profile? (type, profile)
-		return false unless (profile["function"].is_a?(String))
-		case type.to_s
-			when SENS
-				return false unless is_a_rpn?(profile["rpn"])
-				return false unless profile["unit"].is_a?(String)
-				return true
-			when ACTU
-				return false if (profile.has_key?("period") and not profile["period"].is_a?(Integer))
-				return true
-			else
-				return false
+	def raise_errors(must_have, can_have, args)
+		errors = []
+		must_have.each do |argument, type|
+			errors << "#{argument} is missing" unless args[argument]
+			errors << "#{argument} should be #{type}" unless args[argument].is_a? type
 		end
+		can_have.each do |argument, type|
+			errors << "#{argument} should be #{type}" if args.has_key?(argument) and not args[argument].is_a? type
+		end
+		raise ArgumentError, errors.join("\n") unless errors.size == 0
 	end
 	
 	# Register a sensor profile
 	#
-	def add_profile( type, name, profile )
-		return false unless is_a_profile?(type, profile)
-		@redis.hset("#{CONF}.#{type}", name, profile.to_json)
+	def add_profile( args )#type, name, profile )
+		must_have = {:type => Symbol, :name => String, :function => String}
+		can_have = {}
+		case args[:type]
+			when :sensor
+				must_have.merge!({:unit => String})
+				can_have.merge!({:rpn => String, :period => Integer, :pin => Integer, :option1 => Integer, :option2 => Integer})
+			when :actuator
+				can_have.merge!({:period => Integer})
+		end
+		raise_errors(must_have, can_have, args)
+		@redis.hset("#{CONF}.#{args[:type]}", args[:name], args.delete_if{|k,v| v == :type or v == :name}.to_json)
 	end
 	
 	# Unregister a profile TODO : check if users ?
@@ -186,7 +187,7 @@ class Redis_interface
 	#
 	def list_profiles (type)
 		list = @redis.hgetall("#{CONF}.#{type}")
-		list.each { |name, profile| list[name] = JSON.parse(profile) }
+		list.each { |name, profile| list[name] = JSON.s_parse(profile) }
 	end
 	
 	# With string parameter : get a sensor profile
@@ -194,7 +195,7 @@ class Redis_interface
 	#
 	def get_profile(type, profile)
 		return nil unless knows_profile?(type, profile)
-		JSON.parse(@redis.hget("#{CONF}.#{type}", profile))
+		JSON.s_parse(@redis.hget("#{CONF}.#{type}", profile))
 	end
 	
 	##### Callbacks #####
@@ -205,12 +206,11 @@ class Redis_interface
 	#
 	def on_published_value(type, multi = "*", pin = "*", &block)
 		Thread.new{
-			type = {:sensor => SENS, :actuator => ACTU}[type]
 			redis = Redis.new
 			redis.psubscribe("#{@prefix}.#{MULTI}:#{multi}.#{type}:#{pin}.value") do |on|
-				on.pmessage do |pattern, channel, valeur|
-					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ]
-					yield parse[MULTI].to_i, parse[type.to_s].to_i, valeur.to_f
+				on.pmessage do |pattern, channel, value|
+					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
+					yield parse[:multiplexer].to_i, parse[type].to_i, value.to_f
 				end
 			end
 		}
@@ -236,11 +236,14 @@ class Redis_interface
 	def publish_value(multi_id, sensor, value)
 		return false unless knows? :sensor, multi_id, sensor
 		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}"
-		rpn = get_profile(:sensor, get_config(:sensor, multi_id, sensor)["profile"])["rpn"].sub("X", value.to_s)
-		value_norm = solve_rpn(rpn)
-		key = {"value" => value_norm,"timestamp" => Time.now.to_f}.to_json
+		profile = get_profile(:sensor, get_config(:sensor, multi_id, sensor)[:profile])
+		if profile.has_key? :rpn
+			rpn = profile[:rpn].sub("X", value.to_s)
+			value = solve_rpn(rpn)
+		end
+		key = {:value => value,:timestamp => Time.now.to_f}.to_json
 		@redis.hset("#{path}.#{VALUE}", sensor, key)
-		@redis.publish("#{path}:#{sensor}.#{VALUE}", value_norm)
+		@redis.publish("#{path}:#{sensor}.#{VALUE}", value)
 		return true
 	end
 	
@@ -253,8 +256,11 @@ class Redis_interface
 			redis = Redis.new :host => @host, :port => @port
 			redis.psubscribe("#{@prefix}.#{MULTI}:*.#{SENS}:*.#{CONF}") do |on|
 				on.pmessage do |pattern, channel, message|
-					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ]
-					yield parse[MULTI].to_i, parse[SENS].to_i, JSON.parse(message)
+					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
+					parse.merge!(JSON.s_parse(message))
+					profile = get_profile :sensor, parse[:profile]
+					parse = {pin: profile[:pin], period: profile[:period]}.merge parse
+					yield parse
 				end
 			end
 		}
@@ -283,23 +289,12 @@ class Redis_interface
 			redis = Redis.new :host => @host, :port => @port
 			redis.psubscribe("#{@prefix}.#{MULTI}:*.#{SENS}:*.#{DEL}") do |on|
 				on.pmessage do |pattern, channel, message|
-					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ]
-					yield parse[MULTI].to_i, parse[SENS].to_i
+					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
+					yield parse[:multiplexer].to_i, parse[:sensor].to_i
 				end
 			end
 		}
 	end
-
-	def on_new_config(&block)
-		Thread.new{
-			redis = Redis.new :host => @host, :port => @port
-			redis.subscribe("config") do |on|
-				on.message do |channel, message|
-					yield JSON.parse(message)
-				end
-			end
-		}
-	end			
 	
 	private
 	
@@ -341,4 +336,43 @@ class String
   end
 end
 
+# Stolen from rails source
+class Hash
+	def symbolize_keys
+		inject({}) do |options, (key, value)|
+			options[(key.to_sym rescue key) || key] = value
+			options
+		end
+	end
+	
+	def integerize_keys!
+		self.keys.each do |key|
+			self[key.to_i] = self[key]
+			self.delete key
+		end
+		self
+	end
+	
+	def symbolize_keys!
+		self.replace(self.symbolize_keys)
+	end
+
+	def recursive_symbolize_keys!
+		symbolize_keys!
+		# symbolize each hash in .values
+		values.each{|h| h.recursive_symbolize_keys! if h.is_a?(Hash) }
+		# symbolize each hash inside an array in .values
+		values.select{|v| v.is_a?(Array) }.flatten.each{|h| h.recursive_symbolize_keys! if h.is_a?(Hash) }
+		self
+	end
+end
+
+module JSON
+	class << self
+		def s_parse(source, opts = {})
+			result = Parser.new(source, opts).parse
+			result.recursive_symbolize_keys! if result.is_a? Hash
+		end
+	end
+end
 

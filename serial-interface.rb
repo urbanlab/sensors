@@ -98,7 +98,9 @@ class Serial_interface
 	private
 	
 	def snd_message(multi, command, *args)
-		@serial.write "#{multi} #{CMD[command]} #{args.join(" ")}\n"
+		msg = "#{multi} #{CMD[command]} #{args.join(" ")}".chomp(" ") + "\n"
+		p msg
+		@serial.write msg
 	end
 	
 	def wait_for(pattern)

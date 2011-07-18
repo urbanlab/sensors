@@ -13,29 +13,29 @@ module Redis_client
 	
 		def list_multi
 			@redis.list_multis.each do |multi, config|
-				puts "#{multi} : #{config["description"]} (supports : #{@redis.support(config["supported"]).join(", ")}"#, #{@redis.list_sensors(multi).size} task(s) running)"
+				puts "#{multi} : #{config[:description]} (supports : #{@redis.support(config[:supported]).join(", ")}"#, #{@redis.list_sensors(multi).size} task(s) running)"
 			end
 		end
 		
 		def list_unconfigured
 			@redis.list_multis.select {|multi, config| @redis.list_sensors(multi).size == 0}.each do |multi, config|
-				puts "#{multi} : #{config["description"]} (supports : #{config["supported"].join(" ")})"
+				puts "#{multi} : #{config[:description]} (supports : #{config[:supported].join(" ")})"
 			end
 		end
 		
-		def add_sensor(device, pin, description, profile, period)
-			if @redis.add(:sensor, device, pin, {"description" => description, "profile" => profile, "period" => period})
-				puts "OK"
-			else
-				puts "Missing profile or multiplexor"
+		def add_sensor(args = {})
+			begin
+				@redis.add :sensor, args.delete(:multi), args
+			rescue ArgumentError => error
+				puts error.message
 			end
 		end
 		
-		def add_actuator(device, pin, description, profile)
-			if @redis.add(:actuator, device, pin, {"description" => description, "profile" => profile})
-				puts "OK"
-			else
-				puts "Missing profile or multiplexor"
+		def add_actuator(args = {})
+			begin
+				@redis.add :actuator, args.delete(:multi), args
+			rescue ArgumentError => error
+				puts error.message
 			end
 		end
 		
@@ -66,30 +66,40 @@ module Redis_client
 		def list_sensors(device)
 			if (list = @redis.list(:sensor, device))
 				list.each do |k, v|
-					puts "#{k} : #{v["description"]}, #{v["profile"]} (period : #{v["period"]})"
+					puts "#{k} : #{v[:name]}, #{v[:profile]} (period : #{v[:period]})"
 				end
 			else
 				puts "The multiplexer doesn't exist"
 			end
 		end
 		
-		def add_sensor_profile name, function, rpn, unit
-			@redis.add_profile :sensor, name, {"function" => function, "rpn" => rpn, "unit" => unit}
+		def add_sensor_profile(args={})
+			args[:type] = :sensor
+			begin
+				@redis.add_profile args
+			rescue ArgumentError => error
+				puts error.message
+			end
 		end
 		
-		def add_actuator_profile name, function, period = nil
-			@redis.add_profile :actuator, name, {"function" => function, "period" => period}
+		def add_actuator_profile(args={})
+			args[:type] = :actuator
+			begin
+				@redis.add_profile args
+			rescue ArgumentError => error
+				puts error.message
+			end
 		end
 		
 		def list_sensor_profiles
 			@redis.list_profiles(:sensor).each do |name, profile|
-				puts "#{name} : #{profile["function"]}, #{profile["rpn"]}, #{profile["unit"]}"
+				puts "#{name} : #{profile[:function]}, #{profile[:rpn]}, #{profile[:unit]}"
 			end
 		end
 		
 		def list_actuator_profiles
 			@redis.list_profiles(:actuator).each do |name, profile|
-				puts "#{name} : #{profile["function"]}"
+				puts "#{name} : #{profile[:function]}"
 			end
 		end
 	end

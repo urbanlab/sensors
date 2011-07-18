@@ -100,7 +100,6 @@ class Serial_interface
 	private
 	
 	def snd_message(multi, command, *args)
-		p multi, command, args
 		msg = "#{multi} #{CMD[command]} #{args.join(" ")}".chomp(" ") + "\n"
 		p msg
 		@serial.write msg

@@ -13,26 +13,32 @@ module Redis_client
 	
 		def list_multi
 			@redis.list_multis.each do |multi, config|
-				puts "#{multi} : #{config[:description]}"# (supports : #{@redis.support(config[:supported]).join(", ")}"#, #{@redis.list_sensors(multi).size} task(s) running)"
+				supported = @redis.support(config[:supported])
+				puts "#{multi} : #{config[:description]} (supports : #{supported.join(", ")})"
 			end
 		end
 		
 		def list_unconfigured
-			@redis.list_multis.select {|multi, config| @redis.list_sensors(multi).size == 0}.each do |multi, config|
-				puts "#{multi} : #{config[:description]}"# (supports : #{config[:supported].join(" ")})"
+			@redis.list_multis.select {|multi, config| @redis.list(:sensor, multi).size + @redis.list(:actuator, multi).size == 0}.each do |multi, config|
+				supported = @redis.support(config[:supported])
+				puts "#{multi} : #{config[:description]} (supports : #{supported.join(", ")})"
 			end
 		end
 		
-		def add_sensor(args = {})
+		def add_sensor(multi, pin, name, profile, period = nil, args = {})
 			begin
+				args.merge!({multi: multi, pin: pin, name: name, profile: profile})
+				args[:period] = period if period
 				@redis.add :sensor, args.delete(:multi), args
 			rescue ArgumentError => error
 				puts error.message
 			end
 		end
 		
-		def add_actuator(args = {})
+		def add_actuator(multi, pin, name, profile, period = nil, args = {})
 			begin
+				args.merge!({multi: multi, pin: pin, name: name, profile: profile})
+				args[:period] = period if period
 				@redis.add :actuator, args.delete(:multi), args
 			rescue ArgumentError => error
 				puts error.message
@@ -57,6 +63,14 @@ module Redis_client
 		
 		def remove_sensor(device, pin)
 			if @redis.remove :sensor, device, pin
+				puts "OK"
+			else
+				puts "The multiplexer doesn't exist"
+			end
+		end
+		
+		def remove_actuator(device, pin)
+			if @redis.remove :actuator, device, pin
 				puts "OK"
 			else
 				puts "The multiplexer doesn't exist"

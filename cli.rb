@@ -36,6 +36,7 @@ else
 	config = JSON.parse(input)
 	
 	# JSON transforme les symboles et int en string pour les clefs...
+
 	config.symbolize_keys!
 	config[:profile].symbolize_keys!
 	config[:profile].each do |type, configs|
@@ -57,6 +58,7 @@ else
 	end
 
 	# Reconstitution
+
 	config[:profile][:sensor].each do |name, profile|
 		r.add_profile({:type => :sensor, :name => name}.merge(profile))
 	end
@@ -64,7 +66,7 @@ else
 		r.add_profile({:type => :actuator, :name => name}.merge(profile))
 	end
 	config[:multiplexers].each do |multi_id, multi_config|
-		r.set_multi_config(multi_id.to_i, multi_config["description"])
+		r.set_multi_config(multi_id.to_i, multi_config[:description])
 		multi_config[:sensors].each do |sens_id, sens_config|
 			r.add(:sensor, multi_id.to_i, sens_config.merge({pin: sens_id.to_i}))
 		end

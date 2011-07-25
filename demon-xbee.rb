@@ -42,7 +42,7 @@ class Xbee_Demon
 		
 		@redis.on_published_value(:actuator) do |multi, pin, value|
 			case value.to_i
-				when 1
+				when 1 #test existence profile
 					config = @redis.get_config(:actuator, multi, pin)
 					profile = @redis.get_profile(:actuator, config[:profile])
 					profile.has_key?(:period)? period = profile[:period] : period = 10000000 #ugly

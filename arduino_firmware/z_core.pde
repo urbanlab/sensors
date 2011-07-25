@@ -1,12 +1,14 @@
 void setup(){
   Serial.begin(baudrate);
+  //Serial.println("Invalid first message"); zigbee's first message is always invalid
   Serial.flush();
   //Serial.println(availableMemory());
+  delay(1000);
   restore_state();
   snd_message("NEW");
   while(get_id() == 0) {
     process_message(true);
-  }
+ /}
 }
 
 void loop() {
@@ -244,8 +246,8 @@ boolean get_message(char* msg, boolean block){
     }
   } while(!valid && block);
   return valid;
-}*/
-
+}
+*/
 // Get a word from serial line.
 // Return true if something was available
 // arg block define if the function shourd wait for a word

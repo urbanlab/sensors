@@ -23,13 +23,8 @@ class Xbee_Demon
 		@redis = Redis_interface.new(network, redis_host, redis_port)
 		@serial = Serial_interface.new serial_port, baudrate
 		
-		@redis.on_new_sensor do |config|
-			profile = @redis.get_profile(:sensor, config[:profile])
-			config[:period] = profile[:period] unless config.has_key?(:period)
-			config[:sensor] = profile[:pin] unless config.has_key?(:sensor)
-			options = [profile[:option1], profile[:option2]]
-			@serial.add_task(config[:multiplexer], config[:sensor], profile[:function], config[:period], *options)
-#			@serial.add_task(id_multi, sensor, @redis.get_profile(:sensor, config[:profile])[:function], config[:period]) #TODO must check if multi not registered
+		@redis.on_new_sensor do |multi, pin, function, period, *options|
+			@serial.add_task(multi, pin, function, period, *options)
 		end
 		
 		@redis.on_new_actu do |id_multi, actu, config|
@@ -61,7 +56,7 @@ class Xbee_Demon
 			else                                   # Known multi that has been reseted
 				@redis.list(:sensor, id ).each do |pin, config|
 					profile = @redis.get_profile(:sensor, config[:profile])
-					@serial.add_task(id, pin, profile[:function], config[:period])
+					@serial.add_task(id, pin, profile[:function], config[:period], *[profile[:option1], profile[:option2]])
 				end
 				#rien à faire pour les actus, sauf peut être remettre dans meme état ?		
 			end

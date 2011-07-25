@@ -259,8 +259,8 @@ class Redis_interface
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
 					parse.merge!(JSON.s_parse(message))
 					profile = get_profile :sensor, parse[:profile]
-					parse = {pin: profile[:pin], period: profile[:period]}.merge parse
-					yield parse
+					parse = {pin: profile[:pin], period: profile[:period]}.merge parse #default values
+					block.call(parse[:multiplexer], parse[:sensor], profile[:function], parse[:period], *[profile[:option1], profile[:option2]])
 				end
 			end
 		}

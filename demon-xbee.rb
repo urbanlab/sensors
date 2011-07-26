@@ -3,6 +3,7 @@ require 'json'
 require 'serialport'
 require './redis-interface.rb'
 require './serial-interface.rb'
+require 'logger'
 
 
 =begin
@@ -18,10 +19,13 @@ Sur network:<network>:multiplexers:<multipl-id>:actuators = hash (pin, objet act
 =end
 
 class Xbee_Demon
-	def initialize(network, serial_port = '/dev/ttyUSB0', baudrate = 19200, redis_host = 'localhost', redis_port = 6379)
+	def initialize(network, args)#serial_port = '/dev/ttyUSB0', baudrate = 19200, redis_host = 'localhost', redis_port = 6379, logfile = nil)
+		args = {serial_port: '/dev/ttyUSB0', baudrate: 19200, redis_host: 'localhost', redis_port: 6379, logger: Logger.new(nil)}.merge args
 		Thread.abort_on_exception = true
-		@redis = Redis_interface.new(network, redis_host, redis_port)
-		@serial = Serial_interface.new serial_port, baudrate
+		@log = args[:logger]
+		@log.progname = "Demon"
+		@redis = Redis_interface.new(network, args[:redis_host], args[:redis_port])
+		@serial = Serial_interface.new(args[:serial_port], args[:baudrate], args[:logger])
 		
 		@redis.on_new_sensor do |multi, pin, function, period, *options|
 			@serial.add_task(multi, pin, function, period, *options)
@@ -67,7 +71,8 @@ class Xbee_Demon
 		end
 	end
 end
-
-demon = Xbee_Demon.new("1")
+log = Logger.new STDOUT
+log.level = Logger::DEBUG
+demon = Xbee_Demon.new("1", logger: log)
 sleep
 

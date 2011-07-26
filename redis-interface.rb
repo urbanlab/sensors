@@ -110,8 +110,8 @@ class Redis_interface
 		raise_errors(must_have, can_have, config)
 		config = {pin: profile[:pin], period: profile[:period]}.merge config
 		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{config.delete(:type)}"
-		@redis.publish("#{path}:#{config[:pin]}.#{CONF}", args.to_json)
-		@redis.hset("#{path}.#{CONF}", config[:pin], args.to_json)
+		@redis.publish("#{path}:#{config[:pin]}.#{CONF}", config.to_json)
+		@redis.hset("#{path}.#{CONF}", config[:pin], config.to_json)
 		return true
 	end
 	

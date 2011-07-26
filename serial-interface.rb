@@ -3,16 +3,19 @@ require 'serialport'
 require 'timeout'
 require 'thread'
 require 'io/wait'
+require 'logger'
 
 CMD = { :list => "l", :add => "a", :remove => "d", :tasks => "t" , :id => "i", :reset => "r" }
 ANS = { :sensor => "SENS", :new => "NEW", :implementations => "LIST", :tasks => "TASKS" , :ok => "OK", :add => "ADD", :remove => "DEL"}
 #TODO verify the execution of add, id and remove
 class Serial_interface
-	def initialize port, baudrate, timeout = 1, retry_nb = 3
+	def initialize port, baudrate, logger = Logger.new(nil), timeout = 1, retry_nb = 3
 		@serial = SerialPort.new port, baudrate
 		@wait_for = {} # {pattern => wpipe}
 		@timeout = timeout
 		@retry = retry_nb
+		@log = logger.dup
+		@log.progname = "Serial"
 		# Thread.abort_on_exception = true
 		listener = Thread.new {
 			process_messages
@@ -26,7 +29,7 @@ class Serial_interface
 				@serial.wait
 				buff << @serial.gets
 			end
-			p buff
+			@log.debug("Received \"#{buff.delete("\r\n")}\"")
 			@wait_for.each do |pattern, pipe|
 				if (buff.match(pattern))
 					pipe.write(buff)
@@ -37,44 +40,37 @@ class Serial_interface
 	end
 	
 	def reset(multi)
-		snd_message(multi, :reset)
-		wait_for(/^#{multi} RST/)
+		snd_message(/^#{multi} RST/, multi, :reset)
 	end
 	
 	def add_task(multi, pin, function, period, *args)
 		args.delete nil
-		snd_message(multi, :add, function, period, pin, *args)
-		wait_for(/^#{multi} ADD #{pin}/) == "KO" ? false : true
+		if snd_message(/^#{multi} ADD #{pin}/, multi, :add, function, period, pin, *args) == "KO"
+			@log.warn("Could not add task \"#{function}\" on #{multi}:#{pin}")
+			return false
+		end
+		return true
 	end
 	
 	def rem_task(multi, pin)
-		snd_message(multi, :remove, pin)
-		wait_for(/^#{multi} DEL #{pin}/) == "KO" ? false : true
+		if snd_message(/^#{multi} DEL #{pin}/, multi, :remove, pin) == "KO"
+			@log.warn("Could not remove task #{multi}:#{pin}")
+			return false
+		end
+		return true
 	end
 	
 	def change_id(old, new)
-		snd_message(old, :id, new)
-		wait_for(/^#{new} ID/)
+		snd_message(/^#{new} ID/, old, :id, new)
 		#TODO : register
 	end
 	
-	def timeout_try(queue)
-		i = 0
-		begin
-			Timeout.timeout(@timeout){queue.pop}
-		rescue Timeout::Error => e
-			((i+=1) < @retry)? retry : raise(e)
-		end
-	end
-	
 	def list_implementations(multi)
-		snd_message(multi, :list)
-		wait_for(/^#{multi} LIST/).scan(/\w+/)
+		snd_message(/^#{multi} LIST/, multi, :list)
 	end
 	
 	def list_tasks(multi)
-		snd_message(multi, :tasks)
-		ans = wait_for(/^#{multi} TASKS/)
+		ans = snd_message(/^#{multi} TASKS/, multi, :tasks)
 		Hash[*ans.scan(/(\d+):(\w+)/).collect{|p| [p[0].to_i, p[1]]}.flatten]
 	end
 	
@@ -99,10 +95,17 @@ class Serial_interface
 	
 	private
 	
-	def snd_message(multi, command, *args)
+	def snd_message(pattern, multi, command, *args)
 		msg = "#{multi} #{CMD[command]} #{args.join(" ")}".chomp(" ") + "\n"
-		p msg
+		@log.debug("Sent : \"#{msg.delete("\n")}\"")
 		@serial.write msg
+		if pattern
+			begin
+				wait_for(pattern)
+			rescue Timeout::Error => e
+				@log.error("The multiplexer #{multi} did not answered to the command \"#{command}\"")
+			end
+		end
 	end
 	
 	def wait_for(pattern)
@@ -129,12 +132,12 @@ class Serial_interface
 end
 
 class String
-  def is_integer?
-    begin Integer(self) ; true end rescue false
-  end
-  def is_numeric?
-    begin Float(self) ; true end rescue false
-  end
+	def is_integer?
+		begin Integer(self) ; true end rescue false
+	end
+	def is_numeric?
+		begin Float(self) ; true end rescue false
+	end
 end
 
 

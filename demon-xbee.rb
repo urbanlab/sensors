@@ -24,16 +24,17 @@ class Xbee_Demon
 		Thread.abort_on_exception = true
 		@log = args[:logger]
 		@log.progname = "Demon"
-		@redis = Redis_interface_demon.new(network, args[:redis_host], args[:redis_port])
+		@log.datetime_format = "%Y-%m-%d %H:%M:%S"
+		@redis = Redis_interface_demon.new(network, args[:redis_host], args[:redis_port], args[:logger])
 		@serial = Serial_interface.new(args[:serial_port], args[:baudrate], args[:logger])
 		
 		@redis.on_new_sensor do |multi, pin, function, period, *options|
 			@serial.add_task(multi, pin, function, period, *options)
 		end
 		
-		@redis.on_new_actu do |id_multi, actu, config|
+		#@redis.on_new_actu do |id_multi, actu, config|
 		#rien à faire ?
-		end
+		#end
 		
 		@redis.on_deleted_sensor do |id_multi, sensor|
 			@serial.rem_task(id_multi, sensor) #TODO registered ? task exists ?

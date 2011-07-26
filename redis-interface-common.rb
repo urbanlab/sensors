@@ -65,6 +65,14 @@ module Redis_interface_common
 		Hash[*@redis.hgetall(path).collect {|id, config| [id.to_i, JSON.s_parse(config)]}.flatten]
 	end
 	
+	# Return the current state of the actuator (true for on, false for off)
+	# or nil if the actuator is unknown
+	#
+	def get_actuator_state(multi_id, pin)
+		return nil unless knows?(:actuator, multi_id, pin)
+		@redis.hget("#{@prefix}.#{MULTI}:#{multi_id}.#{ACTU}.#{VALUE}", pin) == "1"
+	end
+	
 	# Return true if the profile exist
 	#
 	def knows_profile?( type, name )
@@ -91,7 +99,7 @@ module Redis_interface_common
 	# Type might be :sensor or :actuator
 	# block has 3 arguments : multiplexer's id, sensor's pin, value
 	#
-	def on_published_value(type, multi = "*", pin = "*", &block)
+	def on_published_value(type, multi = "*", pin = "*", &block) #TODO unknown actu
 		Thread.new do
 			redis = Redis.new
 			redis.psubscribe("#{@prefix}.#{MULTI}:#{multi}.#{type}:#{pin}.value") do |on|

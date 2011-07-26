@@ -1,14 +1,24 @@
 require './redis-interface-common.rb'
+require 'logger'
 
 # Contain methods userful for the demon : multiplexer's registration and dynamic callbacks of clients' messages
-# With logging utility (TODO)
+#
 #
 
 class Redis_interface_demon
 	include Redis_interface_common
 	
+	def initialize(network, host = 'localhost', port = 6379, logger = Logger.new(nil))
+		super(network, host, port)
+		@log = logger
+		@log.info("Demon started")
+	end
+	
+	# Destroy the entire database and configuration
+	#
 	def flushdb
 		@redis.flushdb
+		@log.info("Flushing database")
 	end
 
 	# Assign a config to a multiplexer
@@ -17,6 +27,7 @@ class Redis_interface_demon
 		path = "#{@prefix}.#{MULTI}"
 		@redis.hset("#{path}.#{CONF}", multi_id, config.to_json)
 		@redis.publish("#{path}:#{multi_id}.#{CONF}", config.to_json)
+		@log.debug("Registering multiplexer's configuration of #{multi_id} : #{config}")
 	end
 	
 	# Publish a sensor's value
@@ -24,7 +35,16 @@ class Redis_interface_demon
 	def publish_value(multi_id, sensor, value)
 		return false unless knows? :sensor, multi_id, sensor
 		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}"
-		profile = get_profile(:sensor, get_config(:sensor, multi_id, sensor)[:profile])
+		config = get_config(:sensor, multi_id, sensor)
+		if config == nil
+			@log.error("Tried to publish a value from an unknown multiplexer : #{multi_id}")
+			return false
+		end
+		profile = get_profile(:sensor, config[:profile])
+		if profile == nil
+			@log.error("Tried to publish a value from an unknown profile : #{config[:profile]} (multiplexer : #{multi_id})")
+			return false
+		end
 		if profile.has_key? :rpn
 			rpn = profile[:rpn].sub("X", value.to_s)
 			value = solve_rpn(rpn)
@@ -40,25 +60,30 @@ class Redis_interface_demon
 	# block has 3 arguments : multiplexer's id, sensor's pin and sensor's config
 	#
 	def on_new_sensor(&block)
-		Thread.new{
+		Thread.new do
 			redis = Redis.new :host => @host, :port => @port
 			redis.psubscribe("#{@prefix}.#{MULTI}:*.#{SENS}:*.#{CONF}") do |on|
 				on.pmessage do |pattern, channel, message|
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
 					parse.merge!(JSON.s_parse(message))
 					profile = get_profile :sensor, parse[:profile]
-					parse = {pin: profile[:pin], period: profile[:period]}.merge parse #default values
+					if profile == nil
+						@log.warn("A client tried to add a sensor with an unknown profile : #{parse[:profile]} (multiplexer : #{parse[:multiplexer]})")
+						next
+					end
+					parse = {period: profile[:period]}.merge parse #default values
+					# TODO vérifier validité de la config
 					block.call(parse[:multiplexer], parse[:sensor], profile[:function], parse[:period], *[profile[:option1], profile[:option2]])
 				end
 			end
-		}
+		end
 	end
 	
 	# Callback when a client request to add an actu
 	# block has 3 arguments : multiplexer's id, actu's pin and actu's profile
 	# TODO : useless ?
 	def on_new_actu(&block)
-		Thread.new{
+		Thread.new do
 			redis = Redis.new :host => @host, :port => @port
 			redis.psubscribe("#{@prefix}.#{MULTI}*.#{ACTU}:*.#{CONF}") do |on|
 				on.pmessage do |pattern, channel, profile|
@@ -66,22 +91,26 @@ class Redis_interface_demon
 					yield parse[MULTI].to_i, parse[ACTU].to_i, profile
 				end
 			end
-		}
+		end
 	end
 	
 	# Callback when a client request to delete a sensor
 	# block has 2 arguments : multiplexer's id, sensor's pin
 	#
 	def on_deleted_sensor(&block)
-		Thread.new{
+		Thread.new do
 			redis = Redis.new :host => @host, :port => @port
 			redis.psubscribe("#{@prefix}.#{MULTI}:*.#{SENS}:*.#{DEL}") do |on|
 				on.pmessage do |pattern, channel, message|
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
+					#if not knows?(:sensor, parse[:multiplexer].to_i, parse[:sensor].to_i) #TODO, client already deleted it.
+					#	@log.warn("A client tried to remove an unknown sensor : #{parse[:multiplexer]},#{parse[:sensor]}")
+					#	next
+					#end
 					yield parse[:multiplexer].to_i, parse[:sensor].to_i
 				end
 			end
-		}
+		end
 	end
 	
 	private

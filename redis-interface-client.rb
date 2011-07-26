@@ -37,12 +37,13 @@ class Redis_interface_client
 		case type
 			when :sensor
 				profile = get_profile :sensor, args[:profile]
-				profile.has_key?(:period)? can_have[:period] = Integer : must_have[:period] = Integer
+				profile.has_key?(:period)? can_have[:period] = Integer : must_have[:period] = Integer #TODO profile non checké
 				profile.has_key?(:pin)? can_have[:pin] = Integer : must_have[:pin] = Integer
 			when :actuator then {}
+			else raise ArgumentError, "Type should be :sensor or :actuator"
 		end
 		raise_errors(must_have, can_have, config)
-		config = {pin: profile[:pin], period: profile[:period]}.merge config
+		#config = {pin: profile[:pin], period: profile[:period]}.merge config #inutile normalement
 		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{config.delete(:type)}"
 		@redis.publish("#{path}:#{config[:pin]}.#{CONF}", config.to_json)
 		@redis.hset("#{path}.#{CONF}", config[:pin], config.to_json)
@@ -53,7 +54,7 @@ class Redis_interface_client
 	# TODO does not publish if no multi ?
 	def remove type, multi_id, pin
 		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{type}"
-		set_actuator_state(multi_id, pin, 0) if type.to_s == ACTU
+		set_actuator_state(multi_id, pin, 0) if type.to_s == ACTU and get_actuator_state(multi_id, pin)
 		@redis.publish("#{path}:#{pin}.#{DEL}", pin)
 		@redis.hdel("#{path}.#{CONF}", pin) == 1
 	end
@@ -64,7 +65,34 @@ class Redis_interface_client
 		@redis.hset("#{path}.#{VALUE}", pin, state)
 		@redis.publish("#{path}:#{pin}.#{VALUE}", state)
 	end
+
 	
+	# Register a sensor profile
+	#
+	def add_profile( args )#type, name, profile )
+		must_have = {type: Symbol, name: String, function: String}
+		can_have = {:period => Integer, :option1 => Integer, :option2 => Integer}
+		case args[:type] #TODO :type non checké
+			when :sensor
+				must_have.merge!({:unit => String})
+				can_have.merge!({:rpn => String})
+			when :actuator
+				{}
+		end
+		raise_errors(must_have, can_have, args)
+		@redis.hset("#{CONF}.#{args.delete(:type)}", args.delete(:name), args.to_json)
+	end
+	
+	# Unregister a profile TODO : check if users ?
+	#
+	def remove_profile( name )
+		raise NotImplementedError
+	end
+	
+	private
+	
+	# Check if options are present and are of good type
+	#
 	def raise_errors(must_have, can_have, args)
 		errors = []
 		must_have.each do |argument, type|
@@ -74,25 +102,6 @@ class Redis_interface_client
 		can_have.each do |argument, type|
 			errors << "#{argument} should be #{type}" if args.has_key?(argument) and not args[argument].is_a? type
 		end
-		raise ArgumentError, errors.join("\n") unless errors.size == 0
+		raise ArgumentError, errors.join(", ") unless errors.size == 0
 	end
-	
-	# Register a sensor profile
-	#
-	def add_profile( args )#type, name, profile )
-		must_have = {:type => Symbol, :name => String, :function => String}
-		can_have = {}
-		case args[:type]
-			when :sensor
-				must_have.merge!({:unit => String})
-				can_have.merge!({:rpn => String, :period => Integer, :pin => Integer, :option1 => Integer, :option2 => Integer})
-			when :actuator
-				can_have.merge!({:period => Integer})
-		end
-		raise_errors(must_have, can_have, args)
-		@redis.hset("#{CONF}.#{args.delete(:type)}", args.delete(:name), args.to_json)
-	end
-	
-	# Unregister a profile TODO : check if users ?
-	#
 end

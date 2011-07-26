@@ -14,8 +14,7 @@ class Serial_interface
 		@wait_for = {} # {pattern => wpipe}
 		@timeout = timeout
 		@retry = retry_nb
-		@log = logger.dup
-		@log.progname = "Serial"
+		@log = logger
 		# Thread.abort_on_exception = true
 		listener = Thread.new {
 			process_messages

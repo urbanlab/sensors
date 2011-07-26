@@ -1,5 +1,5 @@
 require 'bombshell'
-require 'redis-interface'
+require 'redis-interface-client'
 
 module Redis_client
 	class Shell < Bombshell::Environment
@@ -8,7 +8,7 @@ module Redis_client
 		prompt_with 'client'
 		def initialize argv
 			super argv
-			@redis = Redis_interface.new 1
+			@redis = Redis_interface_client.new 1
 		end
 	
 		def list_multi

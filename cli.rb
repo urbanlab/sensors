@@ -5,9 +5,9 @@ $:.unshift(File.dirname(__FILE__) + '/') unless $:.include?(File.dirname(__FILE_
 ##### Saving utilities #####
 	
 def redis_to_json
-	require './redis-interface.rb'
+	require './redis-interface-client.rb'
 	require 'json'
-	r = Redis_interface.new 1
+	r = Redis_interface_client.new 1
 	config = {}
 	config["profile"] = {:sensor => r.list_profiles(:sensor), :actuator => r.list_profiles(:actuator)}
 	config["multiplexers"] = r.list_multis
@@ -29,8 +29,8 @@ elsif ARGV[0] && ARGV[0] == "-o"
 	f << redis_to_json
 	f.close
 else
-	require './redis-interface.rb'
-	r = Redis_interface.new 1
+	require './redis-interface-client.rb'
+	r = Redis_interface_client.new 1
 	redis = Redis.new
 	input = ARGF.read
 	config = JSON.parse(input)

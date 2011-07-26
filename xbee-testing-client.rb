@@ -1,6 +1,6 @@
-require './redis-interface.rb'
+require './redis-interface-client.rb'
 
-cli = Redis_interface.new(1, 'localhost', 6379)
+cli = Redis_interface_client.new(1, 'localhost', 6379)
 Thread.abort_on_exception = true
 cli.on_published_value(:sensor) do |multi, pin, value|
 	profile = cli.list_profiles(:sensor)[cli.get_config(:sensor, multi, pin)[:profile]]

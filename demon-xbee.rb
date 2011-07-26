@@ -1,7 +1,7 @@
 require 'rubygems'
 require 'json'
 require 'serialport'
-require './redis-interface.rb'
+require './redis-interface-demon.rb'
 require './serial-interface.rb'
 require 'logger'
 
@@ -24,7 +24,7 @@ class Xbee_Demon
 		Thread.abort_on_exception = true
 		@log = args[:logger]
 		@log.progname = "Demon"
-		@redis = Redis_interface.new(network, args[:redis_host], args[:redis_port])
+		@redis = Redis_interface_demon.new(network, args[:redis_host], args[:redis_port])
 		@serial = Serial_interface.new(args[:serial_port], args[:baudrate], args[:logger])
 		
 		@redis.on_new_sensor do |multi, pin, function, period, *options|
@@ -41,7 +41,7 @@ class Xbee_Demon
 		
 		@redis.on_published_value(:actuator) do |multi, pin, value|
 			case value.to_i
-				when 1 #test existence profile
+				when 1 #TODO test existence profile
 					config = @redis.get_config(:actuator, multi, pin)
 					profile = @redis.get_profile(:actuator, config[:profile])
 					profile.has_key?(:period)? period = profile[:period] : period = 10000000 #ugly

@@ -3,7 +3,7 @@ require './redis-interface-common.rb'
 # Contain useful methods for the client : writing sensors' configuration, reading published values...
 class Redis_interface_client
 	include Redis_interface_common
-	def initialize(network, host = 'localhost', port = 6379, logger = Logger.new(nil))
+	def initialize(network, host = 'localhost', port = 6379)
 		load(network, host, port)
 	end
 	# Return the list of supported profile from a list of arduino functions

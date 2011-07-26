@@ -1,3 +1,5 @@
+#!/usr/bin/env ruby
+
 require 'rubygems'
 require 'json'
 require 'serialport'
@@ -88,7 +90,7 @@ log = Logger.new STDOUT
 log.level = Logger::DEBUG
 log.progname = "Demon"
 log.datetime_format = "%Y-%m-%d %H:%M:%S"
-at_exit {log.info("Exiting...")}
+trap(:INT){throw :interrupted}
 begin #TODO : don't work ?
 	log.info("Starting demon...")
 	demon = Xbee_Demon.new("1", logger: log)
@@ -102,5 +104,7 @@ rescue Errno::ENOENT => e
 rescue Errno::EIO => e
 	@log.fatal("Unknown error : #{e.message}")
 end
-sleep
+catch(:interrupted){sleep}
+log.info("Exiting...")
+
 

@@ -21,6 +21,8 @@ class Serial_interface
 		}
 	end
 	
+	# Listen to the incoming messages and process them according to @wait_for
+	#
 	def process_messages
 		loop do
 			buff = ""
@@ -54,10 +56,15 @@ class Serial_interface
 		end
 	end
 	
+	# Reset a multiplexer : delete every task running (keep the id)
+	#
 	def reset(multi)
 		snd_message(/^#{multi} RST/, multi, :reset)
 	end
 	
+	# Add a task to a multiplexer. Return true if it's a success. (args are the
+	# optionnal argument of the firmware function)
+	#
 	def add_task(multi, pin, function, period, *args)
 		args.delete nil
 		if snd_message(/^#{multi} ADD #{pin}/, multi, :add, function, period, pin, *args) == "KO"
@@ -67,6 +74,8 @@ class Serial_interface
 		return true
 	end
 	
+	# Stop a task and execute its stopping function
+	#
 	def rem_task(multi, pin)
 		if snd_message(/^#{multi} DEL #{pin}/, multi, :remove, pin) == "KO"
 			@log.warn("Could not remove task #{multi}:#{pin}")
@@ -75,21 +84,30 @@ class Serial_interface
 		return true
 	end
 	
+	# Modify the id of a multiplexer. Tasks will still run
+	#
 	def change_id(old, new)
 		snd_message(/^#{new} ID/, old, :id, new)
 		#TODO : register
 	end
 	
-	def list_implementations(multi)
-		snd_message(/^#{multi} LIST/, multi, :list)
+	# Get the list of implementations supported by an arduino
+	# in an array
+	#
+	def list_implementations(multi) # TODO retour si ça ne marche pas
+		snd_message(/^#{multi} LIST/, multi, :list).split(" ")
 	end
 	
+	# List the running tasks of an arduino in a hash
+	#
 	def list_tasks(multi)
 		ans = snd_message(/^#{multi} TASKS/, multi, :tasks)
 		Hash[*ans.scan(/(\d+):(\w+)/).collect{|p| [p[0].to_i, p[1]]}.flatten]
 	end
 	
+	# Callback when a multiplexer is plugged
 	# block has 1 int argument : multiplexer's id.
+	#
 	def on_new_multi(&block)
 		Thread.new do
 			loop do
@@ -98,7 +116,9 @@ class Serial_interface
 		end
 	end
 	
+	# Callback when a multiplexer send a value of one of his sensor
 	# block has 3 int arguments : the multiplexer's id, pin number and value.
+	#
 	def on_sensor_value(&block)
 		Thread.new do
 			loop do

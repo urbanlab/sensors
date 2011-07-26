@@ -15,10 +15,11 @@ module Redis_interface_common
 	DEL    = "delete"
 	PROF   = "profile"
 	
-	def initialize(network, host = 'localhost', port = 6379)
+	def load(network, host = 'localhost', port = 6379)
 		@host = host
 		@port = port
 		@redis = Redis.new :host => host, :port => port
+		@redis.get("test") #bypass ruby optimisation to catch exceptions at launch
 		@network = network
 		@prefix = "#{PREFIX}:#{@network}"
 	end

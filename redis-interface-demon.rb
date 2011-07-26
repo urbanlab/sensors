@@ -9,9 +9,8 @@ class Redis_interface_demon
 	include Redis_interface_common
 	
 	def initialize(network, host = 'localhost', port = 6379, logger = Logger.new(nil))
-		super(network, host, port)
+		load(network, host, port)
 		@log = logger
-		@log.info("Demon started")
 	end
 	
 	# Destroy the entire database and configuration

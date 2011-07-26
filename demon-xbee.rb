@@ -23,11 +23,23 @@ class Xbee_Demon
 		args = {serial_port: '/dev/ttyUSB0', baudrate: 19200, redis_host: 'localhost', redis_port: 6379, logger: Logger.new(nil)}.merge args
 		Thread.abort_on_exception = true
 		@log = args[:logger]
-		@log.progname = "Demon"
-		@log.datetime_format = "%Y-%m-%d %H:%M:%S"
-		@redis = Redis_interface_demon.new(network, args[:redis_host], args[:redis_port], args[:logger])
-		@serial = Serial_interface.new(args[:serial_port], args[:baudrate], args[:logger])
-		
+		redislogger = @log.dup
+		redislogger.progname = "Redis"
+		seriallogger = @log.dup
+		seriallogger.progname = "Serial"
+		begin
+			@redis = Redis_interface_demon.new(network, args[:redis_host], args[:redis_port], redislogger)
+			@serial = Serial_interface.new(args[:serial_port], args[:baudrate], seriallogger)
+		rescue Errno::ECONNREFUSED => e
+			@log.fatal("Could not connect to Redis, exiting... error : #{e.message}")
+			exit
+		rescue Errno::ENOENT => e
+			@log.fatal("Could not find receiver, exiting... error : #{e.message}")
+			exit
+		end
+	end
+	
+	def launch
 		@redis.on_new_sensor do |multi, pin, function, period, *options|
 			@serial.add_task(multi, pin, function, period, *options)
 		end
@@ -59,7 +71,7 @@ class Xbee_Demon
 			elsif (not (@redis.knows_multi? id))   # valid id, but not registered
 				@redis.set_multi_config(id, {:description => "no name", :supported => @serial.list_implementations(id)})
 			else                                   # Known multi that has been reseted
-				@redis.list(:sensor, id ).each do |pin, config|
+				@redis.list(:sensor, id ).each do |pin, config| #plante si profile faux TODO
 					profile = @redis.get_profile(:sensor, config[:profile])
 					@serial.add_task(id, pin, profile[:function], config[:period], *[profile[:option1], profile[:option2]])
 				end
@@ -74,6 +86,21 @@ class Xbee_Demon
 end
 log = Logger.new STDOUT
 log.level = Logger::DEBUG
-demon = Xbee_Demon.new("1", logger: log)
+log.progname = "Demon"
+log.datetime_format = "%Y-%m-%d %H:%M:%S"
+at_exit {log.info("Exiting...")}
+begin #TODO : don't work ?
+	log.info("Starting demon...")
+	demon = Xbee_Demon.new("1", logger: log)
+	demon.launch
+rescue Errno::ECONNREFUSED => e
+	@log.fatal("Lost connection with Redis, exiting... error : #{e.message}")
+	exit
+rescue Errno::ENOENT => e
+	@log.fatal("Lost connection with the receiver, exiting... error : #{e.message}")
+	exit
+rescue Errno::EIO => e
+	@log.fatal("Unknown error : #{e.message}")
+end
 sleep
 

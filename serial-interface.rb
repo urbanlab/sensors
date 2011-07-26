@@ -25,16 +25,32 @@ class Serial_interface
 		loop do
 			buff = ""
 			while not buff.end_with?("\r\n")
-				@serial.wait
-				buff << @serial.gets
+				i = 0
+				begin
+					@serial.wait
+					buff << @serial.gets
+				rescue StandardError => e
+					if (i+=1) < @retry
+						@log.error("The serial line had a problem : #{e.message}, retrying...")
+						sleep 1
+						retry
+					else
+						@log.fatal("The serial line seems to be down.")
+						raise e
+					end					
+				end
 			end
 			@log.debug("Received \"#{buff.delete("\r\n")}\"")
+			accepted = false
 			@wait_for.each do |pattern, pipe|
 				if (buff.match(pattern))
 					pipe.write(buff)
 					pipe.close
+					accepted = true
+					break
 				end
 			end
+			@log.warn("Received an unhandled message : #{buff}") unless accepted
 		end
 	end
 	

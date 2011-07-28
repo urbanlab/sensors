@@ -48,6 +48,7 @@ class Serial_interface
 				if (buff.match(pattern))
 					pipe.write(buff)
 					pipe.close
+					@wait_for.delete pattern
 					accepted = true
 					break
 				end
@@ -151,8 +152,6 @@ class Serial_interface
 			Timeout.timeout(@timeout){rd.read.match(pattern).post_match.lstrip.chomp}
 		rescue Timeout::Error => e
 			((i+=1) < @retry)? retry : raise(e)
-		ensure
-			@wait_for.delete(pattern)
 		end
 	end
 	
@@ -161,7 +160,6 @@ class Serial_interface
 		rd, wr = IO.pipe
 		@wait_for[pattern] = wr
 		ans = rd.read
-		@wait_for.delete(pattern)
 		ans
 	end
 end

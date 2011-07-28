@@ -99,8 +99,9 @@ module Redis_interface_common
 	# Callback when a value is published on redis.
 	# Type might be :sensor or :actuator
 	# block has 3 arguments : multiplexer's id, sensor's pin, value
+	# TODO unknown actu
 	#
-	def on_published_value(type, multi = "*", pin = "*", &block) #TODO unknown actu
+	def on_published_value(type, multi = "*", pin = "*") # :yield: multi_id, sensor_id, value
 		Thread.new do
 			redis = Redis.new
 			redis.psubscribe("#{@prefix}.#{MULTI}:#{multi}.#{type}:#{pin}.value") do |on|

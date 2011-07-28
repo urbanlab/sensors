@@ -53,8 +53,7 @@ class Redis_interface_demon
 		@redis.publish("#{path}:#{sensor}.#{VALUE}", value)
 		return true
 	end
-	
-		
+
 	# Callback when a client request to add a sensor
 	# block has 3 arguments : multiplexer's id, sensor's pin and sensor's config
 	#

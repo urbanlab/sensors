@@ -103,6 +103,7 @@ rescue Errno::ENOENT => e
 	exit
 rescue Errno::EIO => e
 	@log.fatal("Unknown error : #{e.message}")
+	exit
 end
 catch(:interrupted){sleep}
 log.info("Exiting...")

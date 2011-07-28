@@ -77,8 +77,9 @@ class Redis_interface_client
 		can_have = {:period => Integer, :option1 => Integer, :option2 => Integer}
 		case args[:type] #TODO :type non checké
 			when :sensor
-				must_have.merge!({:unit => String})
-				can_have.merge!({:rpn => String})
+				must_have[:unit] = String
+				can_have[:rpn] = String
+				can_have[:precision] = Integer
 			when :actuator
 				{}
 		end

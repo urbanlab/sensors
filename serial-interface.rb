@@ -44,16 +44,18 @@ class Serial_interface
 			end
 			@log.debug("Received \"#{buff.delete("\r\n")}\"")
 			accepted = false
-			@wait_for.each do |pattern, pipe|
-				if (buff.match(pattern))
-					pipe.write(buff)
-					pipe.close
-					@wait_for.delete pattern
-					accepted = true
-					break
+			catch :accepted_message do
+				@wait_for.each do |pattern, pipe|
+					if (buff.match(pattern))
+						pipe.write(buff)
+						pipe.close
+						@wait_for.delete pattern
+						throw :accepted_message
+						break
+					end
 				end
+				@log.warn("Received an unhandled message : #{buff}")
 			end
-			@log.warn("Received an unhandled message : #{buff}") unless accepted
 		end
 	end
 	

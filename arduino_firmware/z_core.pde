@@ -8,7 +8,7 @@ void setup(){
   snd_message("NEW");
   while(get_id() == 0) {
     process_message(true);
- /}
+  }
 }
 
 void loop() {

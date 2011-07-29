@@ -5,12 +5,18 @@ command commandList[] = {
   {"ain", 0, analog_input_loop, input_setup,    noconf        },
   {"1wi", 0, one_wire_loop,     one_wire_setup, noconf        },
   {"mem", 0, snd_memory_loop,   noconf,         noconf        },
-  {"i2c", 2, i2c_loop,          i2c_setup,      noconf        }
+  {"i2c", 2, i2c_loop,          i2c_setup,      noconf        },
+  {"pls", 1, pulse_input_loop,  input_setup,    noconf        }
 };
 
 const byte nbCmd = sizeof(commandList) / sizeof(command);            // Number of functions implemented
 
 // Fonctions supportees :
+
+// args[0] : 0 for LOW, 1 for HIGH
+void pulse_input_loop(int pin, int* args, int* space) {
+  snd_message(pin, pulseIn(pin, args[0], 50000)); //will not block more than 50ms
+}
 
 // Useful for task that don't need configuration
 void noconf(int pin, int* args, int* space) {

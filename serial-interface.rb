@@ -44,6 +44,7 @@ class Serial_interface
 			end
 			@log.debug("Received \"#{buff.delete("\r\n")}\"")
 			accepted = false
+			#TODO :@wait_for.detect {|pattern, pipe| buff.match(pattern)}
 			catch :accepted_message do
 				@wait_for.each do |pattern, pipe|
 					if (buff.match(pattern))

@@ -10,11 +10,14 @@ ANS = { :sensor => "SENS", :new => "NEW", :implementations => "LIST", :tasks => 
 #TODO verify the execution of add, id and remove
 class Serial_interface
 	def initialize port, baudrate, logger = Logger.new(nil), timeout = 1, retry_nb = 3
-		@serial = SerialPort.new port, baudrate
+		@log = logger
+		@baudrate = baudrate
+		@down_ports = []
+		@port = port || search_port
+		@serial = SerialPort.new @port, @baudrate
 		@wait_for = {} # {pattern => wpipe}
 		@timeout = timeout
 		@retry = retry_nb
-		@log = logger
 		# Thread.abort_on_exception = true
 		listener = Thread.new {
 			process_messages
@@ -32,14 +35,13 @@ class Serial_interface
 					@serial.wait
 					buff << @serial.gets
 				rescue StandardError => e
-					if (i+=1) < @retry
-						@log.error("The serial line had a problem : #{e.message}, retrying...")
-						sleep 1
-						retry
-					else
-						@log.fatal("The serial line seems to be down.")
-						raise e
-					end					
+					@log.error("The serial line had a problem : #{e.message}, retrying...")
+					@serial.close
+					sleep 1
+					@port = search_port
+					sleep 1
+					@serial = SerialPort.new @port, @baudrate
+					retry				
 				end
 			end
 			@log.debug("Received \"#{buff.delete("\r\n")}\"")
@@ -133,6 +135,32 @@ class Serial_interface
 	end
 	
 	private
+	
+	def search_port
+		port = nil
+		until port
+			@down_ports.push @port if @port
+			candidates = Dir.glob("/dev/ttyUSB*")
+			not_tested = candidates - @down_ports
+			if not_tested.size == 0
+				@down_ports.clear
+				not_tested = candidates
+			end
+			port = case not_tested.size
+				when 0
+					@log.error("No /dev/ttyUSB available, demon won't anything while not fixed")
+					nil
+				when 1
+					@log.info("Trying with port #{candidates[0]}")
+					not_tested[0]
+				else
+					@log.warn("More than 1 port are available, taking #{candidates[0]}")
+					not_tested[0]
+			end
+			sleep 1
+		end
+		port
+	end
 	
 	def snd_message(pattern, multi, command, *args)
 		msg = "#{multi} #{CMD[command]} #{args.join(" ")}".chomp(" ") + "\n"

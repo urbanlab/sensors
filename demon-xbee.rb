@@ -22,16 +22,19 @@ Sur network:<network>:multiplexers:<multipl-id>:actuators = hash (pin, objet act
 
 class Xbee_Demon
 	def initialize(network, args)#serial_port = '/dev/ttyUSB0', baudrate = 19200, redis_host = 'localhost', redis_port = 6379, logfile = nil)
-		args = {serial_port: '/dev/ttyUSB0', baudrate: 19200, redis_host: 'localhost', redis_port: 6379, logger: Logger.new(nil)}.merge args
+		args = {baudrate: 19200, redis_host: 'localhost', redis_port: 6379, logger: Logger.new(nil)}.merge args
 		Thread.abort_on_exception = true
 		@log = args[:logger]
 		redislogger = @log.dup
 		redislogger.progname = "Redis"
 		seriallogger = @log.dup
 		seriallogger.progname = "Serial"
+		
+		@log.info("Starting demon on port #{args[:serial_port]}")
 		begin
+			port = args[:serial_port]
 			@redis = Redis_interface_demon.new(network, args[:redis_host], args[:redis_port], redislogger)
-			@serial = Serial_interface.new(args[:serial_port], args[:baudrate], seriallogger)
+			@serial = Serial_interface.new(port, args[:baudrate], seriallogger)
 		rescue Errno::ECONNREFUSED => e
 			@log.fatal("Could not connect to Redis, exiting... error : #{e.message}")
 			exit
@@ -86,13 +89,13 @@ class Xbee_Demon
 		end
 	end
 end
+
 log = Logger.new STDOUT
 log.level = Logger::DEBUG
 log.progname = "Demon"
 log.datetime_format = "%Y-%m-%d %H:%M:%S"
 trap(:INT){throw :interrupted}
 begin #TODO : don't work ?
-	log.info("Starting demon...")
 	demon = Xbee_Demon.new("1", logger: log)
 	demon.launch
 rescue Errno::ECONNREFUSED => e
@@ -107,5 +110,6 @@ rescue Errno::EIO => e
 end
 catch(:interrupted){sleep}
 log.info("Exiting...")
+
 
 

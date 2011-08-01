@@ -16,15 +16,16 @@ class Redis_interface_client
 	end
 	
 	# Register description of a multiplexer. Return false if the multi doesn't exist
+	# Publication inutile ?
 	#
 	def set_description multi_id, description
 		raise ArgumentError "Description must be a string" unless description.is_a?(String)
 		return false unless knows_multi?(multi_id)
-		path = "#{@prefix}.#{MULTI}"
-		config = JSON.s_parse(@redis.hget("#{path}.#{CONF}", multi_id))
+		path = "#{@prefix}.#{MULTI}.#{CONF}"
+		config = JSON.s_parse(@redis.hget(path, multi_id))
 		config[:description] = description
-		@redis.hset("#{path}.#{CONF}", multi_id, config.to_json)
-		@redis.publish("#{path}:#{multi_id}.#{CONF}", config.to_json)
+		@redis.hset(path, multi_id, config.to_json)
+		#@redis.publish("#{path}:#{multi_id}.#{CONF}", config.to_json)
 		return true
 	end
 	
@@ -48,28 +49,20 @@ class Redis_interface_client
 		end
 		raise_errors(must_have, can_have, config)
 		#config = {pin: profile[:pin], period: profile[:period]}.merge config #inutile normalement
-		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{config.delete(:type)}"
-		@redis.publish("#{path}:#{config[:pin]}.#{CONF}", config.to_json)
-		@redis.hset("#{path}.#{CONF}", config[:pin], config.to_json)
+		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{config.delete(:type)}.#{CONF}"
+		@redis.publish(path, config.to_json)
+		#@redis.hset("#{path}.#{CONF}", config[:pin], config.to_json)
 		return true
 	end
 	
 	# Unregister a sensor. Return true if something was removed
 	# TODO does not publish if no multi ?
 	def remove type, multi_id, pin
-		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{type}"
-		set_actuator_state(multi_id, pin, 0) if type.to_s == ACTU and get_actuator_state(multi_id, pin)
-		@redis.publish("#{path}:#{pin}.#{DEL}", pin)
-		@redis.hdel("#{path}.#{CONF}", pin) == 1
+		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{type}.#{DEL}"
+		#set_actuator_state(multi_id, pin, 0) if type.to_s == ACTU and get_actuator_state(multi_id, pin) TODO should be done by demon
+		@redis.publish(path, pin)
+		#@redis.hdel("#{path}.#{CONF}", pin) == 1
 	end
-	
-	def set_actuator_state(multi_id, pin, state)
-		return false unless (knows? :actuator, multi_id, pin)
-		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{ACTU}"
-		@redis.hset("#{path}.#{VALUE}", pin, state)
-		@redis.publish("#{path}:#{pin}.#{VALUE}", state)
-	end
-
 	
 	# Register a sensor profile
 	#

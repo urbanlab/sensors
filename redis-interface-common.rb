@@ -19,7 +19,7 @@ module Redis_interface_common
 		@host = host
 		@port = port
 		@redis = Redis.new :host => host, :port => port
-		@redis.get("test") #bypass ruby optimisation to catch exceptions at launch
+		@redis.set("test", "ohohoh") #bypass ruby optimisation to catch exceptions at launch
 		@network = network
 		@prefix = "#{PREFIX}:#{@network}"
 	end
@@ -72,6 +72,11 @@ module Redis_interface_common
 	def get_actuator_state(multi_id, pin)
 		return nil unless knows?(:actuator, multi_id, pin)
 		@redis.hget("#{@prefix}.#{MULTI}:#{multi_id}.#{ACTU}.#{VALUE}", pin) == "1"
+	end
+	
+	def set_actuator_state(multi_id, pin, state)
+		return false unless (knows? :actuator, multi_id, pin)
+		@redis.publish("#{@prefix}.#{MULTI}:#{multi_id}.#{ACTU}:#{pin}.#{VALUE}", state)
 	end
 	
 	# Return true if the profile exist

@@ -28,6 +28,14 @@ elsif ARGV[0] && ARGV[0] == "-o"
 	f = File.new(ARGV[1],"w")
 	f << redis_to_json
 	f.close
+elsif ARGV[0] && ARGV[0] == "-p"
+	require './redis-interface-client.rb'
+	f = File.new(ARGV[1], "w")
+	r = Redis_interface_client.new 1
+	config = {}
+	config["profile"] = {:sensor => r.list_profiles(:sensor), :actuator => r.list_profiles(:actuator)}
+	
+	f << JSON.pretty_generate(config)
 else
 	require './redis-interface-client.rb'
 	r = Redis_interface_client.new 1
@@ -44,6 +52,7 @@ else
 			profile.symbolize_keys!
 		end
 	end
+=begin
 	config[:multiplexers].integerize_keys!
 	config[:multiplexers].each do |id, config|
 		config.symbolize_keys!
@@ -56,7 +65,7 @@ else
 			config.symbolize_keys!
 		end
 	end
-
+=end
 	# Reconstitution
 
 	config[:profile][:sensor].each do |name, profile|
@@ -65,6 +74,7 @@ else
 	config[:profile][:actuator].each do |name, profile|
 		r.add_profile({:type => :actuator, :name => name}.merge(profile))
 	end
+=begin
 	config[:multiplexers].each do |multi_id, multi_config|
 		r.set_multi_config(multi_id.to_i, multi_config[:description])
 		multi_config[:sensors].each do |sens_id, sens_config|
@@ -74,7 +84,7 @@ else
 			r.add(:actuator, multi_id.to_i, actu_config.merge({pin: actu_id.to_i}))
 		end
 	end
-	
+=end
 	#redis.publish("config", input)
 end
 

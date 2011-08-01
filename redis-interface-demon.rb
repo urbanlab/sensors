@@ -23,17 +23,22 @@ class Redis_interface_demon
 	# Assign a config to a multiplexer
 	#
 	def set_multi_config multi_id, config
-		path = "#{@prefix}.#{MULTI}"
-		@redis.hset("#{path}.#{CONF}", multi_id, config.to_json)
-		@redis.publish("#{path}:#{multi_id}.#{CONF}", config.to_json)
-		@log.debug("Registering multiplexer's configuration of #{multi_id} : #{config}")
+		path = "#{@prefix}.#{MULTI}.#{CONF}"
+		@redis.hset(path, multi_id, config.to_json)
+		config[:id] = multi_id
+		@redis.publish(path, config.to_json)
+		@log.debug("Registering multiplexer's configuration : #{config}")
 	end
 	
 	# Publish a sensor's value
 	#
-	def publish_value(multi_id, sensor, value)
+	#Valeurs d'un sensor:
+	#Key Hash:	network:<network>.multiplexor:<multipl-id>.sensor:<sensor-id>.value = {value => <value>, timestamp => <timestamp>}
+	#Channel :	network:<network>.multiplexor:<multipl-id>.sensor:<sensor-id>.value = valeur
+	
+	def publish_value(multi_id, sensor, raw_value)
 		return false unless knows? :sensor, multi_id, sensor
-		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}"
+		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}:#{sensor}.#{VALUE}"
 		config = get_config(:sensor, multi_id, sensor)
 		if config == nil
 			@log.error("Tried to publish a value from an unknown multiplexer : #{multi_id}")
@@ -45,12 +50,14 @@ class Redis_interface_demon
 			return false
 		end
 		if profile.has_key? :rpn
-			rpn = profile[:rpn].sub("X", value.to_s)
+			rpn = profile[:rpn].sub("X", raw_value.to_s)
 			value = solve_rpn(rpn)
+		else
+			value = raw_value
 		end
-		key = {:value => value,:timestamp => Time.now.to_f}.to_json
-		@redis.hset("#{path}.#{VALUE}", sensor, key)
-		@redis.publish("#{path}:#{sensor}.#{VALUE}", value)
+		key = {:value => value,:timestamp => Time.now.to_f}
+		@redis.mapped_hmset(path, key)
+		@redis.publish(path, value)
 		return true
 	end
 
@@ -60,18 +67,24 @@ class Redis_interface_demon
 	def on_new_sensor(&block)
 		Thread.new do
 			redis = Redis.new :host => @host, :port => @port
-			redis.psubscribe("#{@prefix}.#{MULTI}:*.#{SENS}:*.#{CONF}") do |on|
+			redis.psubscribe("#{@prefix}.#{MULTI}:*.#{SENS}.#{CONF}") do |on|
 				on.pmessage do |pattern, channel, message|
-					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
-					parse.merge!(JSON.s_parse(message))
-					profile = get_profile :sensor, parse[:profile]
+					config = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
+					config.merge!(JSON.s_parse(message))
+					pin = config.delete(:pin)
+					multi = config.delete(:multiplexer)
+					profile = get_profile :sensor, config[:profile]
 					if profile == nil
 						@log.warn("A client tried to add a sensor with an unknown profile : #{parse[:profile]} (multiplexer : #{parse[:multiplexer]})")
 						next
 					end
-					parse = {period: profile[:period]}.merge parse #default values
+					@redis.hset(channel, pin, config.to_json)
+					config[:period] = config[:period] || profile[:period]
+					if not config[:period]
+						@log.warn("A client tried to add the sensor #{multi}:#{pin} without period. Config : #{config}, profile : #{profile}")
+					end
 					# TODO vérifier validité de la config
-					block.call(parse[:multiplexer], parse[:sensor], profile[:function], parse[:period], *[profile[:option1], profile[:option2]])
+					block.call(multi, pin, profile[:function], config[:period], *[profile[:option1], profile[:option2]])
 				end
 			end
 		end
@@ -79,7 +92,7 @@ class Redis_interface_demon
 	
 	# Callback when a client request to add an actu
 	# block has 3 arguments : multiplexer's id, actu's pin and actu's profile
-	# TODO : useless ?
+	# TODO : useless ? TODO pas à jour
 	def on_new_actu(&block)
 		Thread.new do
 			redis = Redis.new :host => @host, :port => @port
@@ -95,17 +108,20 @@ class Redis_interface_demon
 	# Callback when a client request to delete a sensor
 	# block has 2 arguments : multiplexer's id, sensor's pin
 	#
-	def on_deleted_sensor(&block)
+	def on_deleted(type, &block)
 		Thread.new do
 			redis = Redis.new :host => @host, :port => @port
-			redis.psubscribe("#{@prefix}.#{MULTI}:*.#{SENS}:*.#{DEL}") do |on|
-				on.pmessage do |pattern, channel, message|
+			redis.psubscribe("#{@prefix}.#{MULTI}:*.#{type}.#{DEL}") do |on|
+				on.pmessage do |pattern, channel, pin|
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
+					pin = pin.to_i
 					#if not knows?(:sensor, parse[:multiplexer].to_i, parse[:sensor].to_i) #TODO, client already deleted it.
 					#	@log.warn("A client tried to remove an unknown sensor : #{parse[:multiplexer]},#{parse[:sensor]}")
 					#	next
 					#end
-					yield parse[:multiplexer].to_i, parse[:sensor].to_i
+					yield parse[:multiplexer].to_i, pin
+					@redis.hdel("#{@prefix}.#{MULTI}:#{parse[:multiplexer]}.#{type}.#{CONF}")
+					@redis.hdel("#{@prefix}.#{MULTI}:#{parse[:multiplexer]}.#{type}.#{VALUE}") if (type == :sensor)
 				end
 			end
 		end

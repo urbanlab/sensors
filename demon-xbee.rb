@@ -55,8 +55,12 @@ class Xbee_Demon
 		#rien à faire ?
 		#end
 		
-		@redis.on_deleted_sensor do |id_multi, sensor|
+		@redis.on_deleted :sensor do |id_multi, sensor|
 			@serial.rem_task(id_multi, sensor) #TODO registered ? task exists ?
+		end
+		
+		@redis.on_deleted :actuator do |id_multi, actuator|
+			@serial.rem_task(id_multi, actuator) if get_config(:actuator, id_multi, actuator).state
 		end
 		
 		@redis.on_published_value(:actuator) do |multi, pin, value|
@@ -64,7 +68,7 @@ class Xbee_Demon
 				when 1 #TODO test existence profile
 					config = @redis.get_config(:actuator, multi, pin)
 					profile = @redis.get_profile(:actuator, config[:profile])
-					profile.has_key?(:period)? period = profile[:period] : period = 10000000 #ugly
+					profile.has_key?(:period)? period = profile[:period] : period = 10000000 #ugly should be 0, and take in account in firmware
 					@serial.add_task(multi, pin, profile[:function], period)
 				else 
 					@serial.rem_task(multi, pin)
@@ -112,7 +116,7 @@ class Xbee_Demon
 end
 
 log = Logger.new STDOUT
-log.level = Logger::INFO
+log.level = Logger::DEBUG
 log.progname = "Demon"
 log.datetime_format = "%Y-%m-%d %H:%M:%S"
 trap(:INT){throw :interrupted}

@@ -1,4 +1,5 @@
 require './redis-interface-common.rb'
+# TODO delete every hdel, hset : should be done by the demon
 
 # Contain useful methods for the client : writing sensors' configuration, reading published values...
 class Redis_interface_client

@@ -45,6 +45,8 @@ class Xbee_Demon
 	end
 	
 	def launch
+		restore_state
+	
 		@redis.on_new_sensor do |multi, pin, function, period, *options|
 			@serial.add_task(multi, pin, function, period, *options)
 		end
@@ -88,10 +90,29 @@ class Xbee_Demon
 			@redis.publish_value(id_multi, sensor, value)
 		end
 	end
+	
+	def restore_state
+		@log.info("Restoring state from database...")
+		@redis.list_multis.each do |id_multi, config|
+			if (@serial.ping id_multi)
+				@redis.list(:sensor, id_multi).each do |pin, sensor_config|
+					profile = @redis.get_profile(:sensor, sensor_config[:profile])
+					@serial.add_task(id_multi, pin, profile[:function], sensor_config[:period], *[profile[:option1], profile[:option2]])
+				end
+				config[:state] = true
+				@redis.set_multi_config(id_multi, config)
+			else
+				@log.warn "Multiplexer #{id_multi} seems to be disconnected."
+				config[:state] = false
+				@redis.set_multi_config(id_multi, config)
+			end
+		end
+		@log.info("Restoration complete.")
+	end
 end
 
 log = Logger.new STDOUT
-log.level = Logger::DEBUG
+log.level = Logger::INFO
 log.progname = "Demon"
 log.datetime_format = "%Y-%m-%d %H:%M:%S"
 trap(:INT){throw :interrupted}

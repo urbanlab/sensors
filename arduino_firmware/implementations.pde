@@ -15,7 +15,7 @@ const byte nbCmd = sizeof(commandList) / sizeof(command);            // Number o
 
 // args[0] : 0 for LOW, 1 for HIGH
 void pulse_input_loop(int pin, int* args, int* space) {
-  snd_message(pin, pulseIn(pin, args[0], 50000)); //will not block more than 50ms
+  snd_message(pin, pulseIn(pin, args[0], (unsigned long) 50000)); //will not block more than 50ms
 }
 
 // Useful for task that don't need configuration

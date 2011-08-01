@@ -5,7 +5,7 @@ require 'thread'
 require 'io/wait'
 require 'logger'
 
-CMD = { :list => "l", :add => "a", :remove => "d", :tasks => "t" , :id => "i", :reset => "r" }
+CMD = { :list => "l", :add => "a", :remove => "d", :tasks => "t" , :id => "i", :reset => "r", :ping => "p" }
 ANS = { :sensor => "SENS", :new => "NEW", :implementations => "LIST", :tasks => "TASKS" , :ok => "OK", :add => "ADD", :remove => "DEL"}
 #TODO verify the execution of add, id and remove
 class Serial_interface
@@ -66,6 +66,12 @@ class Serial_interface
 	#
 	def reset(multi)
 		snd_message(/^#{multi} RST/, multi, :reset)
+	end
+	
+	# Ping a multiplexer : test if it is alive
+	#
+	def ping(multi)
+		snd_message(/^#{multi} PONG/, multi, :ping) == ""
 	end
 	
 	# Add a task to a multiplexer. Return true if it's a success. (args are the
@@ -154,7 +160,7 @@ class Serial_interface
 					@log.info("Trying with port #{candidates[0]}")
 					not_tested[0]
 				else
-					@log.warn("More than 1 port are available, taking #{candidates[0]}")
+					@log.info("More than 1 port are available, taking #{candidates[0]}")
 					not_tested[0]
 			end
 			sleep 1
@@ -164,13 +170,25 @@ class Serial_interface
 	
 	def snd_message(pattern, multi, command, *args)
 		msg = "#{multi} #{CMD[command]} #{args.join(" ")}".chomp(" ") + "\n"
-		@log.debug("Sent : \"#{msg.delete("\n")}\"")
-		@serial.write msg
-		if pattern
-			begin
-				wait_for(pattern)
-			rescue Timeout::Error => e
-				@log.error("The multiplexer #{multi} did not answered to the command \"#{command}\"")
+		if @serial.closed?
+			@log.error("Could not send the command #{command}, the receiver isn't available")
+		else
+			@serial.write msg
+			@log.debug("Sent : \"#{msg.delete("\n")}\"")
+			if pattern
+				i = 0
+				begin
+					wait_for(pattern)
+				rescue Timeout::Error => e
+					if (i+=1) < @retry
+						@serial.write msg
+						@log.debug("Sent : \"#{msg.delete("\n")}\"")
+						retry
+					else
+						@log.error("The multiplexer #{multi} did not answered to the command \"#{command}\"")
+						nil
+					end
+				end
 			end
 		end
 	end
@@ -179,11 +197,7 @@ class Serial_interface
 		i = 0
 		rd, wr = IO.pipe
 		@wait_for[pattern] = wr
-		begin
-			Timeout.timeout(@timeout){rd.read.match(pattern).post_match.lstrip.chomp}
-		rescue Timeout::Error => e
-			((i+=1) < @retry)? retry : raise(e)
-		end
+		Timeout.timeout(@timeout){rd.read.match(pattern).post_match.lstrip.chomp}
 	end
 	
 	def brutal_wait_for (pattern)

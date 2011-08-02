@@ -66,6 +66,16 @@ module Redis_interface_common
 		Hash[*@redis.hgetall(path).collect {|id, config| [id.to_i, JSON.s_parse(config)]}.flatten]
 	end
 	
+	# Return an array of [value, time] where time is the date when
+	# the value was received. Return nil if the sensor doesn't
+	# exists
+	#
+	def get_sensor_value multi_id, pin
+		return nil unless knows? :sensor, multi_id, pin
+		hash = @redis.hgetall("#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}:#{pin}.#{VALUE}").symbolize_keys
+		return hash[:value].to_f, hash[:timestamp].to_f
+	end
+	
 	# Return the current state of the actuator (true for on, false for off)
 	# or nil if the actuator is unknown
 	#

@@ -82,6 +82,7 @@ class Redis_interface_demon
 					config[:period] = config[:period] || profile[:period]
 					if not config[:period]
 						@log.warn("A client tried to add the sensor #{multi}:#{pin} without period. Config : #{config}, profile : #{profile}")
+						next
 					end
 					# TODO vérifier validité de la config
 					block.call(multi, pin, profile[:function], config[:period], *[profile[:option1], profile[:option2]])
@@ -120,8 +121,8 @@ class Redis_interface_demon
 					#	next
 					#end
 					yield parse[:multiplexer].to_i, pin
-					@redis.hdel("#{@prefix}.#{MULTI}:#{parse[:multiplexer]}.#{type}.#{CONF}")
-					@redis.hdel("#{@prefix}.#{MULTI}:#{parse[:multiplexer]}.#{type}.#{VALUE}") if (type == :sensor)
+					@redis.hdel("#{@prefix}.#{MULTI}:#{parse[:multiplexer]}.#{type}.#{CONF}", pin)
+					@redis.hdel("#{@prefix}.#{MULTI}:#{parse[:multiplexer]}.#{type}.#{VALUE}", pin) if (type == :sensor)
 				end
 			end
 		end

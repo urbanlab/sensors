@@ -1,6 +1,7 @@
 #include <OneWire.h>
 #include <avr/eeprom.h>
 #include <Wire.h>
+//#define SERIAL_DEBUG
 
 const int signature = 12350;             // Should change at each firmware modification
 const int atomicMsgSize = 50;           // TODO verifier

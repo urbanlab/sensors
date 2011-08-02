@@ -214,6 +214,7 @@ boolean process_message(boolean block){
   return valid;
 }
 
+#ifndef SERIAL_DEBUG
 boolean get_message(char* msg, boolean block){
   int i=0;
   boolean valid = false;
@@ -230,8 +231,9 @@ boolean get_message(char* msg, boolean block){
   } while(!valid && block);
   return valid;
 }
+
+#else /* SERIAL_DEBUG */
 // For science, you monster.
-/*
 boolean get_message(char* msg, boolean block){
   int i=0;
   boolean valid = false;
@@ -246,8 +248,8 @@ boolean get_message(char* msg, boolean block){
     }
   } while(!valid && block);
   return valid;
-}*/
-
+}
+#endif /* SERIAL_DEBUG */
 // Get a word from serial line.
 // Return true if something was available
 // arg block define if the function shourd wait for a word

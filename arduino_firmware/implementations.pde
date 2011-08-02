@@ -14,39 +14,39 @@ const byte nbCmd = sizeof(commandList) / sizeof(command);            // Number o
 // Fonctions supportees :
 
 // args[0] : 0 for LOW, 1 for HIGH
-void pulse_input_loop(int pin, int* args, int* space) {
-  snd_message(pin, pulseIn(pin, args[0], (unsigned long) 50000)); //will not block more than 50ms
+void pulse_input_loop(int pin, int* space) {
+  snd_message(pin, pulseIn(pin, space[0], (unsigned long) 50000)); //will not block more than 50ms
 }
 
 // Useful for task that don't need configuration
-void noconf(int pin, int* args, int* space) {
+void noconf(int pin, int* space) {
 }
 
-// args[0] : address (33 pour la boussole)
-// args[1] : get data command (65)
-void i2c_setup(int pin, int* args, int* space) {
+// space[0] : address (33 pour la boussole)
+// space[1] : get data command (65)
+void i2c_setup(int pin, int* space) {
   Wire.begin();
-  Wire.beginTransmission(args[0]);
-  Wire.send(args[1]);
+  Wire.beginTransmission(space[0]);
+  Wire.send(space[1]);
   Wire.endTransmission();
 }
 
-void i2c_loop(int pin, int* args, int* space) {
-  Wire.requestFrom(args[0], 2);
+void i2c_loop(int pin, int* space) {
+  Wire.requestFrom(space[0], 2);
   snd_message(pin, (Wire.receive() << 8) + Wire.receive());
-  Wire.beginTransmission(args[0]);
-  Wire.send(args[1]);
+  Wire.beginTransmission(space[0]);
+  Wire.send(space[1]);
   Wire.endTransmission();
 }
 
-void one_wire_setup(int pin, int* args, int* space){
+void one_wire_setup(int pin, int* space){
   OneWire one = OneWire(pin);
   one.reset();
   one.skip();
   one.write(0x44);
 }
 
-void one_wire_loop(int pin, int* args, int* space){
+void one_wire_loop(int pin, int* space){
   int data0;
   int data1;
   OneWire one = OneWire(pin);
@@ -65,24 +65,24 @@ void one_wire_loop(int pin, int* args, int* space){
 }
 
 // Put the pin in input mode
-void input_setup(int pin, int* args, int* space) {
+void input_setup(int pin, int* space) {
   pinMode(pin, INPUT);
   space[0] = 2;
 }
 
 // Put the pin in output mode
-void output_setup(int pin, int* args, int* space) {
+void output_setup(int pin, int* space) {
   pinMode(pin, OUTPUT);
   space[0] = 0;
 }
 
 // Put the pin at low state
-void output_cleaner(int pin, int* args, int* space) {
+void output_cleaner(int pin, int* space) {
   digitalWrite(pin, LOW);
 }
 
 // Read digital input on pin
-void digit_input_loop(int pin, int* args, int* space) {
+void digit_input_loop(int pin, int* space) {
   int val = digitalRead(pin);
   if (val != space[0]) {
     snd_message(pin, val);
@@ -91,16 +91,16 @@ void digit_input_loop(int pin, int* args, int* space) {
 }
 
 // Read analog input on pin
-void analog_input_loop(int pin, int* args, int* space){
+void analog_input_loop(int pin, int* space){
   snd_message(pin, analogRead(pin));
 }
 
-void snd_memory_loop(int pin, int* args, int* space){
+void snd_memory_loop(int pin, int* space){
   snd_message(pin, availableMemory());
 }
 
 // Blink the pin
-void blinker(int pin, int* args, int* space) {
+void blinker(int pin, int* space) {
   if (space[0] == 0){
     digitalWrite(pin, HIGH);
     space[0] = 1;

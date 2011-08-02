@@ -1,11 +1,18 @@
 // {"command", nb of arguments, core function, configuration function}
 command commandList[] = {
+  // Digital input : read a binary value and send it when it has changed
   {"din", 0, digit_input_loop,  input_setup,    noconf        },
-  {"bli", 0, blinker,           output_setup,   output_cleaner},
+  // Digital output : switch to 1 an output at creation and 0 at destruction
+  // looping it make it blink
+  {"dou", 0, blinker,           output_setup,   output_cleaner},
+  // Analog input : read regulary an analog voltage (1 unit = 0.00322V on FIO /!\)
   {"ain", 0, analog_input_loop, input_setup,    noconf        },
+  // 1wi : read in 1wi a value from a dallas temperature sensor (TODO generalize)
   {"1wi", 0, one_wire_loop,     one_wire_setup, noconf        },
-  {"mem", 0, snd_memory_loop,   noconf,         noconf        },
+  // i2c : read in 2wire a value. first args is the request message, 2nd is the reading address
   {"i2c", 2, i2c_loop,          i2c_setup,      noconf        },
+  // pulse : read a value with pulse style. return the nomber of micro-s between to front
+  // see http://www.arduino.cc/en/Reference/PulseIn for arg1
   {"pls", 1, pulse_input_loop,  input_setup,    noconf        }
 };
 
@@ -14,16 +21,19 @@ const byte nbCmd = sizeof(commandList) / sizeof(command);            // Number o
 // Fonctions supportees :
 
 // args[0] : 0 for LOW, 1 for HIGH
+//
 void pulse_input_loop(int pin, int* space) {
   snd_message(pin, pulseIn(pin, space[0], (unsigned long) 50000)); //will not block more than 50ms
 }
 
-// Useful for task that don't need configuration
+// Useful for task that don't need conf, loop or destroyer
+//
 void noconf(int pin, int* space) {
 }
 
 // space[0] : address (33 pour la boussole)
 // space[1] : get data command (65)
+//
 void i2c_setup(int pin, int* space) {
   Wire.begin();
   Wire.beginTransmission(space[0]);
@@ -70,10 +80,11 @@ void input_setup(int pin, int* space) {
   space[0] = 2;
 }
 
-// Put the pin in output mode
+// Put the pin in output mode and switch it to 1
 void output_setup(int pin, int* space) {
   pinMode(pin, OUTPUT);
-  space[0] = 0;
+  digitalWrite(pin, HIGH);
+  space[0] = 1;
 }
 
 // Put the pin at low state
@@ -93,10 +104,6 @@ void digit_input_loop(int pin, int* space) {
 // Read analog input on pin
 void analog_input_loop(int pin, int* space){
   snd_message(pin, analogRead(pin));
-}
-
-void snd_memory_loop(int pin, int* space){
-  snd_message(pin, availableMemory());
 }
 
 // Blink the pin

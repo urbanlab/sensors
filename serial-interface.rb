@@ -29,7 +29,7 @@ class Serial_interface
 	def process_messages
 		loop do
 			buff = ""
-			while not buff.end_with?("\r\n")
+			while not buff.end_with?("\n")
 				i = 0
 				begin
 					@serial.wait

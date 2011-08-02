@@ -108,6 +108,7 @@ class Redis_interface_demon
 	
 	# Callback when a client request to delete a sensor
 	# block has 2 arguments : multiplexer's id, sensor's pin
+	# TODO : block return true if it really deleted it
 	#
 	def on_deleted(type, &block)
 		Thread.new do

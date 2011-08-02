@@ -68,7 +68,7 @@ class Xbee_Demon
 				when 1 #TODO test existence profile
 					config = @redis.get_config(:actuator, multi, pin)
 					profile = @redis.get_profile(:actuator, config[:profile])
-					profile.has_key?(:period)? period = profile[:period] : period = 10000000 #ugly should be 0, and take in account in firmware
+					profile.has_key?(:period)? period = profile[:period] : period = 0 #period = 0 => don't loop
 					@serial.add_task(multi, pin, profile[:function], period)
 				else 
 					@serial.rem_task(multi, pin)

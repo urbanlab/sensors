@@ -1,11 +1,10 @@
 void setup(){
   Serial.begin(baudrate);
-  //Serial.println("Invalid first message"); zigbee's first message is always invalid
   Serial.flush();
-  //Serial.println(availableMemory());
   delay(1000);
   restore_state();
-  snd_message("NEW");
+  strcpy(messageSnd, "NEW");
+  snd_complete();
   while(get_id() == 0) {
     process_message(true);
   }
@@ -14,14 +13,10 @@ void setup(){
 void loop() {
   process_message(false);
   for (int i=0 ; i < nbPin ; i++) {
-    if ((taskList[i] != NULL) && cycleCheck(taskList[i]->lastTime, taskList[i]->period))
+    if ((taskList[i] != NULL) && (taskList[i]->period != 0) && cycleCheck(taskList[i]->lastTime, taskList[i]->period))
       taskList[i]->function(i, taskList[i]->space);
   }
 }
-/*
-void* operator new(size_t size) {return malloc(size); }
-
-void operator delete(void* ptr) { free(ptr); }*/
 
 boolean cycleCheck(unsigned long &lastTime, unsigned int period)
 {
@@ -33,22 +28,6 @@ boolean cycleCheck(unsigned long &lastTime, unsigned int period)
   }
   else
     return false;
-}
-
-// this function will return the number of bytes currently free in RAM
-// written by David A. Mellis
-// based on code by Rob Faludi http://www.faludi.com
-
-int availableMemory() {
-  int size = 1024; // Use 2048 with ATmega328
-  byte *buf;
-
-  while ((buf = (byte *) malloc(--size)) == NULL)
-    ;
-
-  free(buf);
-
-  return size;
 }
 
 boolean add_task(unsigned int pin, byte idx_command, unsigned int period, int* args) {
@@ -66,7 +45,7 @@ boolean add_task(unsigned int pin, byte idx_command, unsigned int period, int* a
       taskList[pin]->space[i] = args[i];
     taskList[pin]->idx_command = idx_command;
     commandList[idx_command].configure(pin, taskList[pin]->space);
-    
+
     nbTask++;
     return true;
   }
@@ -83,108 +62,92 @@ boolean delete_task(unsigned int pin) {
   return false;
 }
 
-void snd_message(char* message) {
-  char buff[atomicMsgSize];
-  strcpy(buff, idstr);
-  strcat(buff, " ");
-  strcat(buff, message);
-  Serial.println(buff);
+void snd_complete() {
+  strcat(completeMessageSnd, "\n"); // println(s) = print(s); println(). not atomic.
+  Serial.print(completeMessageSnd); 
 }
 
 void snd_message(unsigned int sensor, int value) {
-  char buff[atomicMsgSize];
-  char message[msgSize];
-  char valueBuff[wordSize];
-  itoa(value, valueBuff, 10);
-  itoa(sensor, message, 10);
-  strcat(message, " ");
-  strcat(message, valueBuff);
-  strcpy(buff, idstr);
-  strcat(buff, " SENS ");
-  strcat(buff, message);
-  Serial.println(buff);
+  strcpy(messageSnd, "SENS ");
+  char* intStr = messageSnd + strlen(messageSnd);
+  itoa(sensor, intStr, 10);
+  strcat(messageSnd, " ");
+  intStr = messageSnd + strlen(messageSnd);
+  itoa(value, intStr, 10);
+  snd_complete();
 }
 
 // Get and process a message from the server.
 // Return true if a message for the arduino arrived
+//
 boolean process_message(boolean block){
   boolean valid = false;
   do {
     char car = ' ';
     int nbArgs = 1;
     char* msgrcv[wordNb];
-    char msg[msgSize] = "";
+    buffRcv[0] = '\0';
     boolean rcvd = false;
     do {                                  // Reception message
-      rcvd = get_message(msg, block);
-    } while (!rcvd && block);
-    msgrcv[0] = msg;
+      rcvd = get_message(buffRcv, block);
+    } 
+    while (!rcvd && block);
+    msgrcv[0] = buffRcv;
     int i=0;
     while (car != '\0') {                 // Decoupage message
-      car = msg[i];
+      car = buffRcv[i];
       if (car == ' '){
-        msg[i] = '\0';
-        msgrcv[nbArgs++] = msg+i+1;
+        buffRcv[i] = '\0';
+        msgrcv[nbArgs++] = buffRcv+i+1;
       }
       i++;
     }
     if (strcmp(msgrcv[0], idstr) == 0) {  // Identification
       valid = true;
-      char resp[msgSize];
       boolean accepted = false;
       switch (msgrcv[1][0]) {             // Traitement
-      /*case 'p':
-        accepted = true;
-        print_eeprom();
-      break;*/
       case 'p':
-        strcpy(resp, "PONG");
-      break;
-      
+        strcpy(messageSnd, "PONG");
+        break;
+
       case 's':
-        strcpy(resp, "SAVED");
         save_state();
-      break;
-      
-      /*case 'r':
-        accepted = true;
-        strcpy(resp, "OK");
-        restore_state();
-      break;*/
-        
+        strcpy(messageSnd, "SAVED");
+        break;
+
       case 'l':
-        strcpy(resp, "LIST ");
+        strcpy(messageSnd, "LIST ");
         for (byte j = 0 ; j < nbCmd ; j++){
-          strcat(resp, commandList[j].name);
-          strcat(resp, " ");
+          strcat(messageSnd, commandList[j].name);
+          strcat(messageSnd, " ");
         }
         break;
-        
+
       case 't':
-        strcpy(resp, "TASKS ");
+        strcpy(messageSnd, "TASKS ");
         for (int i = 0 ; i < nbPin ; i++){
           if (taskList[i] != NULL) {
             char pin[3] = "";
             itoa(i, pin, 10);
-            strcat(resp, pin);
-            strcat(resp, ":");
-            strcat(resp, commandList[taskList[i]->idx_command].name);
-            strcat(resp, " ");
+            strcat(messageSnd, pin);
+            strcat(messageSnd, ":");
+            strcat(messageSnd, commandList[taskList[i]->idx_command].name);
+            strcat(messageSnd, " ");
           }
         }
         break;
-        
+
       case 'i':
         set_id(atoi(msgrcv[2]));
-        strcpy(resp, "ID");
-      break;
-      
+        strcpy(messageSnd, "ID");
+        break;
+
       case 'r':
         for (unsigned int i = 0 ; i < nbPin ; i++)
           delete_task(i);
-        strcpy(resp, "RST");
-      break;
-        
+        strcpy(messageSnd, "RST");
+        break;
+
       case 'a':
         for (int i = 0 ; i < nbCmd ; i++){
           if((strcmp(commandList[i].name, msgrcv[2]) == 0) && (commandList[i].nbArgs == nbArgs - 5) && atoi(msgrcv[4]) < nbPin){ // Meme nom et meme nombre d'arg
@@ -197,20 +160,21 @@ boolean process_message(boolean block){
             accepted = add_task(pin, i, period, args);
           }
         }
-        strcpy(resp, "ADD ");
-        strcat(resp, msgrcv[4]);
-        strcat(resp, accepted ? " OK" : " KO");
-      break;
-        
+        strcpy(messageSnd, "ADD ");
+        strcat(messageSnd, msgrcv[4]);
+        strcat(messageSnd, accepted ? " OK" : " KO");
+        break;
+
       case 'd':
-        strcpy(resp, "DEL ");
-        strcat(resp, msgrcv[2]);
-        strcat(resp, delete_task(atoi(msgrcv[2])) ? " OK" : " KO");
-      break;
+        strcpy(messageSnd, "DEL ");
+        strcat(messageSnd, msgrcv[2]);
+        strcat(messageSnd, delete_task(atoi(msgrcv[2])) ? " OK" : " KO");
+        break;
       }
-      snd_message(resp);
+      snd_complete();
     }
-  } while (!valid && block);
+  } 
+  while (!valid && block);
   return valid;
 }
 
@@ -220,15 +184,16 @@ boolean get_message(char* msg, boolean block){
   boolean valid = false;
   do{
     if(Serial.available()){
-       delay(100);
-       while(i< msgSize-1 && (msg[i-1] != '\n')) {
-          if (Serial.available())
-            msg[i++] = Serial.read();
-       }
-       msg[i-1]='\0';
-       valid = true;
+      delay(100);
+      while(i< msgSize-1 && (msg[i-1] != '\n')) { //probleme au premier passage si '\n' précède ?
+        if (Serial.available())
+          msg[i++] = Serial.read();
+      }
+      msg[i-1]='\0';
+      valid = true;
     }
-  } while(!valid && block);
+  } 
+  while(!valid && block);
   return valid;
 }
 
@@ -239,38 +204,18 @@ boolean get_message(char* msg, boolean block){
   boolean valid = false;
   do{
     if(Serial.available()){
-       delay(100);
-       while(i< msgSize-1 && Serial.available()) {
-           msg[i++] = Serial.read();
-       }
-       msg[i++]='\0';
-       valid = true;
+      delay(100);
+      while(i< msgSize-1 && Serial.available()) {
+        msg[i++] = Serial.read();
+      }
+      msg[i++]='\0';
+      valid = true;
     }
-  } while(!valid && block);
+  } 
+  while(!valid && block);
   return valid;
 }
 #endif /* SERIAL_DEBUG */
-// Get a word from serial line.
-// Return true if something was available
-// arg block define if the function shourd wait for a word
-/*
-boolean get_word(char* wrd, boolean block){
-  int i=0;
-  boolean valid = false;
-  do {
-    if(Serial.available()){
-       delay(10);
-       while( Serial.available() && i< wordSize-1 && wrd[i] != ' ' ) {
-          wrd[i++] = Serial.read();
-          if (wrd[i-1] == ' ')
-            i--;
-       }
-       wrd[i]='\0';
-       valid = true;
-    }
-  } while (!valid && block);
-  return valid;
-}*/
 
 byte read_byte(unsigned int address) {
   return eeprom_read_byte((unsigned char *) address);
@@ -291,6 +236,9 @@ void write_int(unsigned int address, unsigned int value) {
 void set_id(byte id){
   write_byte(2, id);
   itoa(id, idstr, 10);
+  itoa(id, completeMessageSnd, 10);
+  strcat(completeMessageSnd, " ");
+  messageSnd = completeMessageSnd + strlen(completeMessageSnd); // position messageSnd in order to have the id as a prefix of it.
 }
 
 byte get_id(){
@@ -311,57 +259,19 @@ unsigned int save_task(unsigned int idx_task, unsigned int address) {
   }
   return address;
 }
-/*
-unsigned int restore_task(unsigned int address) {
-  int pin = read_int(address);
-  address += 2;
-  int idx_command = read_byte(address);
-  address += 1;
-  int period = read_int(address);
-  address += 2;
-  //int args[maxArgsCmd];
-  for (int i=0; i<spaceSize; i++){
-    taskList[pin]->space[i] = read_int(address);
-    address += 2;
-  }
-  add_task(pin, idx_command, period, taskList[pin]->space);
-  return address;
-}*/
 
 void save_state(){
   write_int(0, signature);
-  //write_byte(3, nbTask);
-  //int address = 4;
-  //for (byte i=0; i < nbPin; i++){
-  //  if (taskList[i])
-  //    address = save_task(i, address);
-  //}
 }
 
 void restore_state(){
   if (read_int(0) == signature) {
     set_id(get_id());
     byte nb = read_byte(3);
-    //unsigned int address = 4;
-    //for (byte i=0; i<nb; i++)
-    //  address = restore_task(address);
   }
   else {
     set_id(0);
     save_state();
   }
 }
-/*
-void print_eeprom(){
-  int i = 0;
-  while(i<512){
-    Serial.print(i);
-    Serial.print("\t");
-    Serial.print((int)read_byte(i));
-    Serial.print("\t");
-    Serial.print(read_int(i));
-    Serial.println();
-    i++;
-  }
-}
-*/
+

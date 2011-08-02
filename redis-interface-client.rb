@@ -81,10 +81,10 @@ class Redis_interface_client
 		@redis.hset("#{CONF}.#{args.delete(:type)}", args.delete(:name), args.to_json)
 	end
 	
-	# Unregister a profile TODO : check if users ?
+	# Unregister a profile
 	#
-	def remove_profile( name )
-		raise NotImplementedError
+	def remove_profile( type, name )
+		@redis.hdel("#{CONF}.#{type}", name)
 	end
 	
 	private

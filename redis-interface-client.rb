@@ -21,10 +21,9 @@ class Redis_interface_client
 	def set_description multi_id, description
 		raise ArgumentError "Description must be a string" unless description.is_a?(String)
 		return false unless knows_multi?(multi_id)
-		path = "#{@prefix}.#{MULTI}.#{CONF}"
-		config = JSON.s_parse(@redis.hget(path, multi_id))
+		config = JSON.s_parse(@redis.hget(path(), multi_id))
 		config[:description] = description
-		@redis.hset(path, multi_id, config.to_json)
+		@redis.hset(path(), multi_id, config.to_json)
 		#@redis.publish("#{path}:#{multi_id}.#{CONF}", config.to_json)
 		return true
 	end
@@ -49,7 +48,7 @@ class Redis_interface_client
 		end
 		raise_errors(must_have, can_have, config)
 		#config = {pin: profile[:pin], period: profile[:period]}.merge config #inutile normalement
-		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{config.delete(:type)}.#{CONF}"
+		path = path(config.delete(:type), :config, multi_id)
 		@redis.publish(path, config.to_json)
 		#@redis.hset("#{path}.#{CONF}", config[:pin], config.to_json)
 		return true
@@ -58,7 +57,7 @@ class Redis_interface_client
 	# Unregister a sensor. Return true if something was removed
 	# TODO does not publish if no multi ?
 	def remove type, multi_id, pin
-		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{type}.#{DEL}"
+		path = path(type, :delete, multi_id)
 		#set_actuator_state(multi_id, pin, 0) if type.to_s == ACTU and get_actuator_state(multi_id, pin) TODO should be done by demon
 		@redis.publish(path, pin)
 		#@redis.hdel("#{path}.#{CONF}", pin) == 1
@@ -78,13 +77,13 @@ class Redis_interface_client
 				{}
 		end
 		raise_errors(must_have, can_have, args)
-		@redis.hset("#{CONF}.#{args.delete(:type)}", args.delete(:name), args.to_json)
+		@redis.hset(path(args.delete(:type)), args.delete(:name), args.to_json)
 	end
 	
 	# Unregister a profile
 	#
 	def remove_profile( type, name )
-		@redis.hdel("#{CONF}.#{type}", name)
+		@redis.hdel(path(type), name)
 	end
 	
 	private

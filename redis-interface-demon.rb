@@ -23,7 +23,7 @@ class Redis_interface_demon
 	# Assign a config to a multiplexer
 	#
 	def set_multi_config multi_id, config
-		path = "#{@prefix}.#{MULTI}.#{CONF}"
+		path = path(multi_id)
 		@redis.hset(path, multi_id, config.to_json)
 		config[:id] = multi_id
 		@redis.publish(path, config.to_json)
@@ -38,7 +38,7 @@ class Redis_interface_demon
 	
 	def publish_value(multi_id, sensor, raw_value)
 		return false unless knows? :sensor, multi_id, sensor
-		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}:#{sensor}.#{VALUE}"
+		path = path(:sensor, :value, multi_id, sensor)
 		config = get_config(:sensor, multi_id, sensor)
 		if config == nil
 			@log.error("Tried to publish a value from an unknown multiplexer : #{multi_id}")
@@ -67,7 +67,7 @@ class Redis_interface_demon
 	def on_new_sensor(&block)
 		Thread.new do
 			redis = Redis.new :host => @host, :port => @port
-			redis.psubscribe("#{@prefix}.#{MULTI}:*.#{SENS}.#{CONF}") do |on|
+			redis.psubscribe(path(:sensor, :config, '*')) do |on|
 				on.pmessage do |pattern, channel, message|
 					config = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
 					config.merge!(JSON.s_parse(message))
@@ -97,7 +97,7 @@ class Redis_interface_demon
 	def on_new_actu(&block)
 		Thread.new do
 			redis = Redis.new :host => @host, :port => @port
-			redis.psubscribe("#{@prefix}.#{MULTI}*.#{ACTU}:*.#{CONF}") do |on|
+			redis.psubscribe(path(:actuator, :config, '*')) do |on|
 				on.pmessage do |pattern, channel, profile|
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ]
 					yield parse[MULTI].to_i, parse[ACTU].to_i, profile
@@ -113,7 +113,7 @@ class Redis_interface_demon
 	def on_deleted(type, &block)
 		Thread.new do
 			redis = Redis.new :host => @host, :port => @port
-			redis.psubscribe("#{@prefix}.#{MULTI}:*.#{type}.#{DEL}") do |on|
+			redis.psubscribe(path(type, :delete, '*')) do |on|
 				on.pmessage do |pattern, channel, pin|
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
 					pin = pin.to_i
@@ -122,8 +122,8 @@ class Redis_interface_demon
 					#	next
 					#end
 					yield parse[:multiplexer].to_i, pin
-					@redis.hdel("#{@prefix}.#{MULTI}:#{parse[:multiplexer]}.#{type}.#{CONF}", pin)
-					@redis.hdel("#{@prefix}.#{MULTI}:#{parse[:multiplexer]}.#{type}.#{VALUE}", pin) if (type == :sensor)
+					@redis.del(path(type, :value, parse[:multiplexer], pin))
+					@redis.hdel(path(type, :config, parse[:multiplexer]), pin) if (type == :sensor)
 				end
 			end
 		end

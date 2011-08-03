@@ -6,7 +6,8 @@ require 'serialport'
 require './redis-interface-demon.rb'
 require './serial-interface.rb'
 require 'logger'
-
+#TODO : restauration period KO ?
+#TODO : restauration tâches après new KO ?
 
 =begin
 - multiplexer : {:description => "bla", :supported => ["ain", "din"]}

@@ -27,7 +27,7 @@ module Redis_interface_common
 	# get all the multiplexers config in a hash {id => config}
 	#
 	def list_multis
-		configs = @redis.hgetall("#{@prefix}.#{MULTI}.#{CONF}")
+		configs = @redis.hgetall(path())
 		return Hash[*configs.collect{|id, conf| [id.to_i, JSON.s_parse(conf)]}.flatten]
 	end
 	
@@ -35,26 +35,26 @@ module Redis_interface_common
 	#
 	def get_multi_config( multi_id )
 		return nil unless knows_multi? multi_id
-		JSON.s_parse(@redis.hget("#{@prefix}.#{MULTI}.#{CONF}", multi_id))
+		JSON.s_parse(@redis.hget(path(), multi_id))
 	end
 	
 	# Return true if a multi is registered
 	#
 	def knows_multi? multi_id
-		@redis.hexists("#{@prefix}.#{MULTI}.#{CONF}", multi_id)
+		@redis.hexists(path(), multi_id)
 	end
 	
 	# Return true if the device exists, false if not.
 	#
 	def knows? type, multi_id, pin
-		(knows_multi? multi_id) && @redis.hexists("#{@prefix}.#{MULTI}:#{multi_id}.#{type}.#{CONF}", pin)
+		(knows_multi? multi_id) && @redis.hexists(path(type, :config, multi_id, pin), pin)
 	end
 	
 	# Get a device's config
 	#
 	def get_config type, multi_id, pin
 		return nil unless knows? type, multi_id, pin
-		JSON.s_parse(@redis.hget("#{@prefix}.#{MULTI}:#{multi_id}.#{type}.#{CONF}", pin))
+		JSON.s_parse(@redis.hget(path(type, :config, multi_id), pin))
 	end
 	
 	# Get all sensors config of a multi, in form {pin => config}
@@ -62,7 +62,7 @@ module Redis_interface_common
 	#
 	def list type, multi_id
 		return nil unless knows_multi? multi_id
-		path = "#{@prefix}.#{MULTI}:#{multi_id}.#{type}.#{CONF}"
+		path = path(type, multi_id)
 		Hash[*@redis.hgetall(path).collect {|id, config| [id.to_i, JSON.s_parse(config)]}.flatten]
 	end
 	
@@ -72,7 +72,7 @@ module Redis_interface_common
 	#
 	def get_sensor_value multi_id, pin
 		return nil unless knows? :sensor, multi_id, pin
-		hash = @redis.hgetall("#{@prefix}.#{MULTI}:#{multi_id}.#{SENS}:#{pin}.#{VALUE}").symbolize_keys
+		hash = @redis.hgetall(path(:sensor, :value, multi_id, pin)).symbolize_keys
 		return hash[:value].to_f, hash[:timestamp].to_f
 	end
 	
@@ -81,25 +81,25 @@ module Redis_interface_common
 	#
 	def get_actuator_state(multi_id, pin)
 		return nil unless knows?(:actuator, multi_id, pin)
-		@redis.hget("#{@prefix}.#{MULTI}:#{multi_id}.#{ACTU}.#{VALUE}", pin) == "1"
+		@redis.hget(path(:actuator, :value, multi_id, pin))
 	end
 	
 	def set_actuator_state(multi_id, pin, state)
 		return false unless (knows? :actuator, multi_id, pin)
-		@redis.publish("#{@prefix}.#{MULTI}:#{multi_id}.#{ACTU}:#{pin}.#{VALUE}", state)
+		@redis.publish(path(:actuator, :value, multi_id, pin), state)
 	end
 	
 	# Return true if the profile exist
 	#
 	def knows_profile?( type, name )
-		@redis.hexists("#{CONF}.#{type}", name)
+		@redis.hexists(path(type), name)
 	end
 	
 	# get all sensor/actuators profiles in a hash {name => profile}
 	# Parameter can be :sensor or :actuator
 	#
 	def list_profiles (type)
-		list = @redis.hgetall("#{CONF}.#{type}")
+		list = @redis.hgetall(path(type))
 		list.each { |name, profile| list[name] = JSON.s_parse(profile) }
 	end
 	
@@ -108,7 +108,7 @@ module Redis_interface_common
 	#
 	def get_profile(type, profile)
 		return nil unless knows_profile?(type, profile)
-		JSON.s_parse(@redis.hget("#{CONF}.#{type}", profile))
+		JSON.s_parse(@redis.hget(path(type), profile))
 	end
 	
 	# Callback when a value is published on redis.
@@ -119,12 +119,31 @@ module Redis_interface_common
 	def on_published_value(type, multi = "*", pin = "*") # :yield: multi_id, sensor_id, value
 		Thread.new do
 			redis = Redis.new
-			redis.psubscribe("#{@prefix}.#{MULTI}:#{multi}.#{type}:#{pin}.value") do |on|
+			redis.psubscribe(path(type, :value, multi, pin)) do |on|
 				on.pmessage do |pattern, channel, value|
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
 					yield parse[:multiplexer].to_i, parse[type].to_i, value.to_f
 				end
 			end
+		end
+	end
+	
+	# Generate redis path
+	# With no argument : path of the multiplexers' conf hash
+	# With 1 : :sensor or :actuator : path of the profiles' hash
+	# With 2 : first : :sensor or :actuator, 2nd : integer. Path
+	# of the list of sensors' config of a multiplexer
+	# With 3 : 1st : :sensor or :actuator, 2nd : :config, :delete, 3rd : multi_id.
+	# Path of device channel
+	# With 4 : 1st : :sensor or :actuator, 2nd : :config or :delete or :value, 3rd : multi_id, 4th : pin
+	#TODO delete
+	def path(*args)
+		case args.size
+			when 0 then "#@prefix.#{MULTI}.#{CONF}"
+			when 1 then "#{CONF}.#{args[0]}"
+			when 2 then "#@prefix.#{MULTI}:#{args[1]}.#{args[0]}.#{CONF}"
+			when 3 then "#@prefix.#{MULTI}:#{args[2]}.#{args[0]}.#{args[1]}"
+			when 4 then "#@prefix.#{MULTI}:#{args[2]}.#{args[0]}:#{args[3]}.#{args[1]}"
 		end
 	end
 end

@@ -8,6 +8,12 @@ require 'logger'
 class Redis_interface_demon
 	include Redis_interface_common
 	
+	# Initialization of the client.
+	#@param [Integer] network The identifier of the network the demon will work on.
+	#@param [String] host The adress of the machine where Redis is running
+	#@param [Integer] port Port where Redis listen
+	#@param [Logger] logger An optional Logger to write redis related events.
+	#
 	def initialize(network, host = 'localhost', port = 6379, logger = Logger.new(nil))
 		load(network, host, port)
 		@log = logger
@@ -31,11 +37,8 @@ class Redis_interface_demon
 	end
 	
 	# Publish a sensor's value
+	#@return true if the value was succefully published. false with log otherwise
 	#
-	#Valeurs d'un sensor:
-	#Key Hash:	network:<network>.multiplexor:<multipl-id>.sensor:<sensor-id>.value = {value => <value>, timestamp => <timestamp>}
-	#Channel :	network:<network>.multiplexor:<multipl-id>.sensor:<sensor-id>.value = valeur
-	
 	def publish_value(multi_id, sensor, raw_value)
 		return false unless knows? :sensor, multi_id, sensor
 		path = path(:sensor, :value, multi_id, sensor)
@@ -62,10 +65,10 @@ class Redis_interface_demon
 	end
 
 	# Callback when a client request to add a sensor
-	# block has 3 arguments : multiplexer's id, sensor's pin and sensor's config
-	# If the block return true, the sensor will be registered
+	#@yield [multi_id, pin, function, period, *[option1, option2]] Block will be called when a client request a new sensor with client's parameters
+	#@yieldreturn True if the new sensor is accepted, False if not
 	#
-	def on_new_sensor(&block)
+	def on_new_sensor
 		Thread.new do
 			redis = Redis.new :host => @host, :port => @port
 			redis.psubscribe(path(:sensor, :config, '*')) do |on|
@@ -85,7 +88,7 @@ class Redis_interface_demon
 						next
 					end
 					# TODO vérifier validité de la config
-					if block.call(multi, pin, profile[:function], period, *[profile[:option1], profile[:option2]])
+					if yield(multi, pin, profile[:function], period, *[profile[:option1], profile[:option2]])
 						@redis.hset(channel, pin, config.to_json)
 					end
 				end
@@ -109,10 +112,10 @@ class Redis_interface_demon
 	end
 	
 	# Callback when a client request to delete a sensor
-	# block has 2 arguments : multiplexer's id, sensor's pin
-	# TODO : block return true if it really deleted it
+	#@yield [multi_id, pin] Action to do when a client request to delete a device on a pin of the multiplexer multi_id
+	#@yieldreturn True if the destruction was accepted
 	#
-	def on_deleted(type, &block)
+	def on_deleted(type)
 		Thread.new do
 			redis = Redis.new :host => @host, :port => @port
 			redis.psubscribe(path(type, :delete, '*')) do |on|
@@ -123,7 +126,7 @@ class Redis_interface_demon
 					#	@log.warn("A client tried to remove an unknown sensor : #{parse[:multiplexer]},#{parse[:sensor]}")
 					#	next
 					#end
-					if block.call(parse[:multiplexer].to_i, pin)
+					if yield(parse[:multiplexer].to_i, pin)
 						@redis.del(path(type, :value, parse[:multiplexer], pin))
 						@redis.hdel(path(type, :config, parse[:multiplexer]), pin) if (type == :sensor)
 					end
@@ -134,6 +137,8 @@ class Redis_interface_demon
 	
 	private
 	
+	# Basic analyse of a String to know if it looks like a rpn
+	#
 	def is_a_rpn?(rpn)
 		return false unless (s = String.try_convert(rpn))
 		s.split(" ").each do |e|
@@ -142,7 +147,8 @@ class Redis_interface_demon
 		return true
 	end
 
-	
+	# Solve a Reverse Polish Notation
+	#
 	def solve_rpn(s)
 		stack = []
 		s.split(" ").each do |e|

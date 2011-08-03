@@ -15,6 +15,9 @@ module Redis_interface_common
 	DEL    = "delete"
 	PROF   = "profile"
 	
+	# Common function that should be load by initilize of classes using the
+	# module
+	#
 	def load(network, host = 'localhost', port = 6379)
 		@host = host
 		@port = port
@@ -24,33 +27,36 @@ module Redis_interface_common
 		@prefix = "#{PREFIX}:#{@network}"
 	end
 	
-	# get all the multiplexers config in a hash {id => config}
+	# get all the multiplexers' config
+	#@return [Hash] list in form {id => config}
 	#
 	def list_multis
 		configs = @redis.hgetall(path())
 		return Hash[*configs.collect{|id, conf| [id.to_i, JSON.s_parse(conf)]}.flatten]
 	end
 	
-	# get the multiplexer config or nil if does no exist
+	# get a multiplexer's config
+	#@return [Hash] config of the multi or nil if it doesn't exists
 	#
 	def get_multi_config( multi_id )
 		return nil unless knows_multi? multi_id
 		JSON.s_parse(@redis.hget(path(), multi_id))
 	end
 	
-	# Return true if a multi is registered
+	#@return true if a multi is registered
 	#
 	def knows_multi? multi_id
 		@redis.hexists(path(), multi_id)
 	end
 	
-	# Return true if the device exists, false if not.
+	#@return true if the device exists, false if not.
 	#
 	def knows? type, multi_id, pin
 		(knows_multi? multi_id) && @redis.hexists(path(type, :config, multi_id), pin)
 	end
 	
 	# Get a device's config
+	#@return [Hash] Hash representing the config
 	#
 	def get_config type, multi_id, pin
 		return nil unless knows? type, multi_id, pin
@@ -58,7 +64,7 @@ module Redis_interface_common
 	end
 	
 	# Get all sensors config of a multi, in form {pin => config}
-	# Return {} if there were no sensor, return nil if the multi does not exists
+	#@return [Hash] List of devices in form {pin => config} or nil if the multi does not exists
 	#
 	def list type, multi_id
 		return nil unless knows_multi? multi_id
@@ -66,9 +72,9 @@ module Redis_interface_common
 		Hash[*@redis.hgetall(path).collect {|id, config| [id.to_i, JSON.s_parse(config)]}.flatten]
 	end
 	
-	# Return an array of [value, time] where time is the date when
-	# the value was received. Return nil if the sensor doesn't
-	# exists
+	# Get the value of a sensor
+	#@return [Array] value, time Where time is the date when the value was received
+	# The value is already normalized
 	#
 	def get_sensor_value multi_id, pin
 		return nil unless knows? :sensor, multi_id, pin
@@ -76,35 +82,39 @@ module Redis_interface_common
 		return hash[:value].to_f, hash[:timestamp].to_f
 	end
 	
-	# Return the current state of the actuator (true for on, false for off)
-	# or nil if the actuator is unknown
+	# Get the state of an actuator
+	#@return [boolean] True for on, false for off, or nil if the actuator is unknown
 	#
 	def get_actuator_state(multi_id, pin)
 		return nil unless knows?(:actuator, multi_id, pin)
 		@redis.hget(path(:actuator, :value, multi_id, pin))
 	end
 	
+	# Activate or deactivate an actuator
+	#
 	def set_actuator_state(multi_id, pin, state)
 		return false unless (knows? :actuator, multi_id, pin)
 		@redis.publish(path(:actuator, :value, multi_id, pin), state)
 	end
 	
-	# Return true if the profile exist
+	#@return [boolean] true if the profile exists
 	#
 	def knows_profile?( type, name )
 		@redis.hexists(path(type), name)
 	end
 	
-	# get all sensor/actuators profiles in a hash {name => profile}
-	# Parameter can be :sensor or :actuator
+	# get all sensor/actuators profiles
+	#@param [Symbol] type can be :sensor or :actuator
+	#@return [Hash] in form {name => profile}
 	#
 	def list_profiles (type)
 		list = @redis.hgetall(path(type))
 		list.each { |name, profile| list[name] = JSON.s_parse(profile) }
 	end
 	
-	# With string parameter : get a sensor profile
-	# Parameter can be :sensor or :actuator
+	# Get a profile
+	#@param [Symbol] type can be :sensor or :actuator
+	#@param [String] profile the name of the profile
 	#
 	def get_profile(type, profile)
 		return nil unless knows_profile?(type, profile)
@@ -128,6 +138,8 @@ module Redis_interface_common
 		end
 	end
 	
+	private
+	
 	# Generate redis path
 	# With no argument : path of the multiplexers' conf hash
 	# With 1 : :sensor or :actuator : path of the profiles' hash
@@ -136,7 +148,7 @@ module Redis_interface_common
 	# With 3 : 1st : :sensor or :actuator, 2nd : :config, :delete, 3rd : multi_id.
 	# Path of device channel
 	# With 4 : 1st : :sensor or :actuator, 2nd : :config or :delete or :value, 3rd : multi_id, 4th : pin
-	#TODO delete
+	#
 	def path(*args)
 		case args.size
 			when 0 then "#@prefix.#{MULTI}.#{CONF}"
@@ -157,8 +169,8 @@ class String
 	end
 end
 
-# Stolen from rails source
 class Hash
+# Stolen from rails source
 	def symbolize_keys
 		inject({}) do |options, (key, value)|
 			options[(key.to_sym rescue key) || key] = value
@@ -185,6 +197,30 @@ class Hash
 		# symbolize each hash inside an array in .values
 		values.select{|v| v.is_a?(Array) }.flatten.each{|h| h.recursive_symbolize_keys! if h.is_a?(Hash) }
 		self
+	end
+	
+	# options test
+	#
+	def must_have(obligatory)
+		errors = []
+		obligatory.each do |argument, type|
+			errors << "#{argument} is missing" unless self[argument]
+			errors << "#{argument} should be #{type}" unless self[argument].is_a? type
+		end
+		raise ArgumentError, errors.join(", ") unless errors.empty?
+	end
+	
+	def can_have(optional)
+		#puts "---"
+		#p optional
+		#p self
+		errors = []
+		optional.each do |argument, typedefault|
+			type, default = typedefault
+			self[argument] = self[argument] || default
+			errors << "#{argument} should be #{type}" if self[argument] and not self[argument].is_a?(type)
+		end
+		raise ArgumentError, errors.join(", ") unless errors.empty?
 	end
 end
 

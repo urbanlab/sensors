@@ -2,12 +2,14 @@ require './redis-interface-common.rb'
 # TODO delete every hdel, hset : should be done by the demon
 
 # Contain useful methods for the client : writing sensors' configuration, reading published values...
+#
 class Redis_interface_client
 	include Redis_interface_common
 	def initialize(network, host = 'localhost', port = 6379)
 		load(network, host, port)
 	end
 	# Return the list of supported profile from a list of arduino functions
+	#@return [Array[String]] the profiles
 	#
 	def support(functions)
 		list_profiles(:actuator).merge(list_profiles(:sensor)).select { |name, profile|
@@ -15,8 +17,9 @@ class Redis_interface_client
 		}.keys
 	end
 	
-	# Register description of a multiplexer. Return false if the multi doesn't exist
-	# Publication inutile ?
+	# Register description of a multiplexer.
+	#@return [boolean] true if the description was succefully changed
+	#
 	#
 	def set_description multi_id, description
 		raise ArgumentError "Description must be a string" unless description.is_a?(String)
@@ -29,76 +32,59 @@ class Redis_interface_client
 	end
 	
 	# Register a sensor or an actuator.
-	# return true if this was a success
+	#@return [boolean] true if a demon was listening
+	#@macro [new] type
+	#@param [Symbol] type Device type, can be :sensor or :actuator
 	#
 	def add type, multi_id, args#type, multi_id, pin, config
 		config = args.dup
 		config[:type] = type
 		config[:multiplexer] = multi_id
-		must_have = {type: Symbol, name: String, profile: String, multiplexer: Integer}
-		can_have = {}
+		config.must_have(type: Symbol, name: String, profile: String, multiplexer: Integer)
 		profile = {}
 		case type
 			when :sensor
-				profile = get_profile :sensor, args[:profile]
-				profile.has_key?(:period)? can_have[:period] = Integer : must_have[:period] = Integer #TODO profile non checké
-				profile.has_key?(:pin)? can_have[:pin] = Integer : must_have[:pin] = Integer
-			when :actuator then {}
-			else raise ArgumentError, "Type should be :sensor or :actuator"
+				profile = get_profile :sensor, config[:profile]
+				profile.has_key?(:period)? config.can_have(period: Integer) : config.must_have(period: Integer) #TODO profile non checké
+#				profile.has_key?(:pin)? can_have[:pin] = Integer : must_have[:pin] = Integer #TODO implement default pin ?
+			#when :actuator then {}
+			#else raise ArgumentError, "Type should be :sensor or :actuator"
 		end
-		raise_errors(must_have, can_have, config)
-		#config = {pin: profile[:pin], period: profile[:period]}.merge config #inutile normalement
 		path = path(config.delete(:type), :config, multi_id)
-		@redis.publish(path, config.to_json)
-		#@redis.hset("#{path}.#{CONF}", config[:pin], config.to_json)
-		return true
+		@redis.publish(path, config.to_json) >= 1
 	end
 	
-	# Unregister a sensor. Return true if something was removed
+	# Unregister a sensor
+	#@macro type
+	#@return true if a demon was listening
 	# TODO does not publish if no multi ?
 	def remove type, multi_id, pin
 		path = path(type, :delete, multi_id)
 		#set_actuator_state(multi_id, pin, 0) if type.to_s == ACTU and get_actuator_state(multi_id, pin) TODO should be done by demon
-		@redis.publish(path, pin)
+		@redis.publish(path, pin) >= 1
 		#@redis.hdel("#{path}.#{CONF}", pin) == 1
 	end
 	
 	# Register a sensor profile
+	# 
 	#
 	def add_profile( args )#type, name, profile )
-		must_have = {type: Symbol, name: String, function: String}
-		can_have = {:period => Integer, :option1 => Integer, :option2 => Integer}
-		case args[:type] #TODO :type non checké
+		args.must_have(type: Symbol, name: String, function: String)
+		args.can_have(period: Integer, option1: Integer, option2: Integer)
+		case args[:type]
 			when :sensor
-				must_have[:unit] = String
-				can_have[:rpn] = String
-				can_have[:precision] = Integer
-			when :actuator
-				{}
+				args.must_have(unit: String)
+				args.can_have(rpn: String, precision: Integer)
 		end
-		raise_errors(must_have, can_have, args)
 		@redis.hset(path(args.delete(:type)), args.delete(:name), args.to_json)
 	end
 	
 	# Unregister a profile
+	#@return true if something was removed
 	#
 	def remove_profile( type, name )
-		@redis.hdel(path(type), name)
+		@redis.hdel(path(type), name) == 1
 	end
 	
-	private
-	
-	# Check if options are present and are of good type
-	#
-	def raise_errors(must_have, can_have, args)
-		errors = []
-		must_have.each do |argument, type|
-			errors << "#{argument} is missing" unless args[argument]
-			errors << "#{argument} should be #{type}" unless args[argument].is_a? type
-		end
-		can_have.each do |argument, type|
-			errors << "#{argument} should be #{type}" if args.has_key?(argument) and not args[argument].is_a? type
-		end
-		raise ArgumentError, errors.join(", ") unless errors.size == 0
-	end
+
 end

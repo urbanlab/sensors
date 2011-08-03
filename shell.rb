@@ -117,6 +117,14 @@ module Redis_client
 			end
 		end
 		
+		def remove_sensor_profile name
+			puts @redis.remove_profile(:sensor, name) ? "OK" : "KO"
+		end
+		
+		def remove_actuator_profile name
+			puts @redis.remove_profile(:actuator, name) ? "OK" : "KO"
+		end
+		
 		def get_sensor_value multi, pin
 			config = @redis.get_config(:sensor, multi, pin)
 			profile = @redis.get_profile(:sensor, config[:profile])

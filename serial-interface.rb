@@ -65,7 +65,7 @@ class Serial_interface
 	# Reset a multiplexer : delete every task running (keep the id)
 	#
 	def reset(multi)
-		snd_message(/^#{multi} RST/, multi, :reset)
+		snd_message(/^#{multi} RST/, multi, :reset) == ""
 	end
 	
 	# Ping a multiplexer : test if it is alive
@@ -74,47 +74,60 @@ class Serial_interface
 		snd_message(/^#{multi} PONG/, multi, :ping) == ""
 	end
 	
-	# Add a task to a multiplexer. Return true if it's a success. (args are the
-	# optionnal argument of the firmware function)
+	# Add a task to a multiplexer. Return true if it's a success.
+	# false if the multi refused, and nil if nobody answered or
+	# invalid answer
 	#
 	def add_task(multi, pin, function, period, *args)
 		args.delete nil
-		if snd_message(/^#{multi} ADD #{pin}/, multi, :add, function, period, pin, *args) == "KO"
-			@log.warn("Could not add task \"#{function}\" on #{multi}:#{pin}")
-			return false
+		case snd_message(/^#{multi} ADD #{pin}/, multi, :add, function, period, pin, *args)
+			when "OK"
+				true
+			when "KO"
+				@log.warn("The multiplexer #{multi}:#{pin} refused to add task \"#{function}\"")
+				false
+			else
+				nil
 		end
-		return true
 	end
 	
 	# Stop a task and execute its stopping function
+	# return true if this was a success
+	# false if nothing was removed
+	# nil if nobody answered, or invalid answer
 	#
 	def rem_task(multi, pin)
-		if snd_message(/^#{multi} DEL #{pin}/, multi, :remove, pin) == "KO"
-			@log.warn("Could not remove task #{multi}:#{pin}")
-			return false
+		case snd_message(/^#{multi} DEL #{pin}/, multi, :remove, pin)
+			when "OK"
+				true
+			when "KO"
+				@log.warn("The multiplexer #{multi} refused to remove task on pin #{pin}")
+			else
+				nil
 		end
-		return true
 	end
 	
 	# Modify the id of a multiplexer. Tasks will still run
+	# return true if somebody change its id
 	#
 	def change_id(old, new)
-		snd_message(/^#{new} ID/, old, :id, new)
+		snd_message(/^#{new} ID/, old, :id, new) == ""
 		#TODO : register
 	end
 	
 	# Get the list of implementations supported by an arduino
-	# in an array
+	# in an array or nil if no answer
 	#
 	def list_implementations(multi) # TODO retour si ça ne marche pas
-		snd_message(/^#{multi} LIST/, multi, :list).split(" ")
+		ans = snd_message(/^#{multi} LIST/, multi, :list)
+		ans.split(" ") if ans
 	end
 	
 	# List the running tasks of an arduino in a hash
-	#
+	# or nil if no answer
 	def list_tasks(multi)
 		ans = snd_message(/^#{multi} TASKS/, multi, :tasks)
-		Hash[*ans.scan(/(\d+):(\w+)/).collect{|p| [p[0].to_i, p[1]]}.flatten]
+		Hash[*ans.scan(/(\d+):(\w+)/).collect{|p| [p[0].to_i, p[1]]}.flatten] if ans
 	end
 	
 	# Callback when a multiplexer is plugged

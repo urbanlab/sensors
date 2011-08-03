@@ -63,6 +63,7 @@ class Redis_interface_demon
 
 	# Callback when a client request to add a sensor
 	# block has 3 arguments : multiplexer's id, sensor's pin and sensor's config
+	# If the block return true, the sensor will be registered
 	#
 	def on_new_sensor(&block)
 		Thread.new do
@@ -78,14 +79,15 @@ class Redis_interface_demon
 						@log.warn("A client tried to add a sensor with an unknown profile : #{parse[:profile]} (multiplexer : #{parse[:multiplexer]})")
 						next
 					end
-					@redis.hset(channel, pin, config.to_json)
-					config[:period] = config[:period] || profile[:period]
-					if not config[:period]
+					period = config[:period] || profile[:period]
+					if not period
 						@log.warn("A client tried to add the sensor #{multi}:#{pin} without period. Config : #{config}, profile : #{profile}")
 						next
 					end
 					# TODO vérifier validité de la config
-					block.call(multi, pin, profile[:function], config[:period], *[profile[:option1], profile[:option2]])
+					if block.call(multi, pin, profile[:function], period, *[profile[:option1], profile[:option2]])
+						@redis.hset(channel, pin, config.to_json)
+					end
 				end
 			end
 		end
@@ -121,9 +123,10 @@ class Redis_interface_demon
 					#	@log.warn("A client tried to remove an unknown sensor : #{parse[:multiplexer]},#{parse[:sensor]}")
 					#	next
 					#end
-					yield parse[:multiplexer].to_i, pin
-					@redis.del(path(type, :value, parse[:multiplexer], pin))
-					@redis.hdel(path(type, :config, parse[:multiplexer]), pin) if (type == :sensor)
+					if block.call(parse[:multiplexer].to_i, pin)
+						@redis.del(path(type, :value, parse[:multiplexer], pin))
+						@redis.hdel(path(type, :config, parse[:multiplexer]), pin) if (type == :sensor)
+					end
 				end
 			end
 		end

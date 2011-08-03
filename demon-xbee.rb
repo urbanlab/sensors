@@ -18,7 +18,7 @@ Sur network:<network>:multiplexers:<multipl-id>:sensors = hash (pin, objet senso
 Sur network:<network>:multiplexers:<multipl-id>:actuators = hash (pin, objet actuator)
 
 =end
-
+# TODO limiter les accès redis
 class Xbee_Demon
 	def initialize(network, args)#serial_port = '/dev/ttyUSB0', baudrate = 19200, redis_host = 'localhost', redis_port = 6379, logfile = nil)
 		args = {baudrate: 19200, redis_host: 'localhost', redis_port: 6379, logger: Logger.new(nil)}.merge args
@@ -55,11 +55,18 @@ class Xbee_Demon
 		#end
 		
 		@redis.on_deleted :sensor do |id_multi, sensor|
-			@serial.rem_task(id_multi, sensor) #TODO registered ? task exists ?
+			ans = @serial.rem_task(id_multi, sensor)
+			(ans == true) or (ans == false) # If the tasks didn't exist (ans == false), should remove it from redis
+			                                # If the multi didn't answer (ans == nil) should not remove it
 		end
 		
 		@redis.on_deleted :actuator do |id_multi, actuator|
-			@serial.rem_task(id_multi, actuator) if get_config(:actuator, id_multi, actuator).state
+			if get_config(:actuator, id_multi, actuator)[:state] # if the actuator was running, should ensure it will stop
+				@serial.rem_task(id_multi, actuator)
+				(ans == true) or (ans == false) #delete from redis only if the task is no more running
+			else
+				true #don't care if the multi knows it, the task wasn't running.
+			end
 		end
 		
 		@redis.on_published_value(:actuator) do |multi, pin, value|

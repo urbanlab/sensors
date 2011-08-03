@@ -11,7 +11,7 @@ module Redis_client
 			@redis = Redis_interface_client.new 1
 		end
 	
-		def list_multi
+		def list_multi #TODO limiter accès redis
 			@redis.list_multis.each do |multi, config|
 				supported = @redis.support(config[:supported])
 				puts "#{multi} : #{config[:description]} (supports : #{supported.join(", ")})"

@@ -47,7 +47,7 @@ module Redis_interface_common
 	# Return true if the device exists, false if not.
 	#
 	def knows? type, multi_id, pin
-		(knows_multi? multi_id) && @redis.hexists(path(type, :config, multi_id, pin), pin)
+		(knows_multi? multi_id) && @redis.hexists(path(type, :config, multi_id), pin)
 	end
 	
 	# Get a device's config

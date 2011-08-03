@@ -6,8 +6,6 @@ require 'serialport'
 require './redis-interface-demon.rb'
 require './serial-interface.rb'
 require 'logger'
-#TODO : restauration period KO ?
-#TODO : restauration tâches après new KO ?
 
 =begin
 - multiplexer : {:description => "bla", :supported => ["ain", "din"]}
@@ -69,7 +67,7 @@ class Xbee_Demon
 				when 1 #TODO test existence profile
 					config = @redis.get_config(:actuator, multi, pin)
 					profile = @redis.get_profile(:actuator, config[:profile])
-					profile.has_key?(:period)? period = profile[:period] : period = 0 #period = 0 => don't loop
+					period = config[:period] || profile[:period] || 0#profile.has_key?(:period)? period = profile[:period] : period = 0 #period = 0 => don't loop
 					@serial.add_task(multi, pin, profile[:function], period)
 				else 
 					@serial.rem_task(multi, pin)
@@ -83,10 +81,11 @@ class Xbee_Demon
 			elsif (not (@redis.knows_multi? id))   # valid id, but not registered
 				@redis.set_multi_config(id, {:description => "no name", :supported => @serial.list_implementations(id)})
 			else                                   # Known multi that has been reseted
-				@redis.list(:sensor, id ).each do |pin, config| #plante si profile faux TODO
-					profile = @redis.get_profile(:sensor, config[:profile])
-					@serial.add_task(id, pin, profile[:function], config[:period], *[profile[:option1], profile[:option2]])
-				end
+				restore_multi_state id
+				#@redis.list(:sensor, id ).each do |pin, config| #plante si profile faux TODO
+				#	profile = @redis.get_profile(:sensor, config[:profile])
+				#	@serial.add_task(id, pin, profile[:function], config[:period], *[profile[:option1], profile[:option2]])
+				#end
 				#rien à faire pour les actus, sauf peut être remettre dans meme état ?		
 			end
 		end
@@ -99,20 +98,26 @@ class Xbee_Demon
 	def restore_state
 		@log.info("Restoring state from database...")
 		@redis.list_multis.each do |id_multi, config|
-			if (@serial.ping id_multi)
-				@redis.list(:sensor, id_multi).each do |pin, sensor_config|
-					profile = @redis.get_profile(:sensor, sensor_config[:profile])
-					@serial.add_task(id_multi, pin, profile[:function], sensor_config[:period], *[profile[:option1], profile[:option2]])
-				end
-				config[:state] = true
-				@redis.set_multi_config(id_multi, config)
-			else
-				@log.warn "Multiplexer #{id_multi} seems to be disconnected."
-				config[:state] = false
-				@redis.set_multi_config(id_multi, config)
-			end
+			restore_multi_state id_multi
 		end
 		@log.info("Restoration complete.")
+	end
+	
+	def restore_multi_state multi_id
+		config = @redis.get_multi_config(multi_id)
+		if (@serial.ping multi_id)
+			@redis.list(:sensor, multi_id).each do |pin, sensor_config|
+				profile = @redis.get_profile(:sensor, sensor_config[:profile])
+				period = sensor_config[:period] || profile[:period] || 0
+				@serial.add_task(multi_id, pin, profile[:function], period, *[profile[:option1], profile[:option2]])
+			end
+			config[:state] = true
+			@redis.set_multi_config(multi_id, config)
+		else
+			@log.warn "Multiplexer #{multi_id} seems to be disconnected."
+			config[:state] = false
+			@redis.set_multi_config(multi_id, config)
+		end
 	end
 end
 

@@ -191,11 +191,8 @@ module Redis_client
 		# @param [Integer] multi Id of the multiplexer where the sensor is plugged
 		# @param [Integer] pin Pin of the sensor
 		def get_sensor_value multi, pin
-			config = @redis.get_config(:sensor, multi, pin)
-			profile = @redis.get_profile(:sensor, config[:profile])
-			profile[:precision] = profile[:precision] || 0
-			value, timestamp = @redis.get_sensor_value(multi, pin)
-			puts "#{value.round(profile[:precision])}#{profile[:unit]} (this information is #{(Time.now - Time.at(timestamp)).round(1)}s old)"
+			hash = @redis.get_sensor_value(multi, pin)
+			puts "#{hash[:name]} : #{hash[:value]}#{hash[:unit]} (this information is #{(Time.now - Time.at(hash[:timestamp])).round(1)}s old)"
 		end
 		
 		# Get some help

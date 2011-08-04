@@ -58,9 +58,12 @@ class Redis_interface_demon
 		else
 			value = raw_value
 		end
-		key = {:value => value,:timestamp => Time.now.to_f}
+		if profile.has_key? :precision
+			value = value.round profile[:precision]
+		end
+		key = {value: value, timestamp: Time.now.to_f, unit: profile[:unit], name: config[:name]}
 		@redis.mapped_hmset(path, key)
-		@redis.publish(path, value)
+		@redis.publish(path, key.to_json) #TODO publish also unit, profile, name ? (=> json...)
 		return true
 	end
 

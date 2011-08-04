@@ -63,13 +63,12 @@ module Redis_interface_common
 	end
 	
 	# Get the value of a sensor
-	# @return [Array] value, time Where time is the date when the value was received
-	# The value is already normalized
-	#
+	# @return [Hash] with keys :value (normalized), :timestamp (when the value was mesured), :name and :unit
+	# @return [nil] if the sensor or the multi doesn't exist
 	def get_sensor_value multi_id, pin
 		return nil unless knows? :sensor, multi_id, pin
 		hash = @redis.hgetall(path(:sensor, :value, multi_id, pin)).symbolize_keys
-		return hash[:value].to_f, hash[:timestamp].to_f
+		return {value: hash[:value].to_f, timestamp: hash[:timestamp].to_f, name: hash[:name], unit: hash[:unit]}
 	end
 	
 	# Get the state of an actuator
@@ -116,7 +115,7 @@ module Redis_interface_common
 	# @macro type
 	# @param [String, Integer] multi id of the multiplexer you need to listen to, or '*' for all multiplexers
 	# @param [String, Integer] pin Pin you need to listen to, or '*' for all the pins
-	# @yield [multi_id, sensor_id, value] Processing of the published value
+	# @yield [multi_id, pin, value, unit, name] Processing of the published value
 	# TODO unknown actu
 	#
 	def on_published_value(type, multi = "*", pin = "*")
@@ -125,7 +124,8 @@ module Redis_interface_common
 			redis.psubscribe(path(type, :value, multi, pin)) do |on|
 				on.pmessage do |pattern, channel, value|
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
-					yield parse[:multiplexer].to_i, parse[type].to_i, value.to_f
+					parse.merge!(JSON.s_parse(value))
+					yield parse[:multiplexer].to_i, parse[type].to_i, parse[:value].to_f, parse[:unit], parse[:name]
 				end
 			end
 		end

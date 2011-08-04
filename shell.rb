@@ -1,16 +1,21 @@
 require 'bombshell'
 require 'redis-interface-client'
 
+# TODO document hash args
 module Redis_client
+	# Interactive shell
 	class Shell < Bombshell::Environment
 		include Bombshell::Shell
 
 		prompt_with 'client'
+		#@private
 		def initialize argv
 			super argv
 			@redis = Redis_interface_client.new 1
 		end
-	
+		
+		# Print the list of multiplexers
+		#
 		def list_multi #TODO limiter accès redis
 			@redis.list_multis.each do |multi, config|
 				supported = @redis.support(config[:supported])
@@ -18,6 +23,8 @@ module Redis_client
 			end
 		end
 		
+		# Print the list of multiplexers that don't have any task running
+		#
 		def list_unconfigured
 			@redis.list_multis.select {|multi, config| @redis.list(:sensor, multi).size + @redis.list(:actuator, multi).size == 0}.each do |multi, config|
 				supported = @redis.support(config[:supported])
@@ -25,6 +32,14 @@ module Redis_client
 			end
 		end
 		
+		# Add a sensor to a multiplexer
+		# @macro [new] device
+		#  @param [Integer] multi Id of the multiplexer
+		#  @param [Integer] pin Pin where the device is plugged
+		#  @param [String] name Name given to the sensor
+		#  @param [String] profile Name of the profile of the device
+		#  @param [Integer] period duration between 2 check, in milliseconds
+		#
 		def add_sensor(multi, pin, name, profile, period = nil, args = {})
 			begin
 				args.merge!({multi: multi, pin: pin, name: name, profile: profile})
@@ -35,6 +50,8 @@ module Redis_client
 			end
 		end
 		
+		# Add an actuator to a multiplexer
+		# @macro device
 		def add_actuator(multi, pin, name, profile, period = nil, args = {})
 			begin
 				args.merge!({multi: multi, pin: pin, name: name, profile: profile})
@@ -45,40 +62,62 @@ module Redis_client
 			end
 		end
 		
-		def switch_on(device, pin)
-			@redis.set_actuator_state(device, pin, 1)
+		# Turn on an actuator of a multi
+		# @macro [new] actu
+		#  @param [Integer] multi Id of the multi where the actuator is plugged
+		#  @param [Integer] pin Pin of the actuator
+		#
+		def switch_on(multi, pin)
+			@redis.set_actuator_state(multi, pin, 1)
 		end
 		
-		def switch_off(device, pin)
-			@redis.set_actuator_state(device, pin, 0)
+		# Turn off an actuator of a multi
+		# @macro actu
+		#
+		def switch_off(multi, pin)
+			@redis.set_actuator_state(multi, pin, 0)
 		end
 		
-		def set_description(device, description)
-			if @redis.set_description(device, description)
+		# Modify the description of a multi
+		# @param [Integer] multi Id of the multiplexer you want to modify
+		# @param [String] description The new description
+		#
+		def set_description(multi, description)
+			if @redis.set_description(multi, description)
 				puts "OK"
 			else
 				puts "The multiplexer doesn't exist"
 			end
 		end
 		
-		def remove_sensor(device, pin)
-			if @redis.remove :sensor, device, pin
+		# Remove a sensor from a multi
+		# @param [Integer] multi Id of the multiplexer
+		# @param [Integer] pin Pin where the sensor was plugged
+		#
+		def remove_sensor(multi, pin)
+			if @redis.remove :sensor, multi, pin
 				puts "OK"
 			else
 				puts "The multiplexer doesn't exist"
 			end
 		end
 		
-		def remove_actuator(device, pin)
-			if @redis.remove :actuator, device, pin
+		# Remove an actuator from a multi
+		# @see #remove_sensor
+		#
+		def remove_actuator(multi, pin)
+			if @redis.remove :actuator, multi, pin
 				puts "OK"
 			else
 				puts "The multiplexer doesn't exist"
 			end
 		end
 		
-		def list_sensors(device)
-			if (list = @redis.list(:sensor, device))
+		# List the sensors of a multiplexer
+		# @param [Integer] multi Id of the multiplexer
+		#
+		def list_sensors(multi)
+			if (list = @redis.list(:sensor, multi))
 				list.each do |k, v|
 					puts "#{k} : #{v[:name]}, #{v[:profile]} (period : #{v[:period]})"
 				end
@@ -87,6 +126,8 @@ module Redis_client
 			end
 		end
 		
+		# Add a new sensor profile
+		#
 		def add_sensor_profile(args={})
 			args[:type] = :sensor
 			begin
@@ -96,6 +137,8 @@ module Redis_client
 			end
 		end
 		
+		# Add a new actuator profile
+		#
 		def add_actuator_profile(args={})
 			args[:type] = :actuator
 			begin
@@ -105,26 +148,39 @@ module Redis_client
 			end
 		end
 		
+		# List the registered sensor profiles
+		#
 		def list_sensor_profiles
 			@redis.list_profiles(:sensor).each do |name, profile|
 				puts "#{name} : #{profile[:function]}, #{profile[:rpn]}, #{profile[:unit]}"
 			end
 		end
 		
+		# List the registered actuator profiles
+		#
 		def list_actuator_profiles
 			@redis.list_profiles(:actuator).each do |name, profile|
 				puts "#{name} : #{profile[:function]}"
 			end
 		end
 		
+		# Remove a sensor profile
+		# @param [String] name Name of the profile
+		#
 		def remove_sensor_profile name
 			puts @redis.remove_profile(:sensor, name) ? "OK" : "KO"
 		end
 		
+		# Remove an actuator profile
+		# @param [String] name Name of the profile
+		#
 		def remove_actuator_profile name
 			puts @redis.remove_profile(:actuator, name) ? "OK" : "KO"
 		end
 		
+		# Read a value from a sensor
+		# @param [Integer] multi Id of the multiplexer where the sensor is plugged
+		# @param [Integer] pin Pin of the sensor
 		def get_sensor_value multi, pin
 			config = @redis.get_config(:sensor, multi, pin)
 			profile = @redis.get_profile(:sensor, config[:profile])

@@ -9,7 +9,7 @@ class Redis_interface_client
 		load(network, host, port)
 	end
 	# Return the list of supported profile from a list of arduino functions
-	#@return [Array[String]] the profiles
+	#@return [Array<String>] the profiles
 	#
 	def support(functions)
 		list_profiles(:actuator).merge(list_profiles(:sensor)).select { |name, profile|

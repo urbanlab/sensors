@@ -6,15 +6,6 @@ require 'redis'
 # Contain common methods between the server and the client : static information reading
 #
 module Redis_interface_common
-	PREFIX = "network"
-	MULTI  = "multiplexer"
-	SENS   = "sensor"
-	ACTU   = "actuator"
-	VALUE  = "value"
-	CONF   = "config"
-	DEL    = "delete"
-	PROF   = "profile"
-	
 	# Common function that should be load by initilize of classes using the
 	# module
 	#
@@ -24,7 +15,6 @@ module Redis_interface_common
 		@redis = Redis.new :host => host, :port => port
 		@redis.set("test", "ohohoh") #bypass ruby optimisation to catch exceptions at launch
 		@network = network
-		@prefix = "#{PREFIX}:#{@network}"
 	end
 	
 	# get all the multiplexers' config
@@ -151,15 +141,16 @@ module Redis_interface_common
 	#
 	def path(*args)
 		case args.size
-			when 0 then "#@prefix.#{MULTI}.#{CONF}"
-			when 1 then "#{CONF}.#{args[0]}"
-			when 2 then "#@prefix.#{MULTI}:#{args[1]}.#{args[0]}.#{CONF}"
-			when 3 then "#@prefix.#{MULTI}:#{args[2]}.#{args[0]}.#{args[1]}"
-			when 4 then "#@prefix.#{MULTI}:#{args[2]}.#{args[0]}:#{args[3]}.#{args[1]}"
+			when 0 then "network:#@network.multiplexer.config"
+			when 1 then "config.#{args[0]}"
+			when 2 then "network:#@network.multiplexer:#{args[1]}.#{args[0]}.config"
+			when 3 then "network:#@network.multiplexer:#{args[2]}.#{args[0]}.#{args[1]}"
+			when 4 then "network:#@network.multiplexer:#{args[2]}.#{args[0]}:#{args[3]}.#{args[1]}"
 		end
 	end
 end
 
+#@private
 class String
 	def is_integer?
 		begin Integer(self) ; true end rescue false
@@ -169,6 +160,7 @@ class String
 	end
 end
 
+#@private
 class Hash
 # Stolen from rails source
 	def symbolize_keys
@@ -224,6 +216,7 @@ class Hash
 	end
 end
 
+#@private
 module JSON
 	class << self
 		def s_parse(source, opts = {})

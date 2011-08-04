@@ -45,18 +45,12 @@ class Serial_interface
 				end
 			end
 			@log.debug("Received \"#{buff.delete("\r\n")}\"")
-			accepted = false
-			#TODO :@wait_for.detect {|pattern, pipe| buff.match(pattern)}
-			catch :accepted_message do
-				@wait_for.each do |pattern, pipe|
-					if (buff.match(pattern))
-						pipe.write(buff)
-						pipe.close
-						@wait_for.delete pattern
-						throw :accepted_message
-						break
-					end
-				end
+			pattern, pipe = @wait_for.detect{|pattern, pipe| buff.match(pattern)}
+			if pattern
+				pipe.write(buff)
+				pipe.close
+				@wait_for.delete pattern
+			else
 				@log.warn("Received an unhandled message : #{buff}")
 			end
 		end
@@ -112,7 +106,6 @@ class Serial_interface
 	#
 	def change_id(old, new)
 		snd_message(/^#{new} ID/, old, :id, new) == ""
-		#TODO : register
 	end
 	
 	# Get the list of implementations supported by an arduino

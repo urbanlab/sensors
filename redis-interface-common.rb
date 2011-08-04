@@ -115,9 +115,9 @@ module Redis_interface_common
 	# @macro type
 	# @param [String, Integer] multi id of the multiplexer you need to listen to, or '*' for all multiplexers
 	# @param [String, Integer] pin Pin you need to listen to, or '*' for all the pins
-	# @yield [multi_id, pin, value, unit, name] Processing of the published value
-	# TODO unknown actu
-	# TODO doc actu
+	# @yield [multi_id, pin, value, unit, name] Processing of the published value for type = :sensor
+	# @yield [multi_id, pin, value] Processing of the published value for type = :actuator
+	#
 	def on_published_value(type, multi = "*", pin = "*")
 		Thread.new do
 			redis = Redis.new
@@ -211,9 +211,6 @@ class Hash
 	end
 	
 	def can_have(optional)
-		#puts "---"
-		#p optional
-		#p self
 		errors = []
 		optional.each do |argument, typedefault|
 			type, default = typedefault

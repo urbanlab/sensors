@@ -71,9 +71,13 @@ class Xbee_Demon
 		
 		@redis.on_published_value(:actuator) do |multi, pin, value|
 			case value.to_i
-				when 1 #TODO test existence profile
+				when 1
 					config = @redis.get_config(:actuator, multi, pin)
 					profile = @redis.get_profile(:actuator, config[:profile])
+					if (not (config && profile))
+						@log.warn("A client tried to switch on an actuator without config or profile")
+						next
+					end
 					period = config[:period] || profile[:period] || 0
 					@serial.add_task(multi, pin, profile[:function], period)
 				else 
@@ -86,14 +90,9 @@ class Xbee_Demon
 				new_id = (Array(1..255) - @redis.list_multis.keys)[0] # first unused id
 				@serial.change_id(id, new_id)
 			elsif (not (@redis.knows_multi? id))   # valid id, but not registered
-				@redis.set_multi_config(id, {:description => "no name", :supported => @serial.list_implementations(id)})
+				@redis.set_multi_config(id, {description: "no name", supported: @serial.list_implementations(id)})
 			else                                   # Known multi that has been reseted
-				restore_multi_state id
-				#@redis.list(:sensor, id ).each do |pin, config| #plante si profile faux TODO
-				#	profile = @redis.get_profile(:sensor, config[:profile])
-				#	@serial.add_task(id, pin, profile[:function], config[:period], *[profile[:option1], profile[:option2]])
-				#end
-				#rien à faire pour les actus, sauf peut être remettre dans meme état ?		
+				restore_multi_state id	
 			end
 		end
 		
@@ -110,7 +109,7 @@ class Xbee_Demon
 		@log.info("Restoration complete.")
 	end
 	
-	def restore_multi_state multi_id
+	def restore_multi_state multi_id #TODO solidification ?
 		config = @redis.get_multi_config(multi_id)
 		if (@serial.ping multi_id)
 			@redis.list(:sensor, multi_id).each do |pin, sensor_config|

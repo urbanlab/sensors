@@ -38,12 +38,11 @@ class Redis_interface_client
 	# @option config [Integer] :period Sensor only : Period beetween to sensor reading (in ms) (optional if the profile has a default period)
 	# @option config [Integer, optional] :value Actuator only : Initial value
 	# @param [Integer] multi_id Multiplexer's Id
-	# @macro [new] type
-	#  @param [Symbol] type Device type, can be :sensor or :actuator
+	# @param [Symbol] type Device type, can be :sensor or :actuator
 	#
-	def add type, multi_id, config
+	def add type, multi_id, config = {}
 		raise ArgumentError, "Multiplexer Id should be an Integer" unless multi_id.is_a? Integer
-		config.must_have(name: String, profile: String)
+		config.must_have(name: String, profile: String, pin: Integer)
 		case type
 			when :sensor
 				profile = get_profile :sensor, config[:profile]
@@ -59,26 +58,39 @@ class Redis_interface_client
 	end
 	
 	# Unregister a sensor
-	# @macro type
+	# @param [Symbol] type Device type, can be :sensor or :actuator
+	# @param [Integer] multi_id Id of the multiplexer
+	# @param [Integer] pin Pin where the device was plugged
 	# @return [boolean] true if a demon was listening
+	#
 	def remove type, multi_id, pin
 		path = path(type, :delete, multi_id)
 		@redis.publish(path, pin) >= 1
 	end
 	
 	# Register a sensor profile
+	# @param [Symbol] type Profile type, can be :sensor or :actuator
+	# @param [String] name Profile name
+	# @option profile [String] :function Arduino's function the profile uses
+	# @option profile [Integer, optional] :period default period
+	# @option profile [Integer, optional] :option1 first function's argument (see its description)
+	# @option profile [Integer, optional] :option2 second function's argument (see its description)
+	# @option profile [String] :unit unit of the sensor's value (sensor only)
+	# @option profile [String, optional] :rpn optional RPN transformation to apply to raw value (sensor only)
+	# @option profile [Integer, optional] :precision optional precision of the sensor (eg. 3 for value like 334.411, -1 for value like 330)
 	#
-	def add_profile( args )#type, name, profile )
-		args.must_have(type: Symbol, name: String, function: String)
-		args.can_have(period: Integer, option1: Integer, option2: Integer)
-		case args[:type]
+	def add_profile( type, name, profile = {} )#type, name, profile )
+		raise ArgumentError, "Name should be a String" unless name.is_a? String
+		profile.must_have(function: String)
+		profile.can_have(period: Integer, option1: Integer, option2: Integer)
+		case type
 			when :sensor
-				args.must_have(unit: String)
-				args.can_have(rpn: String, precision: Integer)
+				profile.must_have(unit: String)
+				profile.can_have(rpn: String, precision: Integer)
 			when :actuator
 			else raise ArgumentError, "Type should be :sensor or :actuator"
 		end
-		@redis.hset(path(args.delete(:type)), args.delete(:name), args.to_json)
+		@redis.hset(path(type), name, profile.to_json)
 	end
 	
 	# Unregister a profile

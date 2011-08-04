@@ -34,12 +34,11 @@ module Redis_client
 		end
 		
 		# Add a sensor to a multiplexer
-		# @macro [new] device
-		#  @param [Integer] multi Id of the multiplexer
-		#  @param [Integer] pin Pin where the device is plugged
-		#  @param [String] name Name given to the sensor
-		#  @param [String] profile Name of the profile of the device
-		#  @param [Integer] period duration between 2 check, in milliseconds
+		# @param [Integer] multi Id of the multiplexer
+		# @param [Integer] pin Pin where the device is plugged
+		# @param [String] name Name given to the sensor
+		# @param [String] profile Name of the profile of the device
+		# @param [Integer] period duration between 2 check, in milliseconds
 		#
 		def add_sensor(multi, pin, name, profile, period = nil, args = {})
 			begin
@@ -52,7 +51,7 @@ module Redis_client
 		end
 		
 		# Add an actuator to a multiplexer
-		# @macro device
+		# @param (see Redis_client::Shell#add_sensor)
 		def add_actuator(multi, pin, name, profile, period = nil, args = {})
 			begin
 				args.merge!({multi: multi, pin: pin, name: name, profile: profile})
@@ -64,16 +63,15 @@ module Redis_client
 		end
 		
 		# Turn on an actuator of a multi
-		# @macro [new] actu
-		#  @param [Integer] multi Id of the multi where the actuator is plugged
-		#  @param [Integer] pin Pin of the actuator
+		# @param [Integer] multi Id of the multi where the actuator is plugged
+		# @param [Integer] pin Pin of the actuator
 		#
 		def switch_on(multi, pin)
 			@redis.set_actuator_state(multi, pin, 1)
 		end
 		
 		# Turn off an actuator of a multi
-		# @macro actu
+		# @param (see Redis_client::Shell#switch_on)
 		#
 		def switch_off(multi, pin)
 			@redis.set_actuator_state(multi, pin, 0)
@@ -104,7 +102,7 @@ module Redis_client
 		end
 		
 		# Remove an actuator from a multi
-		# @see #remove_sensor
+		# @param (see Redis_client::Shell#remove_sensor)
 		#
 		def remove_actuator(multi, pin)
 			if @redis.remove :actuator, multi, pin
@@ -128,19 +126,12 @@ module Redis_client
 		end
 		
 		# Add a new sensor profile
-		# @option profile [String] :name Name of the profile
-		# @option profile [String] :function Arduino function the profile uses
-		# @option profile [String] :unit Unit of the value
-		# @option profile [Integer, optional] :period default period
-		# @option profile [Integer, optional] :option1 1st option (see arduino function)
-		# @option profile [Integer, optional] :option2 2nd option (see arduino function)
-		# @option profile [String, optional] :rpn RPN modification to apply to raw value
-		# @option profile [Integer, optional] :precision Number of digit of the modified value (eg. +3+ for value like +334.411+, +-1+ for value like +330+)
+		# @param name (see Redis_interface_client#add_profile)
+		# @option (see Redis_interface_client#add_profile)
 		#
-		def add_sensor_profile(profile={})
-			profile[:type] = :sensor
+		def add_sensor_profile(name, profile={})
 			begin
-				@redis.add_profile profile
+				@redis.add_profile :sensor, name, profile
 			rescue ArgumentError => error
 				puts error.message
 			end

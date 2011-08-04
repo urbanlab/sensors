@@ -7,7 +7,6 @@ require 'logger'
 
 CMD = { :list => "l", :add => "a", :remove => "d", :tasks => "t" , :id => "i", :reset => "r", :ping => "p" }
 ANS = { :sensor => "SENS", :new => "NEW", :implementations => "LIST", :tasks => "TASKS" , :ok => "OK", :add => "ADD", :remove => "DEL"}
-#TODO verify the execution of add, id and remove
 
 # Interface to serial port in order to get and send message to the multiplexers
 #

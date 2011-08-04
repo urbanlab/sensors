@@ -117,15 +117,20 @@ module Redis_interface_common
 	# @param [String, Integer] pin Pin you need to listen to, or '*' for all the pins
 	# @yield [multi_id, pin, value, unit, name] Processing of the published value
 	# TODO unknown actu
-	#
+	# TODO doc actu
 	def on_published_value(type, multi = "*", pin = "*")
 		Thread.new do
 			redis = Redis.new
 			redis.psubscribe(path(type, :value, multi, pin)) do |on|
 				on.pmessage do |pattern, channel, value|
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
-					parse.merge!(JSON.s_parse(value))
-					yield parse[:multiplexer].to_i, parse[type].to_i, parse[:value].to_f, parse[:unit], parse[:name]
+					case type
+						when :sensor
+							parse.merge!(JSON.s_parse(value))
+							yield parse[:multiplexer].to_i, parse[type].to_i, parse[:value].to_f, parse[:unit], parse[:name]
+						when :actuator
+							yield parse[:multiplexer].to_i, parse[type].to_i, value.to_i
+					end
 				end
 			end
 		end

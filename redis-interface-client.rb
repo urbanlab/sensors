@@ -50,11 +50,12 @@ class Redis_interface_client
 				raise ArgumentError, "Profile #{config[:profile]} does not exist" unless profile
 				profile.has_key?(:period)? config.can_have(period: Integer) : config.must_have(period: Integer)
 #				profile.has_key?(:pin)? can_have[:pin] = Integer : must_have[:pin] = Integer #TODO implement default pin ?
+				@redis.publish(path(type, :config, multi_id), config.to_json) >= 1
 			when :actuator
-				config.can_have(value: Integer)
+				config.can_have(period: Integer)
+				@redis.hset(path(type, :config, multi_id), config.delete(:pin), config.to_json)
 			else raise ArgumentError, "Type should be :sensor or :actuator"
 		end
-		@redis.publish(path(type, :config, multi_id), config.to_json) >= 1
 	end
 	
 	# Unregister a sensor
@@ -66,7 +67,6 @@ class Redis_interface_client
 	end
 	
 	# Register a sensor profile
-	# 
 	#
 	def add_profile( args )#type, name, profile )
 		args.must_have(type: Symbol, name: String, function: String)
@@ -75,6 +75,8 @@ class Redis_interface_client
 			when :sensor
 				args.must_have(unit: String)
 				args.can_have(rpn: String, precision: Integer)
+			when :actuator
+			else raise ArgumentError, "Type should be :sensor or :actuator"
 		end
 		@redis.hset(path(args.delete(:type)), args.delete(:name), args.to_json)
 	end

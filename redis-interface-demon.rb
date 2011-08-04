@@ -86,7 +86,7 @@ class Redis_interface_demon
 						next
 					end
 					period = config[:period] || profile[:period]
-					if not period
+					if not period #TODO : allow non looping sensors ?
 						@log.warn("A client tried to add the sensor #{multi}:#{pin} without period. Config : #{config}, profile : #{profile}")
 						next
 					end

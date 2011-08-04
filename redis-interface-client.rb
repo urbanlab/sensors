@@ -33,26 +33,28 @@ class Redis_interface_client
 	
 	# Register a sensor or an actuator.
 	# @return [boolean] true if a demon was listening
+	# @option config [String] :name Name of the device
+	# @option config [String] :profile Profile associated to the device
+	# @option config [Integer] :period Sensor only : Period beetween to sensor reading (in ms) (optional if the profile has a default period)
+	# @option config [Integer, optional] :value Actuator only : Initial value
+	# @param [Integer] multi_id Multiplexer's Id
 	# @macro [new] type
 	#  @param [Symbol] type Device type, can be :sensor or :actuator
 	#
-	def add type, multi_id, args#type, multi_id, pin, config
-		config = args.dup
-		config[:type] = type
-		config[:multiplexer] = multi_id
-		config.must_have(type: Symbol, name: String, profile: String, multiplexer: Integer)
-		profile = {}
+	def add type, multi_id, config
+		raise ArgumentError, "Multiplexer Id should be an Integer" unless multi_id.is_a? Integer
+		config.must_have(name: String, profile: String)
 		case type
 			when :sensor
 				profile = get_profile :sensor, config[:profile]
-				profile.has_key?(:period)? config.can_have(period: Integer) : config.must_have(period: Integer) #TODO profile non checké
+				raise ArgumentError, "Profile #{config[:profile]} does not exist" unless profile
+				profile.has_key?(:period)? config.can_have(period: Integer) : config.must_have(period: Integer)
 #				profile.has_key?(:pin)? can_have[:pin] = Integer : must_have[:pin] = Integer #TODO implement default pin ?
 			when :actuator
-				config.can_have(:value)
+				config.can_have(value: Integer)
 			else raise ArgumentError, "Type should be :sensor or :actuator"
 		end
-		path = path(config.delete(:type), :config, multi_id)
-		@redis.publish(path, config.to_json) >= 1
+		@redis.publish(path(type, :config, multi_id), config.to_json) >= 1
 	end
 	
 	# Unregister a sensor

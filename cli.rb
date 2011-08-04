@@ -1,7 +1,8 @@
 #!/usr/bin/env ruby
 $:.unshift(File.dirname(__FILE__) + '/') unless $:.include?(File.dirname(__FILE__) + '/')
+require 'optparse'
 
-
+#TODO d'où sort la sauvegarde du network dans les actu ??
 ##### Saving utilities #####
 	
 def redis_to_json
@@ -10,84 +11,110 @@ def redis_to_json
 	r = Redis_interface_client.new 1
 	config = {}
 	config["profile"] = {:sensor => r.list_profiles(:sensor), :actuator => r.list_profiles(:actuator)}
-	config["multiplexers"] = r.list_multis
-	config["multiplexers"].each_key do |id|
-		config["multiplexers"][id][:sensors] = r.list(:sensor, id)
-		config["multiplexers"][id][:actuators] = r.list(:actuator, id)
-		config["multiplexers"][id].delete(:supported) #regenerate at launch
+	config["multiplexer"] = r.list_multis
+	config["multiplexer"].each_key do |id|
+		config["multiplexer"][id][:sensor] = r.list(:sensor, id)
+		config["multiplexer"][id][:actuator] = r.list(:actuator, id)
+		config["multiplexer"][id].delete(:state)
+		config["multiplexer"][id].delete(:supported) #regenerate at launch
 	end
 	
 	JSON.pretty_generate(config)
 end
 
-if ARGV.size == 0
-	require 'rubygems'
-	require 'shell'
-	require 'yard'
-	
-	Bombshell.launch(Redis_client::Shell) if ARGV.size == 0
-elsif ARGV[0] && ARGV[0] == "-o"
-	f = File.new(ARGV[1],"w")
-	f << redis_to_json
-	f.close
-elsif ARGV[0] && ARGV[0] == "-p"
-	require './redis-interface-client.rb'
-	f = File.new(ARGV[1], "w")
+def profiles_to_json
+	require 'redis-interface-client'
+	require 'json'
 	r = Redis_interface_client.new 1
 	config = {}
-	config["profile"] = {:sensor => r.list_profiles(:sensor), :actuator => r.list_profiles(:actuator)}
-	
-	f << JSON.pretty_generate(config)
-else
-	require './redis-interface-client.rb'
-	r = Redis_interface_client.new 1
-	redis = Redis.new
-	input = ARGF.read
-	config = JSON.parse(input)
-	
-	# JSON transforme les symboles et int en string pour les clefs...
-
-	config.symbolize_keys!
-	config[:profile].symbolize_keys!
-	config[:profile].each do |type, configs|
-		configs.each do |name, profile|
-			profile.symbolize_keys!
-		end
-	end
-=begin
-	config[:multiplexers].integerize_keys!
-	config[:multiplexers].each do |id, config|
-		config.symbolize_keys!
-		config[:sensors].integerize_keys!
-		config[:actuators].integerize_keys!
-		config[:sensors].each do |name, config|
-			config.symbolize_keys!
-		end
-		config[:actuators].each do |name, config|
-			config.symbolize_keys!
-		end
-	end
-=end
-	# Reconstitution
-
-	config[:profile][:sensor].each do |name, profile|
-		r.add_profile({:type => :sensor, :name => name}.merge(profile))
-	end
-	config[:profile][:actuator].each do |name, profile|
-		r.add_profile({:type => :actuator, :name => name}.merge(profile))
-	end
-=begin
-	config[:multiplexers].each do |multi_id, multi_config|
-		r.set_multi_config(multi_id.to_i, multi_config[:description])
-		multi_config[:sensors].each do |sens_id, sens_config|
-			r.add(:sensor, multi_id.to_i, sens_config.merge({pin: sens_id.to_i}))
-		end
-		multi_config[:actuators].each do |actu_id, actu_config|
-			r.add(:actuator, multi_id.to_i, actu_config.merge({pin: actu_id.to_i}))
-		end
-	end
-=end
-	#redis.publish("config", input)
+	config["profile"] = {sensor: r.list_profiles(:sensor), actuator: r.list_profiles(:actuator)}
+	JSON.pretty_generate(config)
 end
+
+def load_from_file file
+	require 'redis-interface-client'
+	require 'json'
+	r = Redis_interface_client.new 1
+	conf_json = file.read
+	config = JSON.parse(conf_json)
+	# JSON ne garde pas les types de clefs, ni la difference entre string et symbol pour les valeurs
+	config.symbolize_keys!
+	if config[:profile]
+		config[:profile].symbolize_keys!
+		config[:profile].each do |type, profiles|
+			profiles.each do |name, profile|
+				profile.symbolize_keys!
+				r.add_profile(type, name, profile)
+			end
+		end
+	end
+	if config[:multiplexer]
+		config[:multiplexer].integerize_keys!
+		config[:multiplexer].each do |multi_id, config|
+			config.symbolize_keys!
+			r.set_description(multi_id, config.delete(:description))
+			config.each do |type, device_configs|
+				device_configs.integerize_keys!
+				device_configs.each do |device_id, device_config|
+					device_config.symbolize_keys!
+					device_config[:pin] = device_id
+					r.add(type, multi_id, device_config)
+				end
+			end
+		end
+	end
+end
+
+options = {}
+opts = OptionParser.new do |opts|
+	opts.banner = "Usage: cli.rb [options]"
+
+	opts.on_tail("-i", "--interactive", "Launch interactive shell") do
+		require 'rubygems'
+		require 'shell'
+		require 'yard'
+		Bombshell.launch(Redis_client::Shell) if ARGV.size == 0
+		exit
+	end
+	
+	opts.on("-s", "--save-configuration FILE", "Save the whole configuration to FILE") do |file|
+		f = File.new(file, "w")
+		f << redis_to_json
+		f.close
+		exit
+	end
+		
+	opts.on("-p", "--save-profiles FILE", "Save all the profiles to FILE") do |file|
+		f = File.new(file, "w")
+		f << profiles_to_json
+		f.close
+		exit
+	end
+	
+	opts.on("-l", "--load-configuration FILE", "Load a configuration from FILE") do |file|
+		f = File.new(file, "r")
+		load_from_file(f)
+		f.close
+		exit
+	end
+	
+	opts.on_tail("-d", "--delete-multiplexers", "Deletes all the multiplexers' configuration registered") do
+		puts "Not implemented yet"
+		exit
+	end
+	
+	opts.on_tail("-D", "--delete-all", "Deletes everything, even the profiles") do
+		puts "Not implemented yet"
+		exit
+	end
+	
+	opts.on_tail("-h", "--help", "Show this message") do
+		puts opts
+		puts "Each option is exclusive"
+		exit
+	end
+end.parse!
+	
+load_from_file STDIN
 
 

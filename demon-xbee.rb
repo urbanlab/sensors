@@ -1,10 +1,8 @@
 #!/usr/bin/env ruby
-
+$:.unshift(File.dirname(__FILE__) + '/') unless $:.include?(File.dirname(__FILE__) + '/')
 require 'rubygems'
-require 'json'
-require 'serialport'
-require './redis-interface-demon.rb'
-require './serial-interface.rb'
+require 'redis-interface-demon'
+require 'serial-interface'
 require 'logger'
 
 =begin

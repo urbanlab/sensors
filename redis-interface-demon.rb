@@ -1,4 +1,5 @@
-require './redis-interface-common.rb'
+$:.unshift(File.dirname(__FILE__) + '/') unless $:.include?(File.dirname(__FILE__) + '/')
+require 'redis-interface-common'
 require 'logger'
 
 # Contain methods userful for the demon : multiplexer's registration and dynamic callbacks of clients' messages
@@ -29,8 +30,7 @@ class Redis_interface_demon
 	# Assign a config to a multiplexer
 	#
 	def set_multi_config multi_id, config
-		path = path(multi_id)
-		@redis.hset(path, multi_id, config.to_json)
+		@redis.hset(path(), multi_id, config.to_json)
 		config[:id] = multi_id
 		@redis.publish(path, config.to_json)
 		@log.debug("Registering multiplexer's configuration : #{config}")
@@ -52,13 +52,13 @@ class Redis_interface_demon
 			@log.error("Tried to publish a value from an unknown profile : #{config[:profile]} (multiplexer : #{multi_id})")
 			return false
 		end
-		if profile.has_key? :rpn
+		if profile[:rpn].is_a? String
 			rpn = profile[:rpn].sub("X", raw_value.to_s)
 			value = solve_rpn(rpn)
 		else
 			value = raw_value
 		end
-		if profile.has_key? :precision
+		if profile[:precision].is_a? Integer
 			value = value.round profile[:precision]
 		end
 		key = {value: value, timestamp: Time.now.to_f, unit: profile[:unit], name: config[:name]}

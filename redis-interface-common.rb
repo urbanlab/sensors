@@ -214,7 +214,7 @@ class Hash
 		errors = []
 		optional.each do |argument, typedefault|
 			type, default = typedefault
-			self[argument] = self[argument] || default
+			self[argument] = self[argument] || default if default
 			errors << "#{argument} should be #{type}" if self[argument] and not self[argument].is_a?(type)
 		end
 		raise ArgumentError, errors.join(", ") unless errors.empty?

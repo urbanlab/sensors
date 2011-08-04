@@ -1,5 +1,5 @@
-require './redis-interface-common.rb'
-# TODO delete every hdel, hset : should be done by the demon
+$:.unshift(File.dirname(__FILE__) + '/') unless $:.include?(File.dirname(__FILE__) + '/')
+require 'redis-interface-common'
 
 # Contain useful methods for the client : writing sensors' configuration, reading published values...
 #
@@ -79,7 +79,7 @@ class Redis_interface_client
 	# @option profile [String, optional] :rpn optional RPN transformation to apply to raw value (sensor only)
 	# @option profile [Integer, optional] :precision optional precision of the sensor (eg. 3 for value like 334.411, -1 for value like 330)
 	#
-	def add_profile( type, name, profile = {} )#type, name, profile )
+	def add_profile( type, name, profile = {} )
 		raise ArgumentError, "Name should be a String" unless name.is_a? String
 		profile.must_have(function: String)
 		profile.can_have(period: Integer, option1: Integer, option2: Integer)

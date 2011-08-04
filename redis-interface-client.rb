@@ -9,7 +9,7 @@ class Redis_interface_client
 		load(network, host, port)
 	end
 	# Return the list of supported profile from a list of arduino functions
-	#@return [Array<String>] the profiles
+	# @return [Array<String>] the profiles
 	#
 	def support(functions)
 		list_profiles(:actuator).merge(list_profiles(:sensor)).select { |name, profile|
@@ -18,7 +18,7 @@ class Redis_interface_client
 	end
 	
 	# Register description of a multiplexer.
-	#@return [boolean] true if the description was succefully changed
+	# @return [boolean] true if the description was succefully changed
 	#
 	#
 	def set_description multi_id, description
@@ -32,9 +32,9 @@ class Redis_interface_client
 	end
 	
 	# Register a sensor or an actuator.
-	#@return [boolean] true if a demon was listening
-	#@macro [new] type
-	#@param [Symbol] type Device type, can be :sensor or :actuator
+	# @return [boolean] true if a demon was listening
+	# @macro [new] type
+	#  @param [Symbol] type Device type, can be :sensor or :actuator
 	#
 	def add type, multi_id, args#type, multi_id, pin, config
 		config = args.dup
@@ -47,22 +47,20 @@ class Redis_interface_client
 				profile = get_profile :sensor, config[:profile]
 				profile.has_key?(:period)? config.can_have(period: Integer) : config.must_have(period: Integer) #TODO profile non checké
 #				profile.has_key?(:pin)? can_have[:pin] = Integer : must_have[:pin] = Integer #TODO implement default pin ?
-			#when :actuator then {}
-			#else raise ArgumentError, "Type should be :sensor or :actuator"
+			when :actuator
+				config.can_have(:value)
+			else raise ArgumentError, "Type should be :sensor or :actuator"
 		end
 		path = path(config.delete(:type), :config, multi_id)
 		@redis.publish(path, config.to_json) >= 1
 	end
 	
 	# Unregister a sensor
-	#@macro type
-	#@return true if a demon was listening
-	# TODO does not publish if no multi ?
+	# @macro type
+	# @return [boolean] true if a demon was listening
 	def remove type, multi_id, pin
 		path = path(type, :delete, multi_id)
-		#set_actuator_state(multi_id, pin, 0) if type.to_s == ACTU and get_actuator_state(multi_id, pin) TODO should be done by demon
 		@redis.publish(path, pin) >= 1
-		#@redis.hdel("#{path}.#{CONF}", pin) == 1
 	end
 	
 	# Register a sensor profile
@@ -80,7 +78,7 @@ class Redis_interface_client
 	end
 	
 	# Unregister a profile
-	#@return true if something was removed
+	# @return true if something was removed
 	#
 	def remove_profile( type, name )
 		@redis.hdel(path(type), name) == 1

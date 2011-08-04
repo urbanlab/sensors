@@ -23,6 +23,8 @@ end
 if ARGV.size == 0
 	require 'rubygems'
 	require 'shell'
+	require 'yard'
+	
 	Bombshell.launch(Redis_client::Shell) if ARGV.size == 0
 elsif ARGV[0] && ARGV[0] == "-o"
 	f = File.new(ARGV[1],"w")

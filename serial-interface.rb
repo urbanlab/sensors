@@ -8,7 +8,19 @@ require 'logger'
 CMD = { :list => "l", :add => "a", :remove => "d", :tasks => "t" , :id => "i", :reset => "r", :ping => "p" }
 ANS = { :sensor => "SENS", :new => "NEW", :implementations => "LIST", :tasks => "TASKS" , :ok => "OK", :add => "ADD", :remove => "DEL"}
 #TODO verify the execution of add, id and remove
+
+# Interface to serial port in order to get and send message to the multiplexers
+#
 class Serial_interface
+
+	# Construction of the interface
+	# @param [Integer] port Port where the xbee receiver is plugged (eg. '/dev/ttyUSB0')
+	# @param [Integer] baudrate Baudrate communication (probably 19200)
+	# @param [optional, Logger] logger to log informations concerning the serial line
+	# @param [Integer] timeout Time in second before a command without answer
+	# is considered as lost
+	# @param [Integer] retry_nb Number of time to retry to send a command before
+	# the multiplexer is considered as disconnected
 	def initialize port, baudrate, logger = Logger.new(nil), timeout = 1, retry_nb = 3
 		@log = logger
 		@baudrate = baudrate
@@ -57,20 +69,28 @@ class Serial_interface
 	end
 	
 	# Reset a multiplexer : delete every task running (keep the id)
+	# @return [boolean] True if the multiplexer was reseted
+	# @macro [new] multi
+	#   @param [Integer] multi Id of the multiplexer
 	#
 	def reset(multi)
 		snd_message(/^#{multi} RST/, multi, :reset) == ""
 	end
 	
 	# Ping a multiplexer : test if it is alive
-	#
+	# @macro multi
+	# @return [boolean] True if the multiplexer is alive
 	def ping(multi)
 		snd_message(/^#{multi} PONG/, multi, :ping) == ""
 	end
 	
-	# Add a task to a multiplexer. Return true if it's a success.
-	# false if the multi refused, and nil if nobody answered or
-	# invalid answer
+	# Add a task to a multiplexer.
+	# @return [boolean] true if it's a success, false if the multi refused, and nil if nobody answered or invalid answer
+	# @macro multi
+	# @param [Integer] pin the pin where the device is plugged
+	# @param [String] function Arduino function
+	# @param [Integer] period Duration beetween 2 tests in ms or 0 to not loop
+	# @param [Integer] *args optional other arguments (see function description)
 	#
 	def add_task(multi, pin, function, period, *args)
 		args.delete nil
@@ -86,9 +106,9 @@ class Serial_interface
 	end
 	
 	# Stop a task and execute its stopping function
-	# return true if this was a success
-	# false if nothing was removed
-	# nil if nobody answered, or invalid answer
+	# @return [boolean] true if this was a success, false if nothing was removed, nil if nobody answered, or invalid answer
+	# @macro multi
+	# @param [Integer] pin Pin where the device was
 	#
 	def rem_task(multi, pin)
 		case snd_message(/^#{multi} DEL #{pin}/, multi, :remove, pin)
@@ -102,31 +122,36 @@ class Serial_interface
 	end
 	
 	# Modify the id of a multiplexer. Tasks will still run
-	# return true if somebody change its id
+	# @return [boolean] true if somebody change its id
+	# @param [Integer] old Id of the multiplexer before the change
+	# @param [Integer] new Id of the multiplexer after the change
 	#
 	def change_id(old, new)
 		snd_message(/^#{new} ID/, old, :id, new) == ""
 	end
 	
 	# Get the list of implementations supported by an arduino
-	# in an array or nil if no answer
+	# @macro multi
+	# @return [Array<String>] or nil if no answer
 	#
-	def list_implementations(multi) # TODO retour si ça ne marche pas
+	def list_implementations(multi)
 		ans = snd_message(/^#{multi} LIST/, multi, :list)
 		ans.split(" ") if ans
 	end
 	
-	# List the running tasks of an arduino in a hash
-	# or nil if no answer
+	# List the running tasks of a multiplexer
+	# @macro multi
+	# @return [Hash] in form {pin => task} or nil if no answer
+	#
 	def list_tasks(multi)
 		ans = snd_message(/^#{multi} TASKS/, multi, :tasks)
 		Hash[*ans.scan(/(\d+):(\w+)/).collect{|p| [p[0].to_i, p[1]]}.flatten] if ans
 	end
 	
 	# Callback when a multiplexer is plugged
-	# block has 1 int argument : multiplexer's id.
+	# @yield [Integer] Id of the plugged multiplexer
 	#
-	def on_new_multi(&block)
+	def on_new_multi
 		Thread.new do
 			loop do
 				yield(brutal_wait_for(/^\d+ NEW/).scan(/^\d+/)[0].to_i)
@@ -135,7 +160,7 @@ class Serial_interface
 	end
 	
 	# Callback when a multiplexer send a value of one of his sensor
-	# block has 3 int arguments : the multiplexer's id, pin number and value.
+	# @yield [multi_id, pin, value] Processing of the value
 	#
 	def on_sensor_value(&block)
 		Thread.new do

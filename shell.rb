@@ -1,5 +1,6 @@
 require 'bombshell'
 require 'redis-interface-client'
+require 'yard'
 
 # TODO document hash args
 module Redis_client
@@ -127,11 +128,19 @@ module Redis_client
 		end
 		
 		# Add a new sensor profile
+		# @option profile [String] :name Name of the profile
+		# @option profile [String] :function Arduino function the profile uses
+		# @option profile [String] :unit Unit of the value
+		# @option profile [Integer, optional] :period default period
+		# @option profile [Integer, optional] :option1 1st option (see arduino function)
+		# @option profile [Integer, optional] :option2 2nd option (see arduino function)
+		# @option profile [String, optional] :rpn RPN modification to apply to raw value
+		# @option profile [Integer, optional] :precision Number of digit of the modified value (eg. +3+ for value like +334.411+, +-1+ for value like +330+)
 		#
-		def add_sensor_profile(args={})
-			args[:type] = :sensor
+		def add_sensor_profile(profile={})
+			profile[:type] = :sensor
 			begin
-				@redis.add_profile args
+				@redis.add_profile profile
 			rescue ArgumentError => error
 				puts error.message
 			end
@@ -187,6 +196,47 @@ module Redis_client
 			profile[:precision] = profile[:precision] || 0
 			value, timestamp = @redis.get_sensor_value(multi, pin)
 			puts "#{value.round(profile[:precision])}#{profile[:unit]} (this information is #{(Time.now - Time.at(timestamp)).round(1)}s old)"
+		end
+		
+		# Get some help
+		# @param [String, Symbol] function Function to describe (or nil if you want all)
+		#
+		def help function = nil
+			p 
+			YARD::Registry.load!
+			if function
+				description = describe function
+				if not description
+					puts "Unknown function."
+					return
+				else
+					puts description
+				end
+			end
+		end
+		
+		private
+		
+		def describe function
+			doc = YARD::Registry["#{self.class}##{function}"]
+			return nil unless doc
+			descr = "#{doc.name(true)} : #{doc.docstring}\n\n"
+			if doc.has_tag?(:param)
+				descr << "Parameters :\n"
+				doc.tags(:param).each do |parameter|
+					descr << "(#{parameter.types.join(", ")}) #{parameter.name} - #{parameter.text}\n"
+				end
+				descr << "\n"
+			end
+			if doc.has_tag?(:option)
+				options = doc.tags(:option)
+				descr << "Customizable Hash of options \"#{options[0].name}\"\n"
+				options.each do |option|
+					descr << "(#{option.pair.types.join(", ")}) #{option.pair.name} - #{option.pair.text}\n"
+				end
+				descr << "\n"
+			end
+			descr << "\n"
 		end
 	end
 end

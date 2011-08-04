@@ -18,7 +18,7 @@ module Redis_interface_common
 	end
 	
 	# get all the multiplexers' config
-	#@return [Hash] list in form {id => config}
+	# @return [Hash] list in form {id => config}
 	#
 	def list_multis
 		configs = @redis.hgetall(path())
@@ -26,27 +26,27 @@ module Redis_interface_common
 	end
 	
 	# get a multiplexer's config
-	#@return [Hash] config of the multi or nil if it doesn't exists
+	# @return [Hash] config of the multi or nil if it doesn't exists
 	#
 	def get_multi_config( multi_id )
 		return nil unless knows_multi? multi_id
 		JSON.s_parse(@redis.hget(path(), multi_id))
 	end
 	
-	#@return true if a multi is registered
+	# @return true if a multi is registered
 	#
 	def knows_multi? multi_id
 		@redis.hexists(path(), multi_id)
 	end
 	
-	#@return true if the device exists, false if not.
+	# @return true if the device exists, false if not.
 	#
 	def knows? type, multi_id, pin
 		(knows_multi? multi_id) && @redis.hexists(path(type, :config, multi_id), pin)
 	end
 	
 	# Get a device's config
-	#@return [Hash] Hash representing the config
+	# @return [Hash] Hash representing the config
 	#
 	def get_config type, multi_id, pin
 		return nil unless knows? type, multi_id, pin
@@ -54,7 +54,7 @@ module Redis_interface_common
 	end
 	
 	# Get all sensors config of a multi, in form {pin => config}
-	#@return [Hash] List of devices in form {pin => config} or nil if the multi does not exists
+	# @return [Hash] List of devices in form {pin => config} or nil if the multi does not exists
 	#
 	def list type, multi_id
 		return nil unless knows_multi? multi_id
@@ -63,7 +63,7 @@ module Redis_interface_common
 	end
 	
 	# Get the value of a sensor
-	#@return [Array] value, time Where time is the date when the value was received
+	# @return [Array] value, time Where time is the date when the value was received
 	# The value is already normalized
 	#
 	def get_sensor_value multi_id, pin
@@ -73,7 +73,7 @@ module Redis_interface_common
 	end
 	
 	# Get the state of an actuator
-	#@return [boolean] True for on, false for off, or nil if the actuator is unknown
+	# @return [boolean] True for on, false for off, or nil if the actuator is unknown
 	#
 	def get_actuator_state(multi_id, pin)
 		return nil unless knows?(:actuator, multi_id, pin)
@@ -87,15 +87,16 @@ module Redis_interface_common
 		@redis.publish(path(:actuator, :value, multi_id, pin), state)
 	end
 	
-	#@return [boolean] true if the profile exists
+	# @return [boolean] true if the profile exists
 	#
 	def knows_profile?( type, name )
 		@redis.hexists(path(type), name)
 	end
 	
 	# get all sensor/actuators profiles
-	#@param [Symbol] type can be :sensor or :actuator
-	#@return [Hash] in form {name => profile}
+	# @return [Hash] in form {name => profile}
+	# @macro [new] type
+	#   @param [Symbol] type can be :sensor or :actuator
 	#
 	def list_profiles (type)
 		list = @redis.hgetall(path(type))
@@ -103,8 +104,8 @@ module Redis_interface_common
 	end
 	
 	# Get a profile
-	#@param [Symbol] type can be :sensor or :actuator
-	#@param [String] profile the name of the profile
+	# @macro type
+	# @param [String] profile the name of the profile
 	#
 	def get_profile(type, profile)
 		return nil unless knows_profile?(type, profile)
@@ -112,11 +113,13 @@ module Redis_interface_common
 	end
 	
 	# Callback when a value is published on redis.
-	# Type might be :sensor or :actuator
-	# block has 3 arguments : multiplexer's id, sensor's pin, value
+	# @macro type
+	# @param [String, Integer] multi id of the multiplexer you need to listen to, or '*' for all multiplexers
+	# @param [String, Integer] pin Pin you need to listen to, or '*' for all the pins
+	# @yield [multi_id, sensor_id, value] Processing of the published value
 	# TODO unknown actu
 	#
-	def on_published_value(type, multi = "*", pin = "*") # :yield: multi_id, sensor_id, value
+	def on_published_value(type, multi = "*", pin = "*")
 		Thread.new do
 			redis = Redis.new
 			redis.psubscribe(path(type, :value, multi, pin)) do |on|

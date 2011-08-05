@@ -54,7 +54,11 @@ class Redis_interface_demon
 		end
 		if profile[:rpn].is_a? String
 			rpn = profile[:rpn].sub("X", raw_value.to_s)
-			value = solve_rpn(rpn)
+			begin
+				value = solve_rpn(rpn)
+			rescue Exception => e
+				@log.error("Tried to publish a value with an icorrect rpn : #{profile[:rpn]} from #{config[:profile]}")
+			end
 		else
 			value = raw_value
 		end
@@ -63,7 +67,7 @@ class Redis_interface_demon
 		end
 		key = {value: value, timestamp: Time.now.to_f, unit: profile[:unit], name: config[:name]}
 		@redis.mapped_hmset(path, key)
-		@redis.publish(path, key.to_json) #TODO publish also unit, profile, name ? (=> json...)
+		@redis.publish(path, key.to_json) #TODO ne publier que la valeur ?
 		return true
 	end
 
@@ -77,12 +81,29 @@ class Redis_interface_demon
 			redis.psubscribe(path(:sensor, :config, '*')) do |on|
 				on.pmessage do |pattern, channel, message|
 					config = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
-					config.merge!(JSON.s_parse(message))
-					pin = config.delete(:pin)
+					begin
+						config.merge!(JSON.s_parse(message))
+					rescue JSON::ParserError => e
+						@log.warn("Received a malformed message on #{channel}")
+						next
+					end
 					multi = config.delete(:multiplexer)
+					if (not multi.is_integer?) or (not knows_multi? multi)
+						@log.warn("A client tried to add a sensor with a bad id : #{multi}")
+						next
+					end
 					profile = get_profile :sensor, config[:profile]
 					if profile == nil
-						@log.warn("A client tried to add a sensor with an unknown profile : #{parse[:profile]} (multiplexer : #{parse[:multiplexer]})")
+						@log.warn("A client tried to add a sensor with an unknown profile : #{config[:profile]} (multiplexer : #{multi})")
+						next
+					end
+					begin
+						config.must_have(SENS_CONF[:necessary])
+						config.can_have(SENS_CONF[:optional])
+						profile.must_have(SENS_PROFILE[:necessary])
+						profile.can_have(SENS_PROFILE[:optional])
+					rescue ArgumentError => error
+						@log.warn("A client tried to add a bad sensor config : #{error.message}")
 						next
 					end
 					period = config[:period] || profile[:period]
@@ -90,7 +111,7 @@ class Redis_interface_demon
 						@log.warn("A client tried to add the sensor #{multi}:#{pin} without period. Config : #{config}, profile : #{profile}")
 						next
 					end
-					# TODO vérifier validité de la config
+					pin = config.delete(:pin)
 					if yield(multi, pin, profile[:function], period, *[profile[:option1], profile[:option2]])
 						@redis.hset(channel, pin, config.to_json)
 					end
@@ -124,14 +145,21 @@ class Redis_interface_demon
 			redis.psubscribe(path(type, :delete, '*')) do |on|
 				on.pmessage do |pattern, channel, pin|
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
-					pin = pin.to_i
-					#if not knows?(:sensor, parse[:multiplexer].to_i, parse[:sensor].to_i) #TODO, client already deleted it.
-					#	@log.warn("A client tried to remove an unknown sensor : #{parse[:multiplexer]},#{parse[:sensor]}")
-					#	next
-					#end
+					if (not parse[:multiplexer].is_integer?)
+						@log.warn("A client tried to delete a #{type} with bad multiplexer id : #{parse[:multiplexer]}")
+						next
+					end
+					if (not pin.is_integer?)
+						@log.warn("A client tried to delete a #{type} with bad pin : #{pin}")
+						next
+					end
+					if not knows?(type, parse[:multiplexer].to_i, pin.to_i)
+						@log.warn("A client tried to delete an unknown #{type} : #{parse[:multiplexer]}:pin")
+						next
+					end
 					if yield(parse[:multiplexer].to_i, pin)
 						@redis.del(path(type, :value, parse[:multiplexer], pin))
-						@redis.hdel(path(type, :config, parse[:multiplexer]), pin) if (type == :sensor)
+						@redis.hdel(path(type, :config, parse[:multiplexer]), pin)
 					end
 				end
 			end
@@ -153,6 +181,7 @@ class Redis_interface_demon
 	# Solve a Reverse Polish Notation
 	#
 	def solve_rpn(s)
+		s.each
 		stack = []
 		s.split(" ").each do |e|
 			case e
@@ -166,6 +195,7 @@ class Redis_interface_demon
 					a, b = stack.pop, stack.pop
 					stack.push(b / a)
 				else
+					raise TypeError, "Bad rpn" unless e.is_numeric?
 					stack.push(e.to_f)
 			end
 		end

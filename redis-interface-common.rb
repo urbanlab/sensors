@@ -6,6 +6,19 @@ require 'redis'
 # Contain common methods between the server and the client : static information reading
 #
 module Redis_interface_common
+	# Definition of a sensor config (note that the period is necessary if not defined in the profile)
+	SENS_CONF = {necessary: {name: String, profile: String, pin: Integer},
+				 optional:   {period: Integer}}
+	# Definition of an actuator config
+	ACTU_CONF = {necessary: {name: String, profile: String, pin: Integer},
+				 optional:   {period: Integer}}
+	# Definition of a sensor profile
+	SENS_PROFILE = {necessary: {function: String, unit: String},
+					optional:  {period: Integer, option1: Integer, option2: Integer, rpn: String, precision: Integer}}
+	# Definition of an actuator profile
+	ACTU_PROFILE = {necessary: {function: String},
+					optional:  {period: Integer, option1: Integer, option2: Integer}}
+	
 	# Common function that should be load by initilize of classes using the
 	# module
 	#
@@ -26,11 +39,15 @@ module Redis_interface_common
 	end
 	
 	# get a multiplexer's config
-	# @return [Hash] config of the multi or nil if it doesn't exists
+	# @return [Hash] config of the multi or nil if it doesn't exists or invalid
 	#
 	def get_multi_config( multi_id )
 		return nil unless knows_multi? multi_id
-		JSON.s_parse(@redis.hget(path(), multi_id))
+		begin
+			JSON.s_parse(@redis.hget(path(), multi_id))
+		rescue Exception => e
+			return nil
+		end
 	end
 	
 	# @return true if a multi is registered
@@ -47,19 +64,29 @@ module Redis_interface_common
 	
 	# Get a device's config
 	# @return [Hash] Hash representing the config
+	# @return [nil] if invalid or unknown pin or multi
 	#
 	def get_config type, multi_id, pin
 		return nil unless knows? type, multi_id, pin
-		JSON.s_parse(@redis.hget(path(type, :config, multi_id), pin))
+		begin
+			JSON.s_parse(@redis.hget(path(type, :config, multi_id), pin))
+		rescue Exception => e
+			return nil
+		end
 	end
 	
 	# Get all sensors config of a multi, in form {pin => config}
-	# @return [Hash] List of devices in form {pin => config} or nil if the multi does not exists
+	# @return [Hash] List of devices in form {pin => config}
+	# @return [nil] if the multi does not exists or invalid datas
 	#
 	def list type, multi_id
 		return nil unless knows_multi? multi_id
 		path = path(type, multi_id)
-		Hash[*@redis.hgetall(path).collect {|id, config| [id.to_i, JSON.s_parse(config)]}.flatten]
+		begin
+			Hash[*@redis.hgetall(path).collect {|id, config| [id.to_i, JSON.s_parse(config)]}.flatten]
+		rescue Exception => e
+			return nil
+		end
 	end
 	
 	# Get the value of a sensor
@@ -105,10 +132,16 @@ module Redis_interface_common
 	# Get a profile
 	# @macro type
 	# @param [String] profile the name of the profile
+	# @return [Hash] the profile
+	# @return [nil] if unknown profile or invalid datas
 	#
 	def get_profile(type, profile)
 		return nil unless knows_profile?(type, profile)
-		JSON.s_parse(@redis.hget(path(type), profile))
+		begin
+			JSON.s_parse(@redis.hget(path(type), profile))
+		rescue Exception => e
+			return nil
+		end
 	end
 	
 	# Callback when a value is published on redis.
@@ -117,6 +150,7 @@ module Redis_interface_common
 	# @param [String, Integer] pin Pin you need to listen to, or '*' for all the pins
 	# @yield [multi_id, pin, value, unit, name] Processing of the published value for type = :sensor
 	# @yield [multi_id, pin, value] Processing of the published value for type = :actuator
+	# TODO solidification pour le démon
 	#
 	def on_published_value(type, multi = "*", pin = "*")
 		Thread.new do

@@ -37,21 +37,25 @@ class Redis_interface_client
 	# @option config [String] :profile Profile associated to the device
 	# @option config [Integer] :period Sensor only : Period beetween to sensor reading (in ms) (optional if the profile has a default period)
 	# @option config [Integer, optional] :value Actuator only : Initial value
+	# @option config [Integer] :pin Pin where the device is plugged
 	# @param [Integer] multi_id Multiplexer's Id
 	# @param [Symbol] type Device type, can be :sensor or :actuator
 	#
-	def add type, multi_id, config = {}
+	def add type, multi_id, pin, config = {}
 		raise ArgumentError, "Multiplexer Id should be an Integer" unless multi_id.is_a? Integer
-		config.must_have(name: String, profile: String, pin: Integer)
+		rais ArgumentError, "Pin should be an Integer" unless pin.is_a? Integer
 		case type
 			when :sensor
+				config.must_have(SENS_CONF[:necessary])
+				config.can_have(SENS_CONF[:optional])
 				profile = get_profile :sensor, config[:profile]
 				raise ArgumentError, "Profile #{config[:profile]} does not exist" unless profile
-				profile.has_key?(:period)? config.can_have(period: Integer) : config.must_have(period: Integer)
+				config.must_have(period: Integer) unless profile[:period].is_a? Integer
 #				profile.has_key?(:pin)? can_have[:pin] = Integer : must_have[:pin] = Integer #TODO implement default pin ?
 				@redis.publish(path(type, :config, multi_id), config.to_json) >= 1
 			when :actuator
-				config.can_have(period: Integer)
+				config.must_have(ACTU_CONF[:necessary])
+				config.can_have(ACTU_CONF[:optional])
 				@redis.hset(path(type, :config, multi_id), config.delete(:pin), config.to_json)
 			else raise ArgumentError, "Type should be :sensor or :actuator"
 		end
@@ -81,13 +85,13 @@ class Redis_interface_client
 	#
 	def add_profile( type, name, profile = {} )
 		raise ArgumentError, "Name should be a String" unless name.is_a? String
-		profile.must_have(function: String)
-		profile.can_have(period: Integer, option1: Integer, option2: Integer)
 		case type
 			when :sensor
-				profile.must_have(unit: String)
-				profile.can_have(rpn: String, precision: Integer)
+				profile.must_have(SENS_PROFILE[:necessary])
+				profile.can_have(SENS_PROFILE[:optional])
 			when :actuator
+				profile.must_have(ACTU_PROFILE[:necessary])
+				profile.can_have(ACTU_PROFILE[:optional])
 			else raise ArgumentError, "Type should be :sensor or :actuator"
 		end
 		@redis.hset(path(type), name, profile.to_json)

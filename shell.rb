@@ -42,9 +42,9 @@ module Redis_client
 		#
 		def add_sensor(multi, pin, name, profile, period = nil, args = {})
 			begin
-				args.merge!({multi: multi, pin: pin, name: name, profile: profile})
+				args.merge!({multi: multi, name: name, profile: profile, pin: pin})
 				args[:period] = period if period
-				@redis.add :sensor, args.delete(:multi), args
+				@redis.add :sensor, args.delete(:multi), pin, args
 			rescue ArgumentError => error
 				puts error.message
 			end

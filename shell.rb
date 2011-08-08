@@ -27,10 +27,17 @@ module Redis_client
 		# Print the list of multiplexers that don't have any task running
 		#
 		def list_unconfigured
-			@redis.list_multis.select {|multi, config| @redis.list(:sensor, multi).size + @redis.list(:actuator, multi).size == 0}.each do |multi, config|
+			@redis.list_multis.select {|multi, config| config[:network] == 0}.each do |multi, config|
 				supported = @redis.support(config[:supported])
 				puts "#{multi} : #{config[:description]} (supports : #{supported.join(", ")})"
 			end
+		end
+		
+		# Associate a multiplexer to the network
+		# @param (see Redis_interface_client#take)
+		#
+		def take multi_id
+			@redis.take multi_id
 		end
 		
 		# Add a sensor to a multiplexer
@@ -190,7 +197,6 @@ module Redis_client
 		# @param [String, Symbol] function Function to describe (or nil if you want all)
 		#
 		def help function = nil
-			p 
 			YARD::Registry.load!
 			if function
 				description = describe function
@@ -208,7 +214,7 @@ module Redis_client
 		def describe function
 			doc = YARD::Registry["#{self.class}##{function}"]
 			return nil unless doc
-			descr = "#{doc.name(true)} : #{doc.docstring}\n\n"
+			descr = "\n#{doc.name(true)}(#{doc.tags(:param).inject([]){|a,p| a.push(p.name)}.join(" ")}) : #{doc.docstring}\n\n"
 			if doc.has_tag?(:param)
 				descr << "Parameters :\n"
 				doc.tags(:param).each do |parameter|

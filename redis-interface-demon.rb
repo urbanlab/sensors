@@ -42,7 +42,6 @@ class Redis_interface_demon
 	def set_multi_config multi_id, config
 		config[:id] = multi_id
 		@redis.hset(path(), multi_id, config.to_json)
-		@redis.publish(path, config.to_json)
 		@log.debug("Registering multiplexer's configuration : #{config}")
 	end
 	
@@ -178,7 +177,7 @@ class Redis_interface_demon
 	end
 	
 	# Callback when a client request to take a sensor
-	#@yield [id_multi, network] 
+	#@yield [id_multi, network] TODO test
 	#
 	def on_taken
 		Thread.new do
@@ -186,12 +185,12 @@ class Redis_interface_demon
 			redis.subscribe(path()) do |on|
 				on.message do |channel, message|
 					begin
-						message = JSON.s_parse(message)
+						config = JSON.s_parse(message)
 					rescue Exception => e
 						@log.warn("A client tried to take a multiplexer with an invalid message")
 					end
-					if (message[:network].is_integer?) and (message[:multiplexer].is_integer?)
-						yield message[:multiplexer], message[:network]
+					if (config[:network].is_a? Integer) and (config[:multiplexer].is_a? Integer)
+						yield config[:multiplexer], config[:network]
 					else
 						@log.warn("A client tried to take a multiplexer with bad multi_id or network")
 					end

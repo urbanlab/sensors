@@ -22,6 +22,7 @@ class Xbee_Demon
 		args = {baudrate: 19200, redis_host: 'localhost', redis_port: 6379, logger: Logger.new(nil)}.merge args
 		Thread.abort_on_exception = true
 		@log = args[:logger]
+		@network = network
 		redislogger = @log.dup
 		redislogger.progname = "Redis"
 		seriallogger = @log.dup
@@ -85,23 +86,29 @@ class Xbee_Demon
 		
 		# TODO : test
 		@redis.on_taken do |id_multi, network|
+			p network
+			p @network
 			if (network == @network) #it's for me !
 				@serial.reset(id_multi) #cleaning what the over demon let on the multiplexer
 				config = @redis.get_multi_config(id_multi)
 				config[:network] = @network
+				@redis.set_multi_config(id_multi, config)
 			else
 				@redis.clean_up(id_multi)
 			end
 		end
 
 		@serial.on_new_multi do |id|
+			config = @redis.get_multi_config(id)
 			if (id == 0 or id == 255)  # Unconfigured, bad id
 				new_id = (Array(1..255) - @redis.list_multis.keys)[0] # first unused id
-				@serial.change_id(id, new_id)
+				if (@serial.change_id(id, new_id) && @network == 1) #only network 1 will changes the ids...
+					@redis.set_multi_config(id, {network: 0, description: "no name", supported: @serial.list_implementations(id)})
+				end
 			elsif (not (@redis.knows_multi? id))   # valid id, but not registered
-				@redis.set_multi_config(id, {description: "no name", supported: @serial.list_implementations(id)})
-			else                                   # Known multi that has been reseted
-				restore_multi_state id	
+				@redis.set_multi_config(id, {network: 0, description: "no name", supported: @serial.list_implementations(id)})
+			elsif (config[:network]) == @network # registered multiplexer on my network
+				restore_multi_state id
 			end
 		end
 		
@@ -142,7 +149,7 @@ log.progname = "Demon"
 log.datetime_format = "%Y-%m-%d %H:%M:%S"
 trap(:INT){throw :interrupted}
 begin #TODO : don't work ?
-	demon = Xbee_Demon.new("1", logger: log)
+	demon = Xbee_Demon.new(1, logger: log)
 	demon.launch
 rescue Errno::ECONNREFUSED => e
 	@log.fatal("Lost connection with Redis, exiting... error : #{e.message}")

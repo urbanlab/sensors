@@ -36,7 +36,7 @@ class Redis_interface_client
 	#
 	def take multi_id
 		raise ArgumentError "multi_id must be a Integer" unless multi_id.is_a?(Integer)
-		@redis.publish(path(), {multiplexer: multi_id, network: @network})
+		@redis.publish(path(), {multiplexer: multi_id, network: @network}.to_json)
 	end
 	
 	# Register a sensor or an actuator.

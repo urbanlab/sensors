@@ -233,7 +233,7 @@ class Hash
 		self
 	end
 	
-	# options test
+	# options test TODO document
 	#
 	def must_have(obligatory)
 		errors = []
@@ -246,8 +246,10 @@ class Hash
 			elsif self[argument] and (check.is_a? Symbol)
 				if (self[argument].respond_to? check) and (self[argument].method(check).arity == args.size)
 					result = self[argument].method(check).call(*args)
-				else
+				elsif Object.respond_to?(check, true) and Object.method(check).arity == args.size
 					result = Object.method(check).call(self[argument], *args)
+				else
+					errors << "#{argument} has a bad type"
 				end
 			elsif self[argument] and (check.is_a? Proc or check.is_a? Method)
 				result = check.call(self[argument], *args)
@@ -268,8 +270,10 @@ class Hash
 			elsif self[argument] and (check.is_a? Symbol)
 				if (self[argument].respond_to? check) and (self[argument].method(check).arity == args.size)
 					result = self[argument].method(check).call(*args)
-				else
+				elsif Object.respond_to?(check, true) and (Object.method(check).arity == args.size)
 					result = Object.method(check).call(self[argument], *args)
+				else
+					errors << "#{argument} has a bad type"
 				end
 			elsif self[argument] and (check.is_a? Proc or check.is_a? Method)
 				result = check.call(self[argument])

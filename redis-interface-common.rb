@@ -237,19 +237,32 @@ class Hash
 	#
 	def must_have(obligatory)
 		errors = []
-		obligatory.each do |argument, type|
+		obligatory.each do |argument, check|
 			errors << "#{argument} is missing" unless self[argument]
-			errors << "#{argument} should be #{type}" unless self[argument].is_a? type
+			check = Object.method(check) if check.is_a? Symbol
+			if check.is_a? Class
+				errors << "#{argument} should be #{check}" unless self[argument].is_a? check
+			elsif self[argument] and (check.is_a? Proc or check.is_a? Method)
+				result = check.call(self[argument])
+				errors << "#{argument} has a problem : #{result}" if result.is_a? String
+				errors << "#{argument} is invalid" if result == false
+			end
 		end
 		raise ArgumentError, errors.join(", ") unless errors.empty?
 	end
 	
 	def can_have(optional)
 		errors = []
-		optional.each do |argument, typedefault|
-			type, default = typedefault
+		optional.each do |argument, checkdefault|
+			check, default = typedefault
+			check = Object.method(check) if check.is_a? Symbol
+			errors << "#{argument} should be #{check}" if self[argument] and check.is_a? Class and not self[argument].is_a?(check)
+			if self[argument] and (check.is_a? Proc or check_is_a? Method)
+				result = check.call(self[argument])
+				errors << "#{argument} has a problem : #{result}" if result.is_a? String
+				errors << "#{argument} is invalid" if result == false
+			end
 			self[argument] = self[argument] || default if default
-			errors << "#{argument} should be #{type}" if self[argument] and not self[argument].is_a?(type)
 		end
 		raise ArgumentError, errors.join(", ") unless errors.empty?
 	end

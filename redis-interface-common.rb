@@ -1,6 +1,6 @@
 require 'rubygems'
 require 'json'
-require 'redis/connection/hiredis'
+#require 'redis/connection/hiredis'
 require 'redis'
 
 # Contain common methods between the server and the client : static information reading

@@ -31,6 +31,14 @@ class Redis_interface_client
 		return true
 	end
 	
+	# Associate a multi to the network
+	# @param [Integer] multi_id Id of the multi
+	#
+	def take multi_id
+		raise ArgumentError "multi_id must be a Integer" unless multi_id.is_a?(Integer)
+		@redis.publish(path(), {multiplexer: multi_id, network: @network})
+	end
+	
 	# Register a sensor or an actuator.
 	# @return [boolean] true if a demon was listening
 	# @option config [String] :name Name of the device
@@ -41,9 +49,8 @@ class Redis_interface_client
 	# @param [Integer] multi_id Multiplexer's Id
 	# @param [Symbol] type Device type, can be :sensor or :actuator
 	#
-	def add type, multi_id, pin, config = {}
+	def add type, multi_id, config = {}
 		raise ArgumentError, "Multiplexer Id should be an Integer" unless multi_id.is_a? Integer
-		rais ArgumentError, "Pin should be an Integer" unless pin.is_a? Integer
 		case type
 			when :sensor
 				config.must_have(SENS_CONF[:necessary])

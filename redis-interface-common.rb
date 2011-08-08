@@ -183,7 +183,7 @@ module Redis_interface_common
 	#
 	def path(*args)
 		case args.size
-			when 0 then "network:#@network.multiplexer.config"
+			when 0 then "config.multiplexer"
 			when 1 then "config.#{args[0]}"
 			when 2 then "network:#@network.multiplexer:#{args[1]}.#{args[0]}.config"
 			when 3 then "network:#@network.multiplexer:#{args[2]}.#{args[0]}.#{args[1]}"

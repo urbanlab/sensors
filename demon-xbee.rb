@@ -82,6 +82,17 @@ class Xbee_Demon
 					@serial.rem_task(multi, pin)
 			end
 		end
+		
+		# TODO : test
+		@redis.on_taken do |id_multi, network|
+			if (network == @network) #it's for me !
+				@serial.reset(id_multi) #cleaning what the over demon let on the multiplexer
+				config = @redis.get_multi_config(id_multi)
+				config[:network] = @network
+			else
+				@redis.clean_up(id_multi)
+			end
+		end
 
 		@serial.on_new_multi do |id|
 			if (id == 0 or id == 255)  # Unconfigured, bad id

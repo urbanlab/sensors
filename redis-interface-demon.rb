@@ -26,12 +26,22 @@ class Redis_interface_demon
 		@redis.flushdb
 		@log.info("Flushing database")
 	end
+	
+	# Clean up a multiplexer's sensors and actuators
+	# @param [Integer] multi_id Id of the multi to be cleaned
+	# TODO :test
+	def clean_up(multi_id)
+		@redis.del(path(:sensor, :value, multi_id))
+		@redis.del(path(:actuator, :value, multi_id))
+		@redis.del(path(:sensor, :config, multi_id))
+		@redis.del(path(:actuator, :config, multi_id))
+	end
 
 	# Assign a config to a multiplexer
 	#
 	def set_multi_config multi_id, config
-		@redis.hset(path(), multi_id, config.to_json)
 		config[:id] = multi_id
+		@redis.hset(path(), multi_id, config.to_json)
 		@redis.publish(path, config.to_json)
 		@log.debug("Registering multiplexer's configuration : #{config}")
 	end
@@ -57,7 +67,8 @@ class Redis_interface_demon
 			begin
 				value = solve_rpn(rpn)
 			rescue Exception => e
-				@log.error("Tried to publish a value with an icorrect rpn : #{profile[:rpn]} from #{config[:profile]}")
+				@log.error("Tried to publish a value with an icorrect rpn : #{profile[:rpn]} from #{config[:profile]}. Error : #{e.message}")
+				return false
 			end
 		else
 			value = raw_value
@@ -166,6 +177,29 @@ class Redis_interface_demon
 		end
 	end
 	
+	# Callback when a client request to take a sensor
+	#@yield [id_multi, network] 
+	#
+	def on_taken
+		Thread.new do
+			redis = Redis.new(host: @host, port: @port)
+			redis.subscribe(path()) do |on|
+				on.message do |channel, message|
+					begin
+						message = JSON.s_parse(message)
+					rescue Exception => e
+						@log.warn("A client tried to take a multiplexer with an invalid message")
+					end
+					if (message[:network].is_integer?) and (message[:multiplexer].is_integer?)
+						yield message[:multiplexer], message[:network]
+					else
+						@log.warn("A client tried to take a multiplexer with bad multi_id or network")
+					end
+				end
+			end
+		end
+	end
+	
 	private
 	
 	# Basic analyse of a String to know if it looks like a rpn
@@ -181,9 +215,8 @@ class Redis_interface_demon
 	# Solve a Reverse Polish Notation
 	#
 	def solve_rpn(s)
-		s.each
 		stack = []
-		s.split(" ").each do |e|
+		s.split("\s").each do |e|
 			case e
 				when "+"
 					stack.push(stack.pop + stack.pop)

@@ -200,16 +200,6 @@ class Redis_interface_demon
 	end
 	
 	private
-	
-	# Basic analyse of a String to know if it looks like a rpn
-	#
-	def is_a_rpn?(rpn)
-		return false unless (s = String.try_convert(rpn))
-		s.split(" ").each do |e|
-			return false unless (e.is_numeric? or ["+", "-", "*", "/", "X"].include? e)
-		end
-		return true
-	end
 
 	# Solve a Reverse Polish Notation
 	#

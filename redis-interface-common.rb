@@ -14,7 +14,7 @@ module Redis_interface_common
 				 optional:   {period: Integer}}
 	# Definition of a sensor profile
 	SENS_PROFILE = {necessary: {function: String, unit: String},
-					optional:  {period: Integer, option1: Integer, option2: Integer, rpn: String, precision: Integer}}
+					optional:  {period: Integer, option1: Integer, option2: Integer, rpn: :is_a_rpn?, precision: Integer}}
 	# Definition of an actuator profile
 	ACTU_PROFILE = {necessary: {function: String},
 					optional:  {period: Integer, option1: Integer, option2: Integer}}
@@ -200,6 +200,15 @@ class String
 	def is_numeric?
 		begin Float(self) ; true end rescue false
 	end
+		
+	# Basic analyse of a String to know if it looks like a rpn
+	#
+	def is_a_rpn?
+		self.split(" ").each do |e|
+			return false unless (e.is_numeric? or ["+", "-", "*", "/", "X"].include? e)
+		end
+		return true
+	end
 end
 
 #@private
@@ -244,9 +253,9 @@ class Hash
 			if check.is_a? Class
 				errors << "#{argument} should be #{check}" unless self[argument].is_a? check
 			elsif self[argument] and (check.is_a? Symbol)
-				if (self[argument].respond_to? check) and (self[argument].method(check).arity == args.size)
+				if self[argument].respond_to?(check, true) and (self[argument].method(check).arity == args.size)
 					result = self[argument].method(check).call(*args)
-				elsif Object.respond_to?(check, true) and Object.method(check).arity == args.size
+				elsif Object.respond_to?(check, true) and Object.method(check).arity == args.size + 1
 					result = Object.method(check).call(self[argument], *args)
 				else
 					errors << "#{argument} has a bad type"
@@ -268,9 +277,9 @@ class Hash
 			if self[argument] and check.is_a? Class and self[argument] and not self[argument].is_a?(check)
 				errors << "#{argument} should be #{check}"
 			elsif self[argument] and (check.is_a? Symbol)
-				if (self[argument].respond_to? check) and (self[argument].method(check).arity == args.size)
+				if self[argument].respond_to?(check, true) and (self[argument].method(check).arity == args.size)
 					result = self[argument].method(check).call(*args)
-				elsif Object.respond_to?(check, true) and (Object.method(check).arity == args.size)
+				elsif Object.respond_to?(check, true) and Object.method(check).arity == args.size + 1
 					result = Object.method(check).call(self[argument], *args)
 				else
 					errors << "#{argument} has a bad type"

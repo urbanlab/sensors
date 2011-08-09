@@ -249,22 +249,8 @@ class Hash
 		obligatory.each do |argument, check|
 			check, *args = check
 			errors << "#{argument} is missing" unless self[argument]
-			result = true
-			if check.is_a? Class
-				errors << "#{argument} should be #{check}" unless self[argument].is_a? check
-			elsif self[argument] and (check.is_a? Symbol)
-				if self[argument].respond_to?(check, true) and (self[argument].method(check).arity == args.size)
-					result = self[argument].method(check).call(*args)
-				elsif Object.respond_to?(check, true) and Object.method(check).arity == args.size + 1
-					result = Object.method(check).call(self[argument], *args)
-				else
-					errors << "#{argument} has a bad type"
-				end
-			elsif self[argument] and (check.is_a? Proc or check.is_a? Method)
-				result = check.call(self[argument], *args)
-			end
-			errors << "#{argument} has a problem : #{result}" if result.is_a? String
-			errors << "#{argument} is invalid" if result == false
+			result = check_option(argument, check, *args) if self[argument]
+			errors << result unless result == nil
 		end
 		raise ArgumentError, errors.join(", ") unless errors.empty?
 	end
@@ -273,25 +259,34 @@ class Hash
 		errors = []
 		optional.each do |argument, checkdefault|
 			check, *args, default = checkdefault
-			result = true
-			if self[argument] and check.is_a? Class and self[argument] and not self[argument].is_a?(check)
-				errors << "#{argument} should be #{check}"
-			elsif self[argument] and (check.is_a? Symbol)
-				if self[argument].respond_to?(check, true) and (self[argument].method(check).arity == args.size)
-					result = self[argument].method(check).call(*args)
-				elsif Object.respond_to?(check, true) and Object.method(check).arity == args.size + 1
-					result = Object.method(check).call(self[argument], *args)
-				else
-					errors << "#{argument} has a bad type"
-				end
-			elsif self[argument] and (check.is_a? Proc or check.is_a? Method)
-				result = check.call(self[argument])
-			end
-			errors << "#{argument} has a problem : #{result}" if result.is_a? String
-			errors << "#{argument} is invalid" if result == false
+			result = check_option(argument, check, *args) if self[argument]
+			errors << result unless result == nil
 			self[argument] = self[argument] || default if default
 		end
 		raise ArgumentError, errors.join(", ") unless errors.empty?
+	end
+	
+	private
+	
+	def check_option(argname, check, *args)
+		result = true
+		argument = self[argname]
+		if check.is_a? Class and not argument.is_a?(check)
+			result = "should be #{check}"
+		elsif (check.is_a? Symbol)
+			if argument.respond_to?(check, true) and (argument.method(check).arity == args.size)
+				result = argument.method(check).call(*args)
+			elsif Object.respond_to?(check, true) and Object.method(check).arity == args.size + 1
+				result = Object.method(check).call(argument, *args)
+			else
+				result = "it has a bad type"
+			end
+		elsif (check.is_a? Proc or check.is_a? Method)
+			result = check.call(self[argument])
+		end
+		return "#{argname} is wrong : #{result}" if result.is_a? String
+		return "#{argname} is invalid" if result == false
+		return nil
 	end
 end
 

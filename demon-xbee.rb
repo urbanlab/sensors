@@ -4,6 +4,7 @@ require 'rubygems'
 require 'redis-interface-demon'
 require 'serial-interface'
 require 'logger'
+require 'optparse'
 
 =begin
 - multiplexer : {:description => "bla", :supported => ["ain", "din"]}
@@ -17,22 +18,19 @@ Sur network:<network>:multiplexers:<multipl-id>:actuators = hash (pin, objet act
 
 =end
 # TODO limiter les accès redis
+
 class Xbee_Demon
 	def initialize(network, args)#serial_port = '/dev/ttyUSB0', baudrate = 19200, redis_host = 'localhost', redis_port = 6379, logfile = nil)
-		args = {baudrate: 19200, redis_host: 'localhost', redis_port: 6379, logger: Logger.new(nil)}.merge args
+		args = {baudrate: 19200, redis_host: 'localhost', redis_port: 6379, logfile: STDERR, level: Logger::WARN, size: 1048576}.merge args
 		Thread.abort_on_exception = true
-		@log = args[:logger]
+		@log = Logger.new(args[:logfile], 0, args[:logfile])
+		@log.level = args[:level]
+		@log.datetime_format = "%Y-%m-%d %H:%M:%S"
 		@network = network
-		redislogger = @log.dup
-		redislogger.progname = "Redis"
-		seriallogger = @log.dup
-		seriallogger.progname = "Serial"
-		
 		@log.info("Starting demon on port #{args[:serial_port]}")
 		begin
-			port = args[:serial_port]
-			@redis = Redis_interface_demon.new(network, args[:redis_host], args[:redis_port], redislogger)
-			@serial = Serial_interface.new(port, args[:baudrate], seriallogger)
+			@redis = Redis_interface_demon.new(network, args[:redis_host], args[:redis_port], @log)
+			@serial = Serial_interface.new(args[:serial_port], args[:baudrate], @log)
 		rescue Errno::ECONNREFUSED => e
 			@log.fatal("Could not connect to Redis, exiting... error : #{e.message}")
 			exit
@@ -43,6 +41,7 @@ class Xbee_Demon
 	end
 	
 	def launch
+		trap(:INT){@log.info "Exiting"; exit 0}
 		restore_state
 	
 		@redis.on_new_sensor do |multi, pin, function, period, *options|
@@ -86,8 +85,6 @@ class Xbee_Demon
 		
 		# TODO : test
 		@redis.on_taken do |id_multi, network|
-			p network
-			p @network
 			if (network == @network) #it's for me !
 				@serial.reset(id_multi) #cleaning what the over demon let on the multiplexer
 				config = @redis.get_multi_config(id_multi)
@@ -115,6 +112,8 @@ class Xbee_Demon
 		@serial.on_sensor_value do |id_multi, sensor, value|
 			@redis.publish_value(id_multi, sensor, value)
 		end
+		
+		sleep
 	end
 	
 	def restore_state
@@ -143,26 +142,84 @@ class Xbee_Demon
 	end
 end
 
-log = Logger.new STDOUT
-log.level = Logger::DEBUG
-log.progname = "Demon"
-log.datetime_format = "%Y-%m-%d %H:%M:%S"
-trap(:INT){throw :interrupted}
-begin #TODO : don't work ?
-	demon = Xbee_Demon.new(1, logger: log)
-	demon.launch
-rescue Errno::ECONNREFUSED => e
-	@log.fatal("Lost connection with Redis, exiting... error : #{e.message}")
-	exit
-rescue Errno::ENOENT => e
-	@log.fatal("Lost connection with the receiver, exiting... error : #{e.message}")
-	exit
-rescue Errno::EIO => e
-	@log.fatal("Unknown error : #{e.message}")
-	exit
+options = {}
+
+opts = OptionParser.new do |opts|
+	opts.banner = "Usage: demon-xbee.rb [options] network"
+	
+	opts.on("-l", "--logfile FILE", "Log to given FILE (default : stderr)") do |file|
+		if file == "stdout" or file == "stderr"
+			options[:logfile] = {"stdout" => STDOUT, "stderr" => STDERR}[file]
+		else
+			begin
+				options[:logfile] = File.open file, File::WRONLY | File::APPEND
+			rescue Exception => e
+				begin
+					options[:logfile] = File.open file, File::WRONLY | File::APPEND | File::CREAT
+				rescue Exception => e
+					puts "Could not open or create the log file, exiting... Error : #{e.message}"
+					exit 1
+				end
+			end
+		end
+	end
+	
+	opts.on("-L", "--log-level LEVEL", {"debug" => 0, "info" => 1, "warn" => 2, "error" => 3, "fatal" => 4, "unknown" => 5}, "Verbosity of the logger (can be debug, info, warn, error, fatal or unknown, default warn)") do |level|
+		#options[:level] = {"debug" => 0, "info" => 1, "warn" => 2, "error" => 3, "fatal" => 4, "unknown" => 5}[level]
+		options[:level] = level
+		if options[:level] == nil
+			puts "Incorrect log level, exiting..."
+			exit 1
+		end
+	end
+	
+	opts.on("-p", "--serial-port PORT", "Port where the receiver is plugged (will try any /dev/ttyUSB* by default)") do |serial|
+		options[:serial_port] = serial
+	end
+	
+	opts.on("-b", "--baudrate BAUDRATE", Integer, "Baudrate of the receiver (default : 19200)") do |baudrate|
+		options[:baudrate] = baudrate
+	end
+	
+	opts.on("-H", "--redis-host HOST", "Host where Redis is running (default : localhost)") do |host|
+		options[:redis_host] = host
+	end
+	
+	opts.on("-r", "--redis-port", "Port where Redis is listening (default : 6379)") do |port|
+		if port.is_integer?
+			options[:redis_port] = port.to_i
+		else
+			puts "Redis port must be integer, exiting..."
+			exit 1
+		end
+	end
+	
+	opts.on("-s", "--log-size", "Maximum logfile size (default : 1048576)") do |size|
+		if size.is_integer?
+			options[:size] = size.to_i
+		else
+			puts "Log size must be integer, exiting..."
+		end
+	end
+	
+	opts.on('-h', '--help', 'Show this message') do
+		puts opts
+		exit
+	end
 end
-catch(:interrupted){sleep}
-log.info("Exiting...")
+
+opts.parse!
+
+if ARGV.size == 1 && ARGV[0].is_integer?
+	options[:network] = ARGV[0].to_i
+else
+	puts "Network must be given and be an integer"
+	exit 1
+end
+
+demon = Xbee_Demon.new(options.delete(:network), options)
+demon.launch
+
 
 
 

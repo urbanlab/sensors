@@ -85,7 +85,7 @@ class Redis_interface_demon
 	#
 	def on_new_sensor
 		Thread.new do
-			redis = Redis.new :host => @host, :port => @port
+			redis = Redis.new host: @host, port: @port
 			redis.psubscribe(path(:sensor, :config, '*')) do |on|
 				on.pmessage do |pattern, channel, message|
 					config = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
@@ -133,7 +133,7 @@ class Redis_interface_demon
 	# TODO : useless ? TODO pas à jour
 	def on_new_actu(&block)
 		Thread.new do
-			redis = Redis.new :host => @host, :port => @port
+			redis = Redis.new host: @host, port: @port
 			redis.psubscribe(path(:actuator, :config, '*')) do |on|
 				on.pmessage do |pattern, channel, profile|
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ]
@@ -149,7 +149,7 @@ class Redis_interface_demon
 	#
 	def on_deleted(type)
 		Thread.new do
-			redis = Redis.new :host => @host, :port => @port
+			redis = Redis.new host: @host, port: @port
 			redis.psubscribe(path(type, :delete, '*')) do |on|
 				on.pmessage do |pattern, channel, pin|
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys

@@ -110,6 +110,4 @@ class Redis_interface_client
 	def remove_profile( type, name )
 		@redis.hdel(path(type), name) == 1
 	end
-	
-
 end

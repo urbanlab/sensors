@@ -2,6 +2,7 @@ require 'rubygems'
 require 'json'
 #require 'redis/connection/hiredis'
 require 'redis'
+require 'extensions'
 
 # Contain common methods between the server and the client : static information reading
 #
@@ -25,13 +26,13 @@ module Redis_interface_common
 	def load(network, host = 'localhost', port = 6379)
 		@host = host
 		@port = port
-		@redis = Redis.new :host => host, :port => port
+		@redis = Redis.new host: host, port: port
 		@redis.set("test", "ohohoh") #bypass ruby optimisation to catch exceptions at launch
 		@network = network
 	end
 	
 	# get all the multiplexers' config
-	# @return [Hash] list in form {id => config}
+	# @return [Hash] list in form +{id => config}+
 	#
 	def list_multis
 		configs = @redis.hgetall(path())
@@ -75,8 +76,8 @@ module Redis_interface_common
 		end
 	end
 	
-	# Get all sensors config of a multi, in form {pin => config}
-	# @return [Hash] List of devices in form {pin => config}
+	# Get all sensors config of a multi, in form +{pin => config}+
+	# @return [Hash] List of devices in form +{pin => config}+
 	# @return [nil] if the multi does not exists or invalid datas
 	#
 	def list type, multi_id
@@ -120,7 +121,7 @@ module Redis_interface_common
 	end
 	
 	# get all sensor/actuators profiles
-	# @return [Hash] in form {name => profile}
+	# @return [Hash] in form +{name => profile}+
 	# @macro [new] type
 	#   @param [Symbol] type can be :sensor or :actuator
 	#
@@ -188,114 +189,6 @@ module Redis_interface_common
 			when 2 then "network:#@network.multiplexer:#{args[1]}.#{args[0]}.config"
 			when 3 then "network:#@network.multiplexer:#{args[2]}.#{args[0]}.#{args[1]}"
 			when 4 then "network:#@network.multiplexer:#{args[2]}.#{args[0]}:#{args[3]}.#{args[1]}"
-		end
-	end
-end
-
-#@private
-class String
-	def is_integer?
-		begin Integer(self) ; true end rescue false
-	end
-	def is_numeric?
-		begin Float(self) ; true end rescue false
-	end
-		
-	# Basic analyse of a String to know if it looks like a rpn
-	#
-	def is_a_rpn?
-		self.split(" ").each do |e|
-			return false unless (e.is_numeric? or ["+", "-", "*", "/", "X"].include? e)
-		end
-		return true
-	end
-end
-
-#@private
-class Hash
-# Stolen from rails source
-	def symbolize_keys
-		inject({}) do |options, (key, value)|
-			options[(key.to_sym rescue key) || key] = value
-			options
-		end
-	end
-	
-	def integerize_keys!
-		self.keys.each do |key|
-			self[key.to_i] = self[key]
-			self.delete key
-		end
-		self
-	end
-	
-	def symbolize_keys!
-		self.replace(self.symbolize_keys)
-	end
-
-	def recursive_symbolize_keys!
-		symbolize_keys!
-		# symbolize each hash in .values
-		values.each{|h| h.recursive_symbolize_keys! if h.is_a?(Hash) }
-		# symbolize each hash inside an array in .values
-		values.select{|v| v.is_a?(Array) }.flatten.each{|h| h.recursive_symbolize_keys! if h.is_a?(Hash) }
-		self
-	end
-	
-	# options test TODO document
-	#
-	def must_have(obligatory)
-		errors = []
-		obligatory.each do |argument, check|
-			check, *args = check
-			errors << "#{argument} is missing" unless self[argument]
-			result = check_option(argument, check, *args) if self[argument]
-			errors << result unless result == nil
-		end
-		raise ArgumentError, errors.join(", ") unless errors.empty?
-	end
-	
-	def can_have(optional)
-		errors = []
-		optional.each do |argument, checkdefault|
-			check, *args, default = checkdefault
-			result = check_option(argument, check, *args) if self[argument]
-			errors << result unless result == nil
-			self[argument] = self[argument] || default if default
-		end
-		raise ArgumentError, errors.join(", ") unless errors.empty?
-	end
-	
-	private
-	
-	def check_option(argname, check, *args)
-		result = true
-		argument = self[argname]
-		if check.is_a? Class and not argument.is_a?(check)
-			result = "should be #{check}"
-		elsif (check.is_a? Symbol)
-			if argument.respond_to?(check, true) and (argument.method(check).arity == args.size)
-				result = argument.method(check).call(*args)
-			elsif Object.respond_to?(check, true) and Object.method(check).arity == args.size + 1
-				result = Object.method(check).call(argument, *args)
-			else
-				result = "it has a bad type"
-			end
-		elsif (check.is_a? Proc or check.is_a? Method)
-			result = check.call(self[argument])
-		end
-		return "#{argname} is wrong : #{result}" if result.is_a? String
-		return "#{argname} is invalid" if result == false
-		return nil
-	end
-end
-
-#@private
-module JSON
-	class << self
-		def s_parse(source, opts = {})
-			result = Parser.new(source, opts).parse
-			result.recursive_symbolize_keys! if result.is_a? Hash
 		end
 	end
 end

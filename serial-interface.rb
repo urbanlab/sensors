@@ -4,15 +4,16 @@ require 'timeout'
 require 'thread'
 require 'io/wait'
 require 'logger'
+require 'extensions'
 
 # Interface to serial port in order to get and send message to the multiplexers
 #
 class Serial_interface
 	# List of possible commands to send to the multiplexers
-	CMD = { :list => "l", :add => "a", :remove => "d", :tasks => "t" , :id => "i", :reset => "r", :ping => "p" }
+	CMD = { list: "l", add: "a", remove: "d", tasks: "t" , id: "i", reset: "r", ping: "p" }
 	
 	# List of possible answers
-	ANS = { :sensor => "SENS", :new => "NEW", :implementations => "LIST", :tasks => "TASKS" , :ok => "OK", :add => "ADD", :remove => "DEL"}
+	ANS = { sensor: "SENS", new: "NEW", implementations: "LIST", tasks: "TASKS" , ok: "OK", add: "ADD", remove: "DEL"}
 	
 	# Construction of the interface
 	# @param [Integer] port Port where the xbee receiver is plugged (eg. '/dev/ttyUSB0')
@@ -142,7 +143,7 @@ class Serial_interface
 	
 	# List the running tasks of a multiplexer
 	# @macro multi
-	# @return [Hash] in form {pin => task} or nil if no answer
+	# @return [Hash] in form +{pin => task}+ or nil if no answer
 	#
 	def list_tasks(multi)
 		ans = snd_message(/^#{multi} TASKS/, multi, :tasks)
@@ -252,15 +253,6 @@ class Serial_interface
 		@wait_for[pattern] = wr
 		ans = rd.read
 		ans
-	end
-end
-
-class String
-	def is_integer?
-		begin Integer(self) ; true end rescue false
-	end
-	def is_numeric?
-		begin Float(self) ; true end rescue false
 	end
 end
 

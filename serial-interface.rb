@@ -5,13 +5,15 @@ require 'thread'
 require 'io/wait'
 require 'logger'
 
-CMD = { :list => "l", :add => "a", :remove => "d", :tasks => "t" , :id => "i", :reset => "r", :ping => "p" }
-ANS = { :sensor => "SENS", :new => "NEW", :implementations => "LIST", :tasks => "TASKS" , :ok => "OK", :add => "ADD", :remove => "DEL"}
-
 # Interface to serial port in order to get and send message to the multiplexers
 #
 class Serial_interface
-
+	# List of possible commands to send to the multiplexers
+	CMD = { :list => "l", :add => "a", :remove => "d", :tasks => "t" , :id => "i", :reset => "r", :ping => "p" }
+	
+	# List of possible answers
+	ANS = { :sensor => "SENS", :new => "NEW", :implementations => "LIST", :tasks => "TASKS" , :ok => "OK", :add => "ADD", :remove => "DEL"}
+	
 	# Construction of the interface
 	# @param [Integer] port Port where the xbee receiver is plugged (eg. '/dev/ttyUSB0')
 	# @param [Integer] baudrate Baudrate communication (probably 19200)
@@ -172,6 +174,8 @@ class Serial_interface
 	
 	private
 	
+	# Look for serial ports to listen to
+	#
 	def search_port
 		port = nil
 		until port
@@ -198,6 +202,12 @@ class Serial_interface
 		port
 	end
 	
+	# Send a message, wait for the answer and return the answer
+	# @param [Regexp] pattern The pattern that the answer must match
+	# @param [Integer] multi The multiplexer that will receive the message
+	# @param [Symbol] command The command sent (must be a key of CMD)
+	# @param args The arguments of the command
+	#
 	def snd_message(pattern, multi, command, *args)
 		msg = "#{multi} #{CMD[command]} #{args.join(" ")}".chomp(" ") + "\n"
 		if @serial.closed?
@@ -223,6 +233,9 @@ class Serial_interface
 		end
 	end
 	
+	# Wait for a pattern and return what it returned
+	# @param [Regexp] pattern The pattern of the message
+	#
 	def wait_for(pattern)
 		i = 0
 		rd, wr = IO.pipe
@@ -230,6 +243,9 @@ class Serial_interface
 		Timeout.timeout(@timeout){rd.read.match(pattern).post_match.lstrip.chomp}
 	end
 	
+	# Wait for a pattern and return the full message
+	# @param [Regexp] pattern The pattern of the message
+	#
 	def brutal_wait_for (pattern)
 		i = 0
 		rd, wr = IO.pipe

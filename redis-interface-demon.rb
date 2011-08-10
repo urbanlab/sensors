@@ -4,8 +4,6 @@ require 'logger'
 
 # Contain methods userful for the demon : multiplexer's registration and dynamic callbacks of clients' messages
 #
-#
-
 class Redis_interface_demon
 	include Redis_interface_common
 	

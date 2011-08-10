@@ -224,3 +224,4 @@ class Redis_interface_demon
 		stack[0]
 	end
 end
+

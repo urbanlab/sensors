@@ -165,12 +165,7 @@ opts = OptionParser.new do |opts|
 	end
 	
 	opts.on("-L", "--log-level LEVEL", {"debug" => 0, "info" => 1, "warn" => 2, "error" => 3, "fatal" => 4, "unknown" => 5}, "Verbosity of the logger (can be debug, info, warn, error, fatal or unknown, default warn)") do |level|
-		#options[:level] = {"debug" => 0, "info" => 1, "warn" => 2, "error" => 3, "fatal" => 4, "unknown" => 5}[level]
 		options[:level] = level
-		if options[:level] == nil
-			puts "Incorrect log level, exiting..."
-			exit 1
-		end
 	end
 	
 	opts.on("-p", "--serial-port PORT", "Port where the receiver is plugged (will try any /dev/ttyUSB* by default)") do |serial|
@@ -185,21 +180,12 @@ opts = OptionParser.new do |opts|
 		options[:redis_host] = host
 	end
 	
-	opts.on("-r", "--redis-port", "Port where Redis is listening (default : 6379)") do |port|
-		if port.is_integer?
-			options[:redis_port] = port.to_i
-		else
-			puts "Redis port must be integer, exiting..."
-			exit 1
-		end
+	opts.on("-r", "--redis-port PORT", Integer, "Port where Redis is listening (default : 6379)") do |port|
+		options[:redis_port] = port.to_i
 	end
 	
-	opts.on("-s", "--log-size", "Maximum logfile size (default : 1048576)") do |size|
-		if size.is_integer?
-			options[:size] = size.to_i
-		else
-			puts "Log size must be integer, exiting..."
-		end
+	opts.on("-s", "--log-size SIZE", Integer, "Maximum logfile size (default : 1048576)") do |size|
+		options[:size] = size
 	end
 	
 	opts.on('-h', '--help', 'Show this message') do

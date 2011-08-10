@@ -215,7 +215,7 @@ class Serial_interface
 						@log.debug("Sent : \"#{msg.delete("\n")}\"")
 						retry
 					else
-						@log.error("The multiplexer #{multi} did not answered to the command \"#{command}\"")
+						@log.warn("The multiplexer #{multi} did not answered to the command \"#{command}\"")
 						nil
 					end
 				end

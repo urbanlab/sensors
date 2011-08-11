@@ -59,8 +59,8 @@ class Xbee_Demon
 		end
 		
 		@redis.on_deleted :actuator do |id_multi, actuator|
-			if get_config(:actuator, id_multi, actuator)[:state] # if the actuator was running, should ensure it will stop
-				@serial.rem_task(id_multi, actuator)
+			if @redis.get_config(:actuator, id_multi, actuator) # if the actuator was running, should ensure it will stop
+				ans = @serial.rem_task(id_multi, actuator)
 				(ans == true) or (ans == false) #delete from redis only if the task is no more running
 			else
 				true #don't care if the multi knows it, the task wasn't running.
@@ -100,7 +100,7 @@ class Xbee_Demon
 			if (id == 0 or id == 255)  # Unconfigured, bad id
 				new_id = (Array(1..255) - @redis.list_multis.keys)[0] # first unused id
 				if (@serial.change_id(id, new_id) && @network == 1) #only network 1 will changes the ids...
-					@redis.set_multi_config(id, {network: 0, description: "no name", supported: @serial.list_implementations(id)})
+					@redis.set_multi_config(new_id, {network: 0, description: "no name", supported: @serial.list_implementations(id)})
 				end
 			elsif (not (@redis.knows_multi? id))   # valid id, but not registered
 				@redis.set_multi_config(id, {network: 0, description: "no name", supported: @serial.list_implementations(id)})
@@ -192,6 +192,11 @@ opts = OptionParser.new do |opts|
 		puts opts
 		exit
 	end
+end
+
+if ARGV.size == 0
+	puts opts
+	exit
 end
 
 opts.parse!

@@ -2,7 +2,7 @@ require 'bombshell'
 require 'redis-interface-client'
 require 'yard'
 
-# TODO document hash args
+# TODO network
 module Redis_client
 	# Interactive shell
 	class Shell < Bombshell::Environment
@@ -18,7 +18,7 @@ module Redis_client
 		# Print the list of multiplexers
 		#
 		def list_multi #TODO limiter accès redis
-			@redis.list_multis.each do |multi, config|
+			@redis.list_multis.sort.each do |multi, config|
 				supported = @redis.support(config[:supported])
 				puts "#{multi} : #{config[:description]} (supports : #{supported.join(", ")})"
 			end
@@ -119,13 +119,18 @@ module Redis_client
 			end
 		end
 		
-		# List the sensors of a multiplexer
+		# List the sensors and actuators of a multiplexer
 		# @param [Integer] multi Id of the multiplexer
 		#
-		def list_sensors(multi)
-			if (list = @redis.list(:sensor, multi))
-				list.each do |k, v|
-					puts "#{k} : #{v[:name]}, #{v[:profile]} (period : #{v[:period]})"
+		def list_devices(multi)
+			if @redis.knows_multi? multi
+				puts "Sensors :"
+				@redis.list(:sensor, multi).sort.each do |pin, conf|
+					puts " - #{pin} : #{conf[:name]}, #{conf[:profile]} (period : #{conf[:period]})"
+				end
+				puts "Actuators :"
+				@redis.list(:actuator, multi).sort.each do |pin, conf|
+					puts "#{pin} : #{conf[:name]}, #{conf[:profile]}"
 				end
 			else
 				puts "The multiplexer doesn't exist"

@@ -158,7 +158,7 @@ module Redis_interface_common
 	#
 	def on_published_value(type, multi = "*", pin = "*")
 		Thread.new do
-			redis = Redis.new
+			redis = Redis.new host: @host, port: @port
 			redis.psubscribe(path(type, :value, multi, pin)) do |on|
 				on.pmessage do |pattern, channel, value|
 					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys

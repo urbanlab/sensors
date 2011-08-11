@@ -24,6 +24,7 @@ class Serial_interface
 	# @param [Integer] retry_nb Number of time to retry to send a command before
 	# the multiplexer is considered as disconnected
 	def initialize port, baudrate, logger = Logger.new(nil), timeout = 1, retry_nb = 3
+		@down = false
 		@log = logger
 		@baudrate = baudrate
 		@down_ports = []
@@ -189,13 +190,16 @@ class Serial_interface
 			end
 			port = case not_tested.size
 				when 0
-					@log.error("No /dev/ttyUSB available, demon won't anything while not fixed")
+					@log.error("No /dev/ttyUSB available, demon won't anything while not fixed") unless @down
+					@down = true
 					nil
 				when 1
 					@log.info("Trying with port #{candidates[0]}")
+					@down = false
 					not_tested[0]
 				else
 					@log.info("More than 1 port are available, taking #{candidates[0]}")
+					@down = false
 					not_tested[0]
 			end
 			sleep 1

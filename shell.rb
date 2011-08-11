@@ -10,16 +10,15 @@ module Redis_client
 
 		prompt_with 'client'
 		#@private
-		def initialize argv
-			super argv
-			@redis = Redis_interface_client.new 1
+		before_launch do |arg|
+			$redis = Redis_interface_client.new $network, $r_options[:redis_host], $r_options[:redis_port]
 		end
 		
 		# Print the list of multiplexers
 		#
 		def list_multi #TODO limiter accès redis
-			@redis.list_multis.sort.each do |multi, config|
-				supported = @redis.support(config[:supported])
+			$redis.list_multis.sort.each do |multi, config|
+				supported = $redis.support(config[:supported])
 				puts "#{multi} : #{config[:description]} (supports : #{supported.join(", ")})"
 			end
 		end
@@ -27,8 +26,8 @@ module Redis_client
 		# Print the list of multiplexers that don't have any task running
 		#
 		def list_unconfigured
-			@redis.list_multis.select {|multi, config| config[:network] == 0}.each do |multi, config|
-				supported = @redis.support(config[:supported])
+			$redis.list_multis.select {|multi, config| config[:network] == 0}.each do |multi, config|
+				supported = $redis.support(config[:supported])
 				puts "#{multi} : #{config[:description]} (supports : #{supported.join(", ")})"
 			end
 		end
@@ -37,7 +36,7 @@ module Redis_client
 		# @param (see Redis_interface_client#take)
 		#
 		def take multi_id
-			@redis.take multi_id
+			$redis.take multi_id
 		end
 		
 		# Add a sensor to a multiplexer
@@ -51,7 +50,7 @@ module Redis_client
 			begin
 				args.merge!({multi: multi, name: name, profile: profile, pin: pin})
 				args[:period] = period if period
-				@redis.add :sensor, args.delete(:multi), args
+				$redis.add :sensor, args.delete(:multi), args
 			rescue ArgumentError => error
 				puts error.message
 			end
@@ -63,7 +62,7 @@ module Redis_client
 			begin
 				args.merge!({multi: multi, pin: pin, name: name, profile: profile})
 				args[:period] = period if period
-				@redis.add :actuator, args.delete(:multi), args
+				$redis.add :actuator, args.delete(:multi), args
 			rescue ArgumentError => error
 				puts error.message
 			end
@@ -74,14 +73,14 @@ module Redis_client
 		# @param [Integer] pin Pin of the actuator
 		#
 		def switch_on(multi, pin)
-			@redis.set_actuator_state(multi, pin, 1)
+			$redis.set_actuator_state(multi, pin, 1)
 		end
 		
 		# Turn off an actuator of a multi
 		# @param (see Redis_client::Shell#switch_on)
 		#
 		def switch_off(multi, pin)
-			@redis.set_actuator_state(multi, pin, 0)
+			$redis.set_actuator_state(multi, pin, 0)
 		end
 		
 		# Modify the description of a multi
@@ -89,7 +88,7 @@ module Redis_client
 		# @param [String] description The new description
 		#
 		def set_description(multi, description)
-			if @redis.set_description(multi, description)
+			if $redis.set_description(multi, description)
 				puts "OK"
 			else
 				puts "The multiplexer doesn't exist"
@@ -101,7 +100,7 @@ module Redis_client
 		# @param [Integer] pin Pin where the sensor was plugged
 		#
 		def remove_sensor(multi, pin)
-			if @redis.remove :sensor, multi, pin
+			if $redis.remove :sensor, multi, pin
 				puts "OK"
 			else
 				puts "The multiplexer doesn't exist"
@@ -112,7 +111,7 @@ module Redis_client
 		# @param (see Redis_client::Shell#remove_sensor)
 		#
 		def remove_actuator(multi, pin)
-			if @redis.remove :actuator, multi, pin
+			if $redis.remove :actuator, multi, pin
 				puts "OK"
 			else
 				puts "The multiplexer doesn't exist"
@@ -123,13 +122,13 @@ module Redis_client
 		# @param [Integer] multi Id of the multiplexer
 		#
 		def list_devices(multi)
-			if @redis.knows_multi? multi
+			if $redis.knows_multi? multi
 				puts "Sensors :"
-				@redis.list(:sensor, multi).sort.each do |pin, conf|
+				$redis.list(:sensor, multi).sort.each do |pin, conf|
 					puts " - #{pin} : #{conf[:name]}, #{conf[:profile]} (period : #{conf[:period]})"
 				end
 				puts "Actuators :"
-				@redis.list(:actuator, multi).sort.each do |pin, conf|
+				$redis.list(:actuator, multi).sort.each do |pin, conf|
 					puts "#{pin} : #{conf[:name]}, #{conf[:profile]}"
 				end
 			else
@@ -143,7 +142,7 @@ module Redis_client
 		#
 		def add_sensor_profile(name, profile={})
 			begin
-				@redis.add_profile :sensor, name, profile
+				$redis.add_profile :sensor, name, profile
 			rescue ArgumentError => error
 				puts error.message
 			end
@@ -154,7 +153,7 @@ module Redis_client
 		def add_actuator_profile(args={})
 			args[:type] = :actuator
 			begin
-				@redis.add_profile args
+				$redis.add_profile args
 			rescue ArgumentError => error
 				puts error.message
 			end
@@ -163,7 +162,7 @@ module Redis_client
 		# List the registered sensor profiles
 		#
 		def list_sensor_profiles
-			@redis.list_profiles(:sensor).each do |name, profile|
+			$redis.list_profiles(:sensor).each do |name, profile|
 				puts "#{name} : #{profile[:function]}, #{profile[:rpn]}, #{profile[:unit]}"
 			end
 		end
@@ -171,7 +170,7 @@ module Redis_client
 		# List the registered actuator profiles
 		#
 		def list_actuator_profiles
-			@redis.list_profiles(:actuator).each do |name, profile|
+			$redis.list_profiles(:actuator).each do |name, profile|
 				puts "#{name} : #{profile[:function]}"
 			end
 		end
@@ -180,26 +179,26 @@ module Redis_client
 		# @param [String] name Name of the profile
 		#
 		def remove_sensor_profile name
-			puts @redis.remove_profile(:sensor, name) ? "OK" : "KO"
+			puts $redis.remove_profile(:sensor, name) ? "OK" : "KO"
 		end
 		
 		# Remove an actuator profile
 		# @param [String] name Name of the profile
 		#
 		def remove_actuator_profile name
-			puts @redis.remove_profile(:actuator, name) ? "OK" : "KO"
+			puts $redis.remove_profile(:actuator, name) ? "OK" : "KO"
 		end
 		
 		# Read a value from a sensor
 		# @param [Integer] multi Id of the multiplexer where the sensor is plugged
 		# @param [Integer] pin Pin of the sensor
 		def get_sensor_value multi, pin
-			hash = @redis.get_sensor_value(multi, pin)
+			hash = $redis.get_sensor_value(multi, pin)
 			puts "#{hash[:name]} : #{hash[:value]}#{hash[:unit]} (this information is #{(Time.now - Time.at(hash[:timestamp])).round(1)}s old)"
 		end
 		
 		# Get some help
-		# @param [String, Symbol] function Function to describe (or nil if you want all)
+		# @param [String, Symbol] function Function to describe
 		#
 		def help function = nil
 			YARD::Registry.load!
@@ -211,6 +210,8 @@ module Redis_client
 				else
 					puts description
 				end
+			else
+				puts "Type help :<the function>. Like, help :switch_on"
 			end
 		end
 		

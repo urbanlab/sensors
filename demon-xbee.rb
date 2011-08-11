@@ -23,7 +23,7 @@ class Xbee_Demon
 	def initialize(network, args)#serial_port = '/dev/ttyUSB0', baudrate = 19200, redis_host = 'localhost', redis_port = 6379, logfile = nil)
 		args = {baudrate: 19200, redis_host: 'localhost', redis_port: 6379, logfile: STDERR, level: Logger::WARN, size: 1048576}.merge args
 		Thread.abort_on_exception = true
-		@log = Logger.new(args[:logfile], 0, args[:logfile])
+		@log = Logger.new(args[:logfile], 0, args[:size])
 		@log.level = args[:level]
 		@log.datetime_format = "%Y-%m-%d %H:%M:%S"
 		@network = network
@@ -151,6 +151,8 @@ opts = OptionParser.new do |opts|
 		if file == "stdout" or file == "stderr"
 			options[:logfile] = {"stdout" => STDOUT, "stderr" => STDERR}[file]
 		else
+			options[:logfile] = file #TODO check
+=begin			
 			begin
 				options[:logfile] = File.open file, File::WRONLY | File::APPEND
 			rescue Exception => e
@@ -161,7 +163,8 @@ opts = OptionParser.new do |opts|
 					exit 1
 				end
 			end
-		end
+=end
+		end		
 	end
 	
 	opts.on("-L", "--log-level LEVEL", {"debug" => 0, "info" => 1, "warn" => 2, "error" => 3, "fatal" => 4, "unknown" => 5}, "Verbosity of the logger (can be debug, info, warn, error, fatal or unknown, default warn)") do |level|

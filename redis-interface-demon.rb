@@ -97,8 +97,24 @@ class Redis_interface_demon
 					end
 					multi = config.delete(:multiplexer)
 					if (not multi.is_integer?) or (not knows_multi? multi)
-						@log.warn("A client tried to add a sensor with a bad id : #{multi}")
+						@log.warn("A client tried to add a sensor with a bad multiplexer id : #{multi}")
 						next
+					end
+					multi = multi.to_i
+					multi_config = get_multi_config multi
+					if not multi_config
+						@log.warn("A client tried to add a sensor with an unknown multiplexer : #{multi}")
+						next
+					end
+					must_take = false
+					case multi_config[:network]
+						when 0
+							must_take = true
+						when @network
+							# rien à faire ?
+						else
+							@log.warn("A client tried to add a sensor that belong to another network : #{multi_config[:network]}")
+							next
 					end
 					profile = get_profile :sensor, config[:profile]
 					if profile == nil
@@ -121,6 +137,10 @@ class Redis_interface_demon
 					end
 					pin = config.delete(:pin)
 					if yield(multi, pin, profile[:function], period, *[profile[:option1], profile[:option2]])
+						if must_take
+							multi_config[:network] = @network
+							set_multi_config multi, multi_config
+						end
 						@redis.hset(channel, pin, config.to_json)
 					end
 				end

@@ -85,15 +85,9 @@ class Redis_interface_client
 	#
 	def add_profile( type, name, profile = {} )
 		raise ArgumentError, "Name should be a String" unless name.is_a? String
-		case type
-			when :sensor
-				profile.must_have(SENS_PROFILE[:necessary])
-				profile.can_have(SENS_PROFILE[:optional])
-			when :actuator
-				profile.must_have(ACTU_PROFILE[:necessary])
-				profile.can_have(ACTU_PROFILE[:optional])
-			else raise ArgumentError, "Type should be :sensor or :actuator"
-		end
+		raise(ArgumentError, "type should be :actuator or :sensor") unless (type == :actuator or type == :sensor)
+		profile.must_have(PROFILE[type][:necessary])
+		profile.can_have(PROFILE[type][:optional])
 		@redis.hset(path(type), name, profile.to_json)
 	end
 	

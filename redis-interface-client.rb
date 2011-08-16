@@ -6,6 +6,7 @@ require 'redis-interface-common'
 class Redis_interface_client
 	include Redis_interface_common
 	def initialize(network, host = 'localhost', port = 6379)
+		@id = 0
 		load(network, host, port)
 	end
 	# Return the list of supported profile from a list of arduino functions
@@ -35,8 +36,7 @@ class Redis_interface_client
 	# @param [Integer] multi_id Id of the multi
 	#
 	def take multi_id
-		raise ArgumentError "multi_id must be a Integer" unless multi_id.is_a?(Integer)
-		@redis.publish(path(), {multiplexer: multi_id, network: @network}.to_json)
+		send("take", {network: @network, multiplexer: multi_id})
 	end
 	
 	# Register a sensor or an actuator.
@@ -50,22 +50,8 @@ class Redis_interface_client
 	# @param [Symbol] type Device type, can be :sensor or :actuator
 	#
 	def add type, multi_id, config = {}
-		raise ArgumentError, "Multiplexer Id should be an Integer" unless multi_id.is_a? Integer
-		case type
-			when :sensor
-				config.must_have(SENS_CONF[:necessary])
-				config.can_have(SENS_CONF[:optional])
-				profile = get_profile :sensor, config[:profile]
-				raise ArgumentError, "Profile #{config[:profile]} does not exist" unless profile
-				config.must_have(period: Integer) unless profile[:period].is_a? Integer
-#				profile.has_key?(:pin)? can_have[:pin] = Integer : must_have[:pin] = Integer #TODO implement default pin ?
-				@redis.publish(path(type, :config, multi_id), config.to_json) >= 1
-			when :actuator
-				config.must_have(ACTU_CONF[:necessary])
-				config.can_have(ACTU_CONF[:optional])
-				@redis.hset(path(type, :config, multi_id), config.delete(:pin), config.to_json)
-			else raise ArgumentError, "Type should be :sensor or :actuator"
-		end
+				config[:multiplexer] = multi_id
+				send("add_#{type}", config)
 	end
 	
 	# Unregister a sensor
@@ -75,8 +61,15 @@ class Redis_interface_client
 	# @return [boolean] true if a demon was listening
 	#
 	def remove type, multi_id, pin
-		path = path(type, :delete, multi_id)
-		@redis.publish(path, pin) >= 1
+		opts = {type: type, multiplexer: multi_id, pin: pin}
+		send("delete", opts)
+	end
+	
+		
+	# Activate or deactivate an actuator
+	#
+	def set_actuator_state(multi_id, pin, state)
+		send("actuator_state", {multiplexer: multi_id, state: state, pin: pin})
 	end
 	
 	# Register a sensor profile
@@ -110,4 +103,17 @@ class Redis_interface_client
 	def remove_profile( type, name )
 		@redis.hdel(path(type), name) == 1
 	end
+	
+	private
+	
+	# Send a message and wait for the answer
+	#
+	def send(command, args)
+		id_message = rand.hash.abs + (@id += 1) #TODO vraie génération
+		message = {id: id_message, command: command, message: args}
+		@redis.lpush("#{PREFIX}.network:#@network.messages", message.to_json)
+		chan, answer = @redis.blpop("#{PREFIX}.#{id_message}", 10)
+		return [answer.split("::")[0] == "OK", answer.split("::")[1]]
+	end
 end
+

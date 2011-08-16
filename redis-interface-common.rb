@@ -10,18 +10,30 @@ require 'extensions'
 # Contain common methods between the server and the client : static information reading
 #
 module Redis_interface_common
-	# Definition of a sensor config (note that the period is necessary if not defined in the profile)
-	SENS_CONF = {necessary: {name: String, profile: String, pin: Integer},
-				 optional:   {period: Integer}}
-	# Definition of an actuator config
-	ACTU_CONF = {necessary: {name: String, profile: String, pin: Integer},
-				 optional:   {period: Integer}}
-	# Definition of a sensor profile
-	SENS_PROFILE = {necessary: {function: String, unit: String},
-					optional:  {period: Integer, option1: Integer, option2: Integer, rpn: :is_a_rpn?, precision: Integer}}
-	# Definition of an actuator profile
-	ACTU_PROFILE = {necessary: {function: String},
-					optional:  {period: Integer, option1: Integer, option2: Integer}}
+	# Definition of a device config (note that the sensor's period is necessary if not defined in the profile)
+	#
+	CONFIG =	{ sensor:
+					{necessary: {name: String, profile: String, pin: Integer},
+				 	optional:   {period: Integer}},
+				 actuator:
+				 	{necessary: {name: String, profile: String, pin: Integer},
+				 	optional:   {period: Integer}}
+				}
+
+	# Definiction of a device profile
+	#
+	PROFILE =	{
+					sensor:
+						{necessary: {function: String, unit: String},
+						optional:  {period: Integer, option1: Integer, option2: Integer, rpn: :is_a_rpn?, precision: Integer}},
+					actuator:
+						{necessary: {function: String},
+						optional:  {period: Integer, option1: Integer, option2: Integer}}
+				}
+					
+	# Prefix of every message or key
+	#
+	PREFIX = "sense"
 	
 	# Common function that should be load by initilize of classes using the
 	# module
@@ -29,7 +41,7 @@ module Redis_interface_common
 	def load(network, host = 'localhost', port = 6379)
 		@host = host
 		@port = port
-		@redis = Redis.new host: host, port: port
+		@redis = Redis.new host: host, port: port, thread_safe: false
 		@redis.set("test", "ohohoh") #bypass ruby optimisation to catch exceptions at launch
 		@network = network
 	end
@@ -58,6 +70,14 @@ module Redis_interface_common
 	#
 	def knows_multi? multi_id
 		@redis.hexists(path(), multi_id)
+	end
+	
+	# @return true if a multi is registered and belong to my network
+	#
+	def mine? multi_id
+		c = get_multi_config(multi_id)
+		return false if (not c) or (not c[:network])
+		return c[:network] == @network
 	end
 	
 	# @return true if the device exists, false if not.
@@ -110,13 +130,6 @@ module Redis_interface_common
 		@redis.hget(path(:actuator, :value, multi_id, pin))
 	end
 	
-	# Activate or deactivate an actuator
-	#
-	def set_actuator_state(multi_id, pin, state)
-		return false unless (knows? :actuator, multi_id, pin)
-		@redis.publish(path(:actuator, :value, multi_id, pin), state)
-	end
-	
 	# @return [boolean] true if the profile exists
 	#
 	def knows_profile?( type, name )
@@ -154,7 +167,6 @@ module Redis_interface_common
 	# @param [String, Integer] pin Pin you need to listen to, or '*' for all the pins
 	# @yield [multi_id, pin, value, unit, name] Processing of the published value for type = :sensor
 	# @yield [multi_id, pin, value] Processing of the published value for type = :actuator
-	# TODO solidification pour le démon
 	#
 	def on_published_value(type, multi = "*", pin = "*")
 		Thread.new do
@@ -186,12 +198,16 @@ module Redis_interface_common
 	# With 4 : 1st : :sensor or :actuator, 2nd : :config or :delete or :value, 3rd : multi_id, 4th : pin
 	#
 	def path(*args)
+		network_path(@network, *args)
+	end
+	
+	def network_path(network, *args)
 		case args.size
-			when 0 then "config.multiplexer"
-			when 1 then "config.#{args[0]}"
-			when 2 then "network:#@network.multiplexer:#{args[1]}.#{args[0]}.config"
-			when 3 then "network:#@network.multiplexer:#{args[2]}.#{args[0]}.#{args[1]}"
-			when 4 then "network:#@network.multiplexer:#{args[2]}.#{args[0]}:#{args[3]}.#{args[1]}"
+			when 0 then "#{PREFIX}.config.multiplexer"
+			when 1 then "#{PREFIX}.config.#{args[0]}"
+			when 2 then "#{PREFIX}.network:#{network}.multiplexer:#{args[1]}.#{args[0]}.config"
+			when 3 then "#{PREFIX}.network:#{network}.multiplexer:#{args[2]}.#{args[0]}.#{args[1]}"
+			when 4 then "#{PREFIX}.network:#{network}.multiplexer:#{args[2]}.#{args[0]}:#{args[3]}.#{args[1]}"
 		end
 	end
 end

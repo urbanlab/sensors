@@ -3,7 +3,7 @@ require 'redis-interface-common'
 require 'logger'
 
 # Contain methods userful for the demon : multiplexer's registration and dynamic callbacks of clients' messages
-#
+# TODO : réorganiser private/... solidifier réception message
 class Redis_interface_demon
 	include Redis_interface_common
 	
@@ -15,6 +15,7 @@ class Redis_interface_demon
 	#
 	def initialize(network, host = 'localhost', port = 6379, logger = Logger.new(nil))
 		load(network, host, port)
+		@redis_listener = Redis.new host: host, port: port, thread_safe: false
 		@log = logger
 	end
 	
@@ -27,12 +28,13 @@ class Redis_interface_demon
 	
 	# Clean up a multiplexer's sensors and actuators
 	# @param [Integer] multi_id Id of the multi to be cleaned
-	# TODO :test
+	# TODO :test TODO : récupérer la config pour connaître son network
 	def clean_up(multi_id)
-		@redis.del(path(:sensor, :value, multi_id))
-		@redis.del(path(:actuator, :value, multi_id))
-		@redis.del(path(:sensor, :config, multi_id))
-		@redis.del(path(:actuator, :config, multi_id))
+		net = get_multi_config(multi_id)[:network]
+		@redis.del(network_path(net, :sensor, :value, multi_id))
+		@redis.del(network_path(net, :actuator, :value, multi_id))
+		@redis.del(network_path(net, :sensor, :config, multi_id))
+		@redis.del(network_path(net, :actuator, :config, multi_id))
 	end
 
 	# Assign a config to a multiplexer
@@ -78,146 +80,216 @@ class Redis_interface_demon
 		@redis.publish(path, key.to_json) #TODO ne publier que la valeur ?
 		return true
 	end
-
+	
+	# Register a sensor
+	#
+	def register_device msgid, type, config
+		multi = config.delete(:multiplexer)
+		if (not multi.is_a? Integer) or (not knows_multi? multi)
+			@log.warn("A client tried to add a #{type} with a bad multiplexer id : #{multi}")
+			answer(msgid, false, "bad multiplexer id")
+			return
+		end
+		multi_config = get_multi_config multi
+		if not multi_config
+			@log.warn("A client tried to add a #{type} with an unknown multiplexer : #{multi}")
+			answer(msgid, false, "unknown multiplexer")
+			return
+		end
+		must_take = false
+		case multi_config[:network]
+			when 0
+				must_take = true
+			when @network
+				# rien à faire ?
+			else
+				@log.warn("A client tried to add a #{type} that belong to another network : #{multi_config[:network]}")
+				answer(msgid, false, "multiplexer belong to network #{multi_config[:networ]}")
+				return
+		end
+		profile = get_profile type, config[:profile]
+		if profile == nil
+			@log.warn("A client tried to add a #{type} with an unknown profile : #{config[:profile]} (multiplexer : #{multi})")
+			answer(msgid, false, "unknown profile")
+			return
+		end
+		begin
+			config.must_have(CONFIG[type][:necessary])
+			config.can_have(CONFIG[type][:optional])
+			profile.must_have(PROFILE[type][:necessary])
+			profile.can_have(PROFILE[type][:optional])
+		rescue ArgumentError => error
+			@log.warn("A client tried to add a bad sensor config or profile : #{error.message}")
+			answer(msgid, false, "Incomplete config or profile : #{error.message}")
+			return
+		end
+		period = config[:period] || profile[:period]
+		if not period #TODO : allow non looping sensors ?
+			@log.warn("A client tried to add the sensor #{multi}:#{config[:pin]} without period. Config : #{config}, profile : #{profile}")
+			answer(msgid, false, "Period is missing in profile and config")
+			return
+		end
+		pin = config.delete(:pin)
+		method = {actuator: @on_new_actuator, sensor: @on_new_sensor}[type]
+		if method and method.call(multi, pin, profile[:function], period, *[profile[:option1], profile[:option2]])
+			if must_take
+				multi_config[:network] = @network
+				set_multi_config multi, multi_config
+			end
+			@redis.hset(path(type, :config, multi), pin, config.to_json)
+			answer(msgid, true)
+		else
+			#@redis.publish("#{PREFIX}.#{message-id}", "KO") if message-id
+			answer(msgid, false, "Refused by multi, or multi disconnected")
+		end
+	end
+	
+	# Unregister a device
+	#
+	def unregister_device msgid, config
+		if (not config[:multiplexer].is_a? Integer)
+			@log.warn("A client tried to delete a #{type} with bad multiplexer id : #{parse[:multiplexer]}")
+			answer(msgid, false, "Bad multiplexer id")
+			return
+		end
+		if (not config[:pin].is_a? Integer)
+			@log.warn("A client tried to delete a #{type} with bad pin : #{pin}")
+			answer(msgid, false, "Bad id")
+			return
+		end
+		if not knows?(config[:type], config[:multiplexer], config[:pin])
+			@log.warn("A client tried to delete an unknown #{config[:type]} : #{config[:multiplexer]}:pin")
+			answer(msgid, false, "unknown #{config[:type]} or multiplexer")
+			return
+		end
+		callback = {sensor: @on_deleted_sensor, actuator: @on_deleted_actuator}[config.delete(:type).intern]
+		if callback && callback.call(config[:multiplexer], config[:pin])
+			@redis.del(path(config[:type], :value, config[:multiplexer], config[:pin]))
+			@redis.hdel(path(config[:type], :config, config[:multiplexer]), config[:pin])
+			answer(msgid, true)
+		else
+			answer(msgid, false, "Refused by multiplexer or multiplexer did not answer")
+		end
+	end
+	
 	# Callback when a client request to add a sensor
 	#@yield [multi_id, pin, function, period, *[option1, option2]] Block will be called when a client request a new sensor with client's parameters
 	#@yieldreturn True if the new sensor is accepted, False if not
 	#
-	def on_new_sensor
-		Thread.new do
-			redis = Redis.new host: @host, port: @port
-			redis.psubscribe(path(:sensor, :config, '*')) do |on|
-				on.pmessage do |pattern, channel, message|
-					config = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
-					begin
-						config.merge!(JSON.s_parse(message))
-					rescue JSON::ParserError => e
-						@log.warn("Received a malformed message on #{channel}")
-						next
-					end
-					multi = config.delete(:multiplexer)
-					if (not multi.is_integer?) or (not knows_multi? multi)
-						@log.warn("A client tried to add a sensor with a bad multiplexer id : #{multi}")
-						next
-					end
-					multi = multi.to_i
-					multi_config = get_multi_config multi
-					if not multi_config
-						@log.warn("A client tried to add a sensor with an unknown multiplexer : #{multi}")
-						next
-					end
-					must_take = false
-					case multi_config[:network]
-						when 0
-							must_take = true
-						when @network
-							# rien à faire ?
-						else
-							@log.warn("A client tried to add a sensor that belong to another network : #{multi_config[:network]}")
-							next
-					end
-					profile = get_profile :sensor, config[:profile]
-					if profile == nil
-						@log.warn("A client tried to add a sensor with an unknown profile : #{config[:profile]} (multiplexer : #{multi})")
-						next
-					end
-					begin
-						config.must_have(SENS_CONF[:necessary])
-						config.can_have(SENS_CONF[:optional])
-						profile.must_have(SENS_PROFILE[:necessary])
-						profile.can_have(SENS_PROFILE[:optional])
-					rescue ArgumentError => error
-						@log.warn("A client tried to add a bad sensor config : #{error.message}")
-						next
-					end
-					period = config[:period] || profile[:period]
-					if not period #TODO : allow non looping sensors ?
-						@log.warn("A client tried to add the sensor #{multi}:#{pin} without period. Config : #{config}, profile : #{profile}")
-						next
-					end
-					pin = config.delete(:pin)
-					if yield(multi, pin, profile[:function], period, *[profile[:option1], profile[:option2]])
-						if must_take
-							multi_config[:network] = @network
-							set_multi_config multi, multi_config
-						end
-						@redis.hset(channel, pin, config.to_json)
-					end
-				end
-			end
-		end
+	def on_new_sensor &block
+		@on_new_sensor = block
 	end
 	
 	# Callback when a client request to add an actu
-	# block has 3 arguments : multiplexer's id, actu's pin and actu's profile
-	# TODO : useless ? TODO pas à jour
-	def on_new_actu(&block)
-		Thread.new do
-			redis = Redis.new host: @host, port: @port
-			redis.psubscribe(path(:actuator, :config, '*')) do |on|
-				on.pmessage do |pattern, channel, profile|
-					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ]
-					yield parse[MULTI].to_i, parse[ACTU].to_i, profile
-				end
-			end
-		end
+	#
+	def on_new_actuator &block
+		@on_new_actuator = block
 	end
 	
 	# Callback when a client request to delete a sensor
 	#@yield [multi_id, pin] Action to do when a client request to delete a device on a pin of the multiplexer multi_id
 	#@yieldreturn True if the destruction was accepted
 	#
-	def on_deleted(type)
-		Thread.new do
-			redis = Redis.new host: @host, port: @port
-			redis.psubscribe(path(type, :delete, '*')) do |on|
-				on.pmessage do |pattern, channel, pin|
-					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
-					if (not parse[:multiplexer].is_integer?)
-						@log.warn("A client tried to delete a #{type} with bad multiplexer id : #{parse[:multiplexer]}")
-						next
-					end
-					if (not pin.is_integer?)
-						@log.warn("A client tried to delete a #{type} with bad pin : #{pin}")
-						next
-					end
-					if not knows?(type, parse[:multiplexer].to_i, pin.to_i)
-						@log.warn("A client tried to delete an unknown #{type} : #{parse[:multiplexer]}:pin")
-						next
-					end
-					if yield(parse[:multiplexer].to_i, pin)
-						@redis.del(path(type, :value, parse[:multiplexer], pin))
-						@redis.hdel(path(type, :config, parse[:multiplexer]), pin)
-					end
-				end
-			end
+	def on_deleted_sensor(&block)
+		@on_deleted_sensor = block
+	end
+	
+	def on_deleted_actuator(&block)
+		@on_deleted_actuator = block
+	end
+	
+	def on_actuator_state(&block)
+		@on_actuator_state = block
+	end
+
+	def take_callback idmsg, id_multi
+		if not id_multi.is_a? Integer
+			@log.warn("A client tried to take a multiplexer with bad multi_id or network")
+			answer(idmsg, false, "bad multiplexer id or network")
+			return
+		end
+		if @on_taken && @on_taken.call(id_multi)
+			config = get_multi_config(id_multi)	#TODO : vérifier ça avant le call
+			clean_up(id_multi)
+			config[:network] = @network
+			set_multi_config(id_multi, config)
+			answer(idmsg, true)
+		else
+			answer(idmsg, false, "Failed to reset the multiplexer.")
 		end
 	end
 	
 	# Callback when a client request to take a sensor
 	#@yield [id_multi, network] TODO test
 	#
-	def on_taken
-		Thread.new do
-			redis = Redis.new(host: @host, port: @port)
-			redis.subscribe(path()) do |on|
-				on.message do |channel, message|
-					begin
-						config = JSON.s_parse(message)
-					rescue Exception => e
-						@log.warn("A client tried to take a multiplexer with an invalid message")
-					end
-					if (config[:network].is_a? Integer) and (config[:multiplexer].is_a? Integer)
-						yield config[:multiplexer], config[:network]
-					else
-						@log.warn("A client tried to take a multiplexer with bad multi_id or network")
-					end
-				end
+	def on_taken &block
+		@on_taken = block
+	end
+	
+	def actuator_state_callback msgid, message
+		if not message[:multiplexer].is_a? Integer
+			@log.warn("A client tried to change the state of an invalid multiplexer")
+			answer(msgid, false, "Muliplexer id is invalid")
+			return
+		end
+		if not (message[:state] == 0 or message[:state] == 1)
+			@log.warn("A client requested a bad state for a multiplexer")
+			answer(msgid, false, "bad state")
+			return
+		end
+		if not mine? message[:multiplexer]
+			@log.warn("A client tried to change the state of an unknown multi")
+			answer(msgid, false, "unknown multi")
+			return
+		end
+		if not knows? :actuator, message[:multiplexer], message[:pin]
+			@log.warn("A client tried to change the state of an unknown actu")
+			answer(msgid, false, "unknown actu")
+			return
+		end
+		if @on_actuator_state && @on_actuator_state.call(message[:multiplexer], message[:pin], message[:state])
+			answer(msgid, true)
+		else
+			answer(msgid, false, "the multiplexer did not answer or refused")
+		end
+	end
+
+	# Read the messages and call the callbacks
+	# message : "JSON"
+	#
+	def process_messages
+		while true
+			message = JSON.parse(@redis_listener.blpop("#{PREFIX}.network:#{@network}.messages", 0)[1])
+			msgid = message.delete("id")
+			command = message.delete("command")
+			case command
+				when "add_sensor"
+					register_device msgid, :sensor, message["message"].recursive_symbolize_keys!
+				when "add_actuator"
+					register_device msgid, :actuator, message["message"].recursive_symbolize_keys!
+				when "delete"
+					unregister_device msgid, message["message"].recursive_symbolize_keys!
+				when "take"
+					take_callback msgid, message["message"]["multiplexer"] if message["message"]["network"] == @network
+				when "actuator_state"
+					actuator_state_callback msgid, message["message"].recursive_symbolize_keys!
+				else
+					@log.warn("A client sent an unknown command : \"#{command}\"")
+					answer(msgid, false, "Unknown command \"#{command}\"")
 			end
 		end
 	end
 	
 	private
+	# Answer a message
+	#
+	def answer(id, ok, message=nil)
+		ok = {true => "OK", false => "KO"}[ok]
+		answer = "#{ok}"
+		answer << "::#{message}" if message
+		@redis.lpush("#{PREFIX}.#{id}", answer) if id
+		@redis.expire("#{PREFIX}.#{id}", 60) if id
+	end
 
 	# Solve a Reverse Polish Notation
 	#

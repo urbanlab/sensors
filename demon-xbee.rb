@@ -43,22 +43,25 @@ class Xbee_Demon
 	def launch
 		trap(:INT){@log.info "Exiting"; exit 0}
 		restore_state
-	
+		
+
+		
 		@redis.on_new_sensor do |multi, pin, function, period, *options|
 			@serial.add_task(multi, pin, function, period, *options)
 		end
 		
-		#@redis.on_new_actu do |id_multi, actu, config|
+		@redis.on_new_actuator do |id_multi, actu, config|
 		#rien à faire ?
-		#end
+			true
+		end
 		
-		@redis.on_deleted :sensor do |id_multi, sensor|
+		@redis.on_deleted_sensor do |id_multi, sensor|
 			ans = @serial.rem_task(id_multi, sensor)
 			(ans == true) or (ans == false) # If the tasks didn't exist (ans == false), should remove it from redis
 			                                # If the multi didn't answer (ans == nil) should not remove it
 		end
 		
-		@redis.on_deleted :actuator do |id_multi, actuator|
+		@redis.on_deleted_actuator do |id_multi, actuator|
 			if @redis.get_config(:actuator, id_multi, actuator) # if the actuator was running, should ensure it will stop
 				ans = @serial.rem_task(id_multi, actuator)
 				(ans == true) or (ans == false) #delete from redis only if the task is no more running
@@ -67,7 +70,7 @@ class Xbee_Demon
 			end
 		end
 		
-		@redis.on_published_value(:actuator) do |multi, pin, value|
+		@redis.on_actuator_state do |multi, pin, value|
 			case value.to_i
 				when 1
 					config = @redis.get_config(:actuator, multi, pin)
@@ -83,6 +86,12 @@ class Xbee_Demon
 			end
 		end
 		
+		@redis.on_taken do |id_multi|
+			@serial.reset(id_multi)
+		end
+		
+=begin
+		@redis.on_given do |id_multi|
 		# TODO : test
 		@redis.on_taken do |id_multi, network|
 			if (network == @network) #it's for me !
@@ -94,7 +103,7 @@ class Xbee_Demon
 				@redis.clean_up(id_multi)
 			end
 		end
-
+=end
 		@serial.on_new_multi do |id|
 			config = @redis.get_multi_config(id)
 			if (id == 0 or id == 255)  # Unconfigured, bad id
@@ -113,7 +122,7 @@ class Xbee_Demon
 			@redis.publish_value(id_multi, sensor, value)
 		end
 		
-		sleep
+		@redis.process_messages
 	end
 	
 	def restore_state
@@ -129,6 +138,7 @@ class Xbee_Demon
 		if (@serial.ping multi_id)
 			@redis.list(:sensor, multi_id).each do |pin, sensor_config|
 				profile = @redis.get_profile(:sensor, sensor_config[:profile])
+				next unless profile
 				period = sensor_config[:period] || profile[:period] || 0
 				@serial.add_task(multi_id, pin, profile[:function], period, *[profile[:option1], profile[:option2]])
 			end

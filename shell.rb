@@ -50,7 +50,7 @@ module Redis_client
 			begin
 				args.merge!({multi: multi, name: name, profile: profile, pin: pin})
 				args[:period] = period if period
-				$redis.add :sensor, args.delete(:multi), args
+				puts $redis.add :sensor, args.delete(:multi), args
 			rescue ArgumentError => error
 				puts error.message
 			end
@@ -62,7 +62,7 @@ module Redis_client
 			begin
 				args.merge!({multi: multi, pin: pin, name: name, profile: profile})
 				args[:period] = period if period
-				$redis.add :actuator, args.delete(:multi), args
+				puts $redis.add :actuator, args.delete(:multi), args
 			rescue ArgumentError => error
 				puts error.message
 			end
@@ -73,14 +73,14 @@ module Redis_client
 		# @param [Integer] pin Pin of the actuator
 		#
 		def switch_on(multi, pin)
-			$redis.set_actuator_state(multi, pin, 1)
+			puts $redis.set_actuator_state(multi, pin, 1)
 		end
 		
 		# Turn off an actuator of a multi
 		# @param (see Redis_client::Shell#switch_on)
 		#
 		def switch_off(multi, pin)
-			$redis.set_actuator_state(multi, pin, 0)
+			puts $redis.set_actuator_state(multi, pin, 0)
 		end
 		
 		# Modify the description of a multi
@@ -100,22 +100,14 @@ module Redis_client
 		# @param [Integer] pin Pin where the sensor was plugged
 		#
 		def remove_sensor(multi, pin)
-			if $redis.remove :sensor, multi, pin
-				puts "OK"
-			else
-				puts "The multiplexer doesn't exist"
-			end
+			puts $redis.remove :sensor, multi, pin
 		end
 		
 		# Remove an actuator from a multi
 		# @param (see Redis_client::Shell#remove_sensor)
 		#
 		def remove_actuator(multi, pin)
-			if $redis.remove :actuator, multi, pin
-				puts "OK"
-			else
-				puts "The multiplexer doesn't exist"
-			end
+			puts $redis.remove :actuator, multi, pin
 		end
 		
 		# List the sensors and actuators of a multiplexer

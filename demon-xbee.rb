@@ -220,11 +220,8 @@ else
 	puts "Network must be given and be an integer"
 	exit 1
 end
-
+puts "[#{Process.pid}]"
+Process.daemon true, true
 demon = Xbee_Demon.new(options.delete(:network), options)
-pid = fork do
-	Signal.trap(:HUP, :IGNORE)
-	demon.launch
-end
-Process.detach(pid)
+demon.launch
 

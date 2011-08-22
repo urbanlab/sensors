@@ -49,9 +49,9 @@ module Redis_interface_common
 	# get all the multiplexers' config
 	# @return [Hash] list in form +{id => config}+
 	#
-	def list_multis
+	def list_multis(network = @network)
 		configs = @redis.hgetall(path())
-		return Hash[*configs.collect{|id, conf| [id.to_i, JSON.s_parse(conf)]}.flatten]
+		return Hash[*configs.collect{|id, conf| [id.to_i, JSON.s_parse(conf)]}.flatten].select{|id, conf| conf[:network] == network}
 	end
 	
 	# get a multiplexer's config

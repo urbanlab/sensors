@@ -9,6 +9,7 @@ class Redis_interface_client
 		@id = 0
 		load(network, host, port)
 	end
+	
 	# Return the list of supported profile from a list of arduino functions
 	# @return [Array<String>] the profiles
 	#
@@ -36,7 +37,7 @@ class Redis_interface_client
 	# @param [Integer] multi_id Id of the multi
 	#
 	def take multi_id
-		send("take", {network: @network, multiplexer: multi_id})
+		send("take", multi_id)
 	end
 	
 	# Register a sensor or an actuator.
@@ -50,8 +51,8 @@ class Redis_interface_client
 	# @param [Symbol] type Device type, can be :sensor or :actuator
 	#
 	def add type, multi_id, config = {}
-				config[:multiplexer] = multi_id
-				send("add_#{type}", config)
+		config[:multiplexer] = multi_id
+		send("add_#{type}", config)
 	end
 	
 	# Unregister a sensor
@@ -98,12 +99,37 @@ class Redis_interface_client
 		@redis.hdel(path(type), name) == 1
 	end
 	
+	# Callback when a value is published on redis.
+	# @macro type
+	# @param [String, Integer] multi id of the multiplexer you need to listen to, or '*' for all multiplexers
+	# @param [String, Integer] pin Pin you need to listen to, or '*' for all the pins
+	# @yield [multi_id, pin, value, unit, name] Processing of the published value for type = :sensor
+	# @yield [multi_id, pin, value] Processing of the published value for type = :actuator
+	#
+	def on_published_value(type, multi = "*", pin = "*")
+		Thread.new do
+			redis = Redis.new host: @host, port: @port
+			redis.psubscribe(path(type, :value, multi, pin)) do |on|
+				on.pmessage do |pattern, channel, value|
+					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
+					case type
+						when :sensor
+							parse.merge!(JSON.s_parse(value))
+							yield parse[:multiplexer].to_i, parse[type].to_i, parse[:value].to_f, parse[:unit], parse[:name]
+						when :actuator
+							yield parse[:multiplexer].to_i, parse[type].to_i, value.to_i
+					end
+				end
+			end
+		end
+	end
+	
 	private
 	
 	# Send a message and wait for the answer
 	#
 	def send(command, args)
-		id_message = rand.hash.abs + (@id += 1) #TODO vraie génération
+		id_message = rand.hash.abs #TODO vraie génération
 		message = {id: id_message, command: command, message: args}
 		@redis.lpush("#{PREFIX}.network:#@network.messages", message.to_json)
 		chan, answer = @redis.blpop("#{PREFIX}.#{id_message}", 10)

@@ -28,7 +28,7 @@ class Redis_interface_demon
 	
 	# Clean up a multiplexer's sensors and actuators
 	# @param [Integer] multi_id Id of the multi to be cleaned
-	# TODO :test TODO : récupérer la config pour connaître son network
+	# TODO :test
 	def clean_up(multi_id)
 		net = get_multi_config(multi_id)[:network]
 		@redis.del(network_path(net, :sensor, :value, multi_id))
@@ -259,20 +259,35 @@ class Redis_interface_demon
 	#
 	def process_messages
 		while true
-			message = JSON.parse(@redis_listener.blpop("#{PREFIX}.network:#{@network}.messages", 0)[1])
-			msgid = message.delete("id")
-			command = message.delete("command")
+			begin
+				message = JSON.parse(@redis_listener.blpop("#{PREFIX}.network:#{@network}.messages", 0)[1])
+			rescue JSON::JSONError => e
+				@log.warn("A client sent an invalid message")
+				next
+			end
+			message.recursive_symbolize_keys!
+			begin
+				message.must_have(command: String, message: Object)
+				message.can_have(id: Integer)
+			rescue ArgumentError => e
+				@log.warn("A client sent an invalid message.")
+				answer(message[:id], false, e.message)
+				next
+			end
+			msgid = message.delete(:id)
+			command = message.delete(:command) # TODO check si c'est un hash quand ça doit en être un
+			args = message.delete(:message)
 			case command
 				when "add_sensor"
-					register_device msgid, :sensor, message["message"].recursive_symbolize_keys!
+					register_device msgid, :sensor, args
 				when "add_actuator"
-					register_device msgid, :actuator, message["message"].recursive_symbolize_keys!
+					register_device msgid, :actuator, args
 				when "delete"
-					unregister_device msgid, message["message"].recursive_symbolize_keys!
+					unregister_device msgid, args
 				when "take"
-					take_callback msgid, message["message"]["multiplexer"] if message["message"]["network"] == @network
+					take_callback msgid, args
 				when "actuator_state"
-					actuator_state_callback msgid, message["message"].recursive_symbolize_keys!
+					actuator_state_callback msgid, args
 				else
 					@log.warn("A client sent an unknown command : \"#{command}\"")
 					answer(msgid, false, "Unknown command \"#{command}\"")

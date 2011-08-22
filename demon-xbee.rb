@@ -222,8 +222,9 @@ else
 end
 
 demon = Xbee_Demon.new(options.delete(:network), options)
-demon.launch
-
-
-
+pid = fork do
+	Signal.trap(:HUP, :IGNORE)
+	demon.launch
+end
+Process.detach(pid)
 

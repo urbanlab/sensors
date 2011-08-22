@@ -41,7 +41,7 @@ module Redis_interface_common
 	def load(network, host = 'localhost', port = 6379)
 		@host = host
 		@port = port
-		@redis = Redis.new host: host, port: port, thread_safe: false
+		@redis = Redis.new host: host, port: port
 		@redis.set("test", "ohohoh") #bypass ruby optimisation to catch exceptions at launch
 		@network = network
 	end
@@ -158,31 +158,6 @@ module Redis_interface_common
 			JSON.s_parse(@redis.hget(path(type), profile))
 		rescue Exception => e
 			return nil
-		end
-	end
-	
-	# Callback when a value is published on redis.
-	# @macro type
-	# @param [String, Integer] multi id of the multiplexer you need to listen to, or '*' for all multiplexers
-	# @param [String, Integer] pin Pin you need to listen to, or '*' for all the pins
-	# @yield [multi_id, pin, value, unit, name] Processing of the published value for type = :sensor
-	# @yield [multi_id, pin, value] Processing of the published value for type = :actuator
-	#
-	def on_published_value(type, multi = "*", pin = "*")
-		Thread.new do
-			redis = Redis.new host: @host, port: @port
-			redis.psubscribe(path(type, :value, multi, pin)) do |on|
-				on.pmessage do |pattern, channel, value|
-					parse = Hash[ *channel.scan(/(\w+):(\w+)/).flatten ].symbolize_keys
-					case type
-						when :sensor
-							parse.merge!(JSON.s_parse(value))
-							yield parse[:multiplexer].to_i, parse[type].to_i, parse[:value].to_f, parse[:unit], parse[:name]
-						when :actuator
-							yield parse[:multiplexer].to_i, parse[type].to_i, value.to_i
-					end
-				end
-			end
 		end
 	end
 	

@@ -194,27 +194,29 @@ module Sense
 				@log.warn("A client tried to change the state of an actuator with an invalid message")
 				anwer(msgid, false, "invalid message")
 			end
-			if not message[:multiplexer].is_a? Integer
+			if not (message[:multiplexer].is_a? Integer or message[:multiplexer].is_a? String)
 				@log.warn("A client tried to change the state of an invalid multiplexer")
 				answer(msgid, false, "Muliplexer id is invalid")
 				return
 			end
+			multi_id = get_multi_id(message[:multiplexer])
+			pin = get_pin(:actuator, multi_id, message[:pin])
 			if not (message[:state] == 0 or message[:state] == 1)
 				@log.warn("A client requested a bad state for a multiplexer")
 				answer(msgid, false, "bad state")
 				return
 			end
-			if not mine? message[:multiplexer]
+			if not mine? multi_id
 				@log.warn("A client tried to change the state of an unknown multi")
 				answer(msgid, false, "unknown multi")
 				return
 			end
-			if not knows? :actuator, message[:multiplexer], message[:pin]
+			if not knows? :actuator, multi_id, pin
 				@log.warn("A client tried to change the state of an unknown actu")
 				answer(msgid, false, "unknown actu")
 				return
 			end
-			if @on_actuator_state && @on_actuator_state.call(message[:multiplexer], message[:pin], message[:state])
+			if @on_actuator_state && @on_actuator_state.call(multi_id, pin, message[:state])
 				answer(msgid, true)
 			else
 				answer(msgid, false, "the multiplexer did not answer or refused")

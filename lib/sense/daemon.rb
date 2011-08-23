@@ -221,7 +221,7 @@ module Sense
 		end
 	
 		# Callback when a client request to take a sensor
-		#@yield [id_multi, network] TODO test
+		#@yield [id_multi, network]
 		#
 		def on_taken &block
 			@on_taken = block

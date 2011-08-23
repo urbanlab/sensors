@@ -1,11 +1,10 @@
-$:.unshift(File.dirname(__FILE__) + '/') unless $:.include?(File.dirname(__FILE__) + '/')
-require 'redis-interface-common'
+require 'sense/common'
 require 'logger'
 
 # Contain methods userful for the demon : multiplexer's registration and dynamic callbacks of clients' messages
 # TODO : réorganiser private/... solidifier réception message
-class Redis_interface_demon
-	include Redis_interface_common
+class Daemon
+	include Sense::Common
 	
 	# Initialization of the client.
 	#@param [Integer] network The identifier of the network the demon will work on.

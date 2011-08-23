@@ -1,15 +1,14 @@
 #!/usr/bin/env ruby
 $:.unshift(File.dirname(__FILE__) + '/') unless $:.include?(File.dirname(__FILE__) + '/')
 require 'optparse'
-require 'extensions'
-require 'pp'
+require 'sense/extensions'
 
 ##### Saving utilities #####
 # TODO network avec -i
 def redis_to_json
-	require './redis-interface-client.rb'
+	require 'sense/client'
 	require 'json'
-	r = Redis_interface_client.new $network, $r_options[:redis_host], $r_options[:redis_port]
+	r = Sense::Client.new $network, $r_options[:redis_host], $r_options[:redis_port]
 	config = {}
 	config["profile"] = {:sensor => r.list_profiles(:sensor), :actuator => r.list_profiles(:actuator)}
 	config["multiplexer"] = r.list_multis
@@ -24,18 +23,18 @@ def redis_to_json
 end
 
 def profiles_to_json
-	require 'redis-interface-client'
+	require 'sense/client'
 	require 'json'
-	r = Redis_interface_client.new $network
+	r = Sense::Client.new $network
 	config = {}
 	config["profile"] = {sensor: r.list_profiles(:sensor), actuator: r.list_profiles(:actuator)}
 	JSON.pretty_generate(config)
 end
 
 def load_from_file file
-	require 'redis-interface-client'
+	require 'sense/client'
 	require 'json'
-	r = Redis_interface_client.new $network, $r_options[:redis_host], $r_options[:redis_port]
+	r = Sense::Client.new $network, $r_options[:redis_host], $r_options[:redis_port]
 	conf_json = file.read
 	config = JSON.parse(conf_json)
 	# JSON ne garde pas les types de clefs, ni la difference entre string et symbol pour les valeurs
@@ -144,10 +143,9 @@ if network.is_integer?
 		f.close
 	end
 	if options[:interactive]
-		require 'rubygems'
-		require 'shell'
+		require 'sense/shell'
 		require 'yard'
-		Bombshell.launch(Redis_client::Shell)
+		Bombshell.launch(Sense::Shell)
 		exit
 	end
 	if options.empty?

@@ -83,7 +83,9 @@ module Sense
 		#
 		def get_pin(type, multi, device)
 			return device if device.is_a? Integer
-			pin, conf = list(type, multi).find{|pin, conf| conf[:name] == device}
+			dev_list = list(type, multi)
+			return nil unless dev_list.is_a? Hash
+			pin, conf = dev_list.find{|pin, conf| conf[:name] == device}
 			return pin
 		end
 		

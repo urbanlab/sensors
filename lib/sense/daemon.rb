@@ -317,25 +317,27 @@ module Sense
 		# Call the callback to unregister a device
 		#
 		def unregister_device msgid, config
-			if (not config[:multiplexer].is_a? Integer)
+			if not (config[:multiplexer].is_a? Integer or config[:multiplexer].is_a? String)
 				@log.warn("A client tried to delete a #{type} with bad multiplexer id : #{parse[:multiplexer]}")
 				answer(msgid, false, "Bad multiplexer id")
 				return
 			end
-			if (not config[:pin].is_a? Integer)
+			if not (config[:pin].is_a? Integer or config[:pin].is_a? String)
 				@log.warn("A client tried to delete a #{type} with bad pin : #{pin}")
 				answer(msgid, false, "Bad id")
 				return
 			end
-			if not knows?(config[:type], config[:multiplexer], config[:pin])
-				@log.warn("A client tried to delete an unknown #{config[:type]} : #{config[:multiplexer]}:pin")
+			multi_id = get_multi_id(config[:multiplexer])
+			pin = get_pin(config[:type], multi_id, config[:pin])
+			if not knows?(config[:type], multi_id, pin)
+				@log.warn("A client tried to delete an unknown #{config[:type]} : #{config[:multiplexer]}:#{config[:pin]}")
 				answer(msgid, false, "unknown #{config[:type]} or multiplexer")
 				return
 			end
 			callback = {sensor: @on_deleted_sensor, actuator: @on_deleted_actuator}[config[:type].intern]
-			if callback && callback.call(config[:multiplexer], config[:pin])
-				@redis.del(path(config[:type], :value, config[:multiplexer], config[:pin]))
-				@redis.hdel(path(config[:type], :config, config[:multiplexer]), config[:pin])
+			if callback && callback.call(multi_id, pin)
+				@redis.del(path(config[:type], :value, multi_id, pin))
+				@redis.hdel(path(config[:type], :config, multi_id), pin)
 				answer(msgid, true)
 			else
 				answer(msgid, false, "Refused by multiplexer or multiplexer did not answer")

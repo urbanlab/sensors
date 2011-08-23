@@ -9,7 +9,7 @@ module Sense
 		include Bombshell::Shell
 
 		prompt_with 'client'
-		#@private
+		
 		before_launch do |arg|
 			$redis = Sense::Client.new $network, $r_options[:redis_host], $r_options[:redis_port]
 		end
@@ -33,7 +33,7 @@ module Sense
 		end
 		
 		# Associate a multiplexer to the network
-		# @param (see Redis_interface_client#take)
+		# @param (see Sense::Client#take)
 		#
 		def take multi_id
 			$redis.take multi_id
@@ -57,7 +57,7 @@ module Sense
 		end
 		
 		# Add an actuator to a multiplexer
-		# @param (see Redis_client::Shell#add_sensor)
+		# @param (see Sense::Shell#add_sensor)
 		def add_actuator(multi, pin, name, profile, period = nil, args = {})
 			begin
 				args.merge!({multi: multi, pin: pin, name: name, profile: profile})
@@ -77,7 +77,7 @@ module Sense
 		end
 		
 		# Turn off an actuator of a multi
-		# @param (see Redis_client::Shell#switch_on)
+		# @param (see Sense::Shell#switch_on)
 		#
 		def switch_off(multi, pin)
 			puts $redis.set_actuator_state(multi, pin, 0)
@@ -104,7 +104,7 @@ module Sense
 		end
 		
 		# Remove an actuator from a multi
-		# @param (see Redis_client::Shell#remove_sensor)
+		# @param (see Sense::Shell#remove_sensor)
 		#
 		def remove_actuator(multi, pin)
 			puts $redis.remove :actuator, multi, pin
@@ -129,8 +129,8 @@ module Sense
 		end
 		
 		# Add a new sensor profile
-		# @param name (see Redis_interface_client#add_profile)
-		# @option (see Redis_interface_client#add_profile)
+		# @param name (see Sense::Client#add_profile)
+		# @option (see Sense::Client#add_profile)
 		#
 		def add_sensor_profile(name, profile={})
 			begin

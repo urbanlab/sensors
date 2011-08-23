@@ -3,6 +3,7 @@
 
 # Modifications to standard class String
 #
+
 class String
 	# @return True if the string contain something like an integer
 	#

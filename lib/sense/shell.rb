@@ -1,9 +1,9 @@
 require 'bombshell'
-require 'redis-interface-client'
+require 'sense/client'
 require 'yard'
 
 # TODO network
-module Redis_client
+module Sense
 	# Interactive shell
 	class Shell < Bombshell::Environment
 		include Bombshell::Shell
@@ -11,7 +11,7 @@ module Redis_client
 		prompt_with 'client'
 		#@private
 		before_launch do |arg|
-			$redis = Redis_interface_client.new $network, $r_options[:redis_host], $r_options[:redis_port]
+			$redis = Sense::Client.new $network, $r_options[:redis_host], $r_options[:redis_port]
 		end
 		
 		# Print the list of multiplexers

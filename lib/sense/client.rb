@@ -29,7 +29,6 @@ module Sense
 			config = JSON.s_parse(@redis.hget(path(), multi_id))
 			config[:description] = description
 			@redis.hset(path(), multi_id, config.to_json)
-			#@redis.publish("#{path}:#{multi_id}.#{CONF}", config.to_json)
 			return true
 		end
 	
@@ -129,7 +128,7 @@ module Sense
 		# Send a message and wait for the answer
 		#
 		def send(command, args)
-			id_message = rand.hash.abs #TODO vraie génération
+			id_message = rand.hash.abs
 			message = {id: id_message, command: command, message: args}
 			@redis.lpush("#{PREFIX}.network:#@network.messages", message.to_json)
 			chan, answer = @redis.blpop("#{PREFIX}.#{id_message}", 10)

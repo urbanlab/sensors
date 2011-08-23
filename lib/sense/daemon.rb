@@ -8,10 +8,10 @@ module Sense
 		include Sense::Common
 	
 		# Initialization of the client.
-		#@param [Integer] network The identifier of the network the demon will work on.
-		#@param [String] host The adress of the machine where Redis is running
-		#@param [Integer] port Port where Redis listen
-		#@param [Logger] logger An optional Logger to write redis related events.
+		# @param [Integer] network The identifier of the network the demon will work on.
+		# @param [String] host The adress of the machine where Redis is running
+		# @param [Integer] port Port where Redis listen
+		# @param [Logger] logger An optional Logger to write redis related events.
 		#
 		def initialize(network, host = 'localhost', port = 6379, logger = Logger.new(nil))
 			load(network, host, port)
@@ -46,7 +46,7 @@ module Sense
 		end
 	
 		# Publish a sensor's value
-		#@return true if the value was succefully published. false with log otherwise
+		# @return true if the value was succefully published. false with log otherwise
 		#
 		def publish_value(multi_id, sensor, raw_value)
 			return false unless knows? :sensor, multi_id, sensor
@@ -92,6 +92,11 @@ module Sense
 		# Register a sensor
 		#
 		def register_device msgid, type, config
+			if not config.is_a? Hash
+				@log.warn("A client tried to add a #{type} with a bad message")
+				answer(msgid, false, "bad message")
+				return
+			end
 			multi = config.delete(:multiplexer)
 			if (not multi.is_a? Integer) or (not knows_multi? multi)
 				@log.warn("A client tried to add a #{type} with a bad multiplexer id : #{multi}")
@@ -147,7 +152,6 @@ module Sense
 				@redis.hset(path(type, :config, multi), pin, config.to_json)
 				answer(msgid, true)
 			else
-				#@redis.publish("#{PREFIX}.#{message-id}", "KO") if message-id
 				answer(msgid, false, "Refused by multi, or multi disconnected")
 			end
 		end
@@ -181,8 +185,8 @@ module Sense
 		end
 	
 		# Callback when a client request to add a sensor
-		#@yield [multi_id, pin, function, period, *[option1, option2]] Block will be called when a client request a new sensor with client's parameters
-		#@yieldreturn True if the new sensor is accepted, False if not
+		# @yield [multi_id, pin, function, period, *[option1, option2]] Block will be called when a client request a new sensor with client's parameters
+		# @yieldreturn True if the new sensor is accepted, False if not
 		#
 		def on_new_sensor &block
 			@on_new_sensor = block
@@ -195,8 +199,8 @@ module Sense
 		end
 	
 		# Callback when a client request to delete a sensor
-		#@yield [multi_id, pin] Action to do when a client request to delete a device on a pin of the multiplexer multi_id
-		#@yieldreturn True if the destruction was accepted
+		# @yield [multi_id, pin] Action to do when a client request to delete a device on a pin of the multiplexer multi_id
+		# @yieldreturn True if the destruction was accepted
 		#
 		def on_deleted_sensor(&block)
 			@on_deleted_sensor = block
@@ -216,8 +220,13 @@ module Sense
 				answer(idmsg, false, "bad multiplexer id or network")
 				return
 			end
+			config = get_multi_config(id_multi)
+			if not config.is_a? Hash
+				@log.warn("A client tried to take an unknown multiplexer")
+				answer(idmsg, false, "unknown mulitplexer")
+				return
+			end
 			if @on_taken && @on_taken.call(id_multi)
-				config = get_multi_config(id_multi)	#TODO : vérifier ça avant le call
 				clean_up(id_multi)
 				config[:network] = @network
 				set_multi_config(id_multi, config)
@@ -228,13 +237,17 @@ module Sense
 		end
 	
 		# Callback when a client request to take a sensor
-		#@yield [id_multi, network]
+		# @yield [id_multi, network]
 		#
 		def on_taken &block
 			@on_taken = block
 		end
 	
 		def actuator_state_callback msgid, message
+			if not message.is_a? Hash
+				@log.warn("A client tried to change the state of an actuator with an invalid message")
+				anwer(msgid, false, "invalid message")
+			end
 			if not message[:multiplexer].is_a? Integer
 				@log.warn("A client tried to change the state of an invalid multiplexer")
 				answer(msgid, false, "Muliplexer id is invalid")
@@ -283,7 +296,7 @@ module Sense
 					next
 				end
 				msgid = message.delete(:id)
-				command = message.delete(:command) # TODO check si c'est un hash quand ça doit en être un
+				command = message.delete(:command)
 				args = message.delete(:message)
 				case command
 					when "add_sensor"

@@ -5,18 +5,8 @@ require 'sense/serial'
 require 'logger'
 require 'optparse'
 
-=begin
-- multiplexer : {:description => "bla", :supported => ["ain", "din"]}
-Sur network:<network>:multiplexers = hash(multipl-id, objet multiplexer)
-
-- sensor : {:fonction => "din", :rpn => "X 7 *"}
-Sur network:<network>:multiplexers:<multipl-id>:sensors = hash (pin, objet sensor)
-
-- actuator : {:pin => 13, :fonction => "bli"}
-Sur network:<network>:multiplexers:<multipl-id>:actuators = hash (pin, objet actuator)
-
-=end
 # TODO limiter les accès redis
+# TODO supprimer class Xbee_Daemon
 module Sense
 	class Xbee_Daemon
 		def initialize(network, args)#serial_port = '/dev/ttyUSB0', baudrate = 19200, redis_host = 'localhost', redis_port = 6379, logfile = nil)
@@ -91,21 +81,7 @@ module Sense
 			@redis.on_taken do |id_multi|
 				@serial.reset(id_multi)
 			end
-		
-=begin
-			@redis.on_given do |id_multi|
-			# TODO : test
-			@redis.on_taken do |id_multi, network|
-				if (network == @network) #it's for me !
-					@serial.reset(id_multi) #cleaning what the over demon let on the multiplexer
-					config = @redis.get_multi_config(id_multi)
-					config[:network] = @network
-					@redis.set_multi_config(id_multi, config)
-				else
-					@redis.clean_up(id_multi)
-				end
-			end
-=end
+			
 			@serial.on_new_multi do |id|
 				config = @redis.get_multi_config(id)
 				if (id == 0 or id == 255)  # Unconfigured, bad id
@@ -134,8 +110,9 @@ module Sense
 			@log.info("Restoration complete.")
 		end
 	
-		def restore_multi_state multi_id #TODO solidification ?
+		def restore_multi_state multi_id
 			config = @redis.get_multi_config(multi_id)
+			return false unless config
 			if (@serial.ping multi_id)
 				@redis.list(:sensor, multi_id).each do |pin, sensor_config|
 					profile = @redis.get_profile(:sensor, sensor_config[:profile])
@@ -150,6 +127,7 @@ module Sense
 				config[:state] = false
 				@redis.set_multi_config(multi_id, config)
 			end
+			true
 		end
 	end
 end
@@ -162,19 +140,7 @@ opts = OptionParser.new do |opts|
 		if file == "stdout" or file == "stderr"
 			options[:logfile] = {"stdout" => STDOUT, "stderr" => STDERR}[file]
 		else
-			options[:logfile] = file #TODO check
-=begin			
-			begin
-				options[:logfile] = File.open file, File::WRONLY | File::APPEND
-			rescue Exception => e
-				begin
-					options[:logfile] = File.open file, File::WRONLY | File::APPEND | File::CREAT
-				rescue Exception => e
-					puts "Could not open or create the log file, exiting... Error : #{e.message}"
-					exit 1
-				end
-			end
-=end
+			options[:logfile] = file
 		end		
 	end
 	

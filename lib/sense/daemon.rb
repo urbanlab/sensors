@@ -76,7 +76,6 @@ module Sense
 				value = value.round profile[:precision]
 			end
 			key = {value: value, timestamp: Time.now.to_f, unit: profile[:unit], name: config[:name]}
-			old_key = @redis.hget(path)
 			@redis.mapped_hmset(path, key)
 			@redis.publish(path, key.to_json) #TODO ne publier que la valeur ?
 			@redis.publish(path(:sensor, :raw_value, multi_id, sensor), value)

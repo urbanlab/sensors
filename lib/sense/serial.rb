@@ -31,6 +31,7 @@ module Sense
 			@down_ports = []
 			@port = port || search_port
 			@serial = SerialPort.new @port, @baudrate
+			@serial.flush
 			@wait_for = {} # {pattern => wpipe}
 			@timeout = timeout
 			@retry = retry_nb

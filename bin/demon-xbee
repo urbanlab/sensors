@@ -1,5 +1,4 @@
 #!/usr/bin/env ruby
-$:.unshift(File.dirname(__FILE__) + '/') unless $:.include?(File.dirname(__FILE__) + '/')
 
 require 'sense/daemon'
 require 'sense/serial'
@@ -90,7 +89,7 @@ module Sense
 				@serial.reset(id_multi)
 			end
 		
-	=begin
+=begin
 			@redis.on_given do |id_multi|
 			# TODO : test
 			@redis.on_taken do |id_multi, network|
@@ -103,7 +102,7 @@ module Sense
 					@redis.clean_up(id_multi)
 				end
 			end
-	=end
+=end
 			@serial.on_new_multi do |id|
 				config = @redis.get_multi_config(id)
 				if (id == 0 or id == 255)  # Unconfigured, bad id
@@ -221,7 +220,7 @@ else
 	exit 1
 end
 puts "[#{Process.pid}]"
-Process.daemon true, true
+Process.daemon true, true unless options[:logfile] == STDOUT
 daemon = Sense::Xbee_Daemon.new(options.delete(:network), options)
 daemon.launch
 

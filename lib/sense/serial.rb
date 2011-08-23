@@ -9,7 +9,7 @@ require 'sense/extensions'
 module Sense
 	# Interface to serial port in order to get and send message to the multiplexers
 	#
-	class Serial_interface
+	class Serial
 		# List of possible commands to send to the multiplexers
 		CMD = { list: "l", add: "a", remove: "d", tasks: "t" , id: "i", reset: "r", ping: "p" }
 	

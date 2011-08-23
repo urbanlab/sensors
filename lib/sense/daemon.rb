@@ -3,7 +3,7 @@ require 'logger'
 
 module Sense
 	# Contain methods userful for the demon : multiplexer's registration and dynamic callbacks of clients' messages
-	# TODO : réorganiser private/... solidifier réception message
+	#
 	class Daemon
 		include Sense::Common
 	
@@ -89,7 +89,163 @@ module Sense
 			return true
 		end
 	
-		# Register a sensor
+		# Callback when a client request to add a sensor
+		# @yield [multi_id, pin, function, period, *[option1, option2]] Block will be called when a client request a new sensor with client's parameters
+		# @yieldreturn True if the new sensor is accepted, False if not
+		#
+		def on_new_sensor &block
+			@on_new_sensor = block
+		end
+	
+		# Callback when a client request to add an actu
+		# @yield [multi_id, pin, function, period, *[option1, option2]] Block will be called when a client request a new actuator with client's parameters
+		# @yieldreturn True if the new actuator is accepted, False if not
+		#
+		def on_new_actuator &block
+			@on_new_actuator = block
+		end
+	
+		# Callback when a client request to delete a sensor
+		# @yield [multi_id, pin] Action to do when a client request to delete a device on a pin of the multiplexer multi_id
+		# @yieldreturn True if the destruction was accepted
+		#
+		def on_deleted_sensor(&block)
+			@on_deleted_sensor = block
+		end
+		
+		# Callback when a client request to delete an actuator
+		# @yield [multi_id, pin] Action to do when a client request to delete a device on a pin of the multiplexer multi_id
+		# @yieldreturn True if the destruction was accepted
+		#
+		def on_deleted_actuator(&block)
+			@on_deleted_actuator = block
+		end
+		
+		# Callback when a client request to change the state of an actuator
+		# @yield [multi_id, pin, value] Action to change the state of an actuator
+		# @yieldreturn True if it was a sucess
+		#
+		def on_actuator_state(&block)
+			@on_actuator_state = block
+		end
+	
+		# Callback when a client request to take a sensor
+		# @yield [id_multi, network]
+		#
+		def on_taken &block
+			@on_taken = block
+		end
+
+		# Read the messages from the client and call the callbacks
+		#
+		def process_messages
+			while true
+				begin
+					message = JSON.parse(@redis_listener.blpop("#{PREFIX}.network:#{@network}.messages", 0)[1])
+				rescue JSON::JSONError => e
+					@log.warn("A client sent an invalid message")
+					next
+				end
+				message.recursive_symbolize_keys!
+				begin
+					message.must_have(command: String, message: Object)
+					message.can_have(id: Integer)
+				rescue ArgumentError => e
+					@log.warn("A client sent an invalid message.")
+					answer(message[:id], false, e.message)
+					next
+				end
+				msgid = message.delete(:id)
+				command = message.delete(:command)
+				args = message.delete(:message)
+				case command
+					when "add_sensor"
+						register_device msgid, :sensor, args
+					when "add_actuator"
+						register_device msgid, :actuator, args
+					when "delete"
+						unregister_device msgid, args
+					when "take"
+						take_callback msgid, args
+					when "actuator_state"
+						actuator_state_callback msgid, args
+					else
+						@log.warn("A client sent an unknown command : \"#{command}\"")
+						answer(msgid, false, "Unknown command \"#{command}\"")
+				end
+			end
+		end
+	
+		private
+		# Answer a message
+		#
+		def answer(id, ok, message=nil)
+			ok = {true => "OK", false => "KO"}[ok]
+			answer = "#{ok}"
+			answer << "::#{message}" if message
+			@redis.lpush("#{PREFIX}.#{id}", answer) if id
+			@redis.expire("#{PREFIX}.#{id}", 60) if id
+		end
+
+		# Call the callback when a client request to change the state of an actu
+		#
+		def actuator_state_callback msgid, message
+			if not message.is_a? Hash
+				@log.warn("A client tried to change the state of an actuator with an invalid message")
+				anwer(msgid, false, "invalid message")
+			end
+			if not message[:multiplexer].is_a? Integer
+				@log.warn("A client tried to change the state of an invalid multiplexer")
+				answer(msgid, false, "Muliplexer id is invalid")
+				return
+			end
+			if not (message[:state] == 0 or message[:state] == 1)
+				@log.warn("A client requested a bad state for a multiplexer")
+				answer(msgid, false, "bad state")
+				return
+			end
+			if not mine? message[:multiplexer]
+				@log.warn("A client tried to change the state of an unknown multi")
+				answer(msgid, false, "unknown multi")
+				return
+			end
+			if not knows? :actuator, message[:multiplexer], message[:pin]
+				@log.warn("A client tried to change the state of an unknown actu")
+				answer(msgid, false, "unknown actu")
+				return
+			end
+			if @on_actuator_state && @on_actuator_state.call(message[:multiplexer], message[:pin], message[:state])
+				answer(msgid, true)
+			else
+				answer(msgid, false, "the multiplexer did not answer or refused")
+			end
+		end
+		
+		# Call the on_taken callback
+		#
+		def take_callback idmsg, id_multi
+			if not id_multi.is_a? Integer
+				@log.warn("A client tried to take a multiplexer with bad multi_id or network")
+				answer(idmsg, false, "bad multiplexer id or network")
+				return
+			end
+			config = get_multi_config(id_multi)
+			if not config.is_a? Hash
+				@log.warn("A client tried to take an unknown multiplexer")
+				answer(idmsg, false, "unknown mulitplexer")
+				return
+			end
+			if @on_taken && @on_taken.call(id_multi)
+				clean_up(id_multi)
+				config[:network] = @network
+				set_multi_config(id_multi, config)
+				answer(idmsg, true)
+			else
+				answer(idmsg, false, "Failed to reset the multiplexer.")
+			end
+		end
+		
+		# Call the callback to register a sensor
 		#
 		def register_device msgid, type, config
 			if not config.is_a? Hash
@@ -156,7 +312,7 @@ module Sense
 			end
 		end
 	
-		# Unregister a device
+		# Call the callback to unregister a device
 		#
 		def unregister_device msgid, config
 			if (not config[:multiplexer].is_a? Integer)
@@ -182,149 +338,6 @@ module Sense
 			else
 				answer(msgid, false, "Refused by multiplexer or multiplexer did not answer")
 			end
-		end
-	
-		# Callback when a client request to add a sensor
-		# @yield [multi_id, pin, function, period, *[option1, option2]] Block will be called when a client request a new sensor with client's parameters
-		# @yieldreturn True if the new sensor is accepted, False if not
-		#
-		def on_new_sensor &block
-			@on_new_sensor = block
-		end
-	
-		# Callback when a client request to add an actu
-		#
-		def on_new_actuator &block
-			@on_new_actuator = block
-		end
-	
-		# Callback when a client request to delete a sensor
-		# @yield [multi_id, pin] Action to do when a client request to delete a device on a pin of the multiplexer multi_id
-		# @yieldreturn True if the destruction was accepted
-		#
-		def on_deleted_sensor(&block)
-			@on_deleted_sensor = block
-		end
-	
-		def on_deleted_actuator(&block)
-			@on_deleted_actuator = block
-		end
-	
-		def on_actuator_state(&block)
-			@on_actuator_state = block
-		end
-
-		def take_callback idmsg, id_multi
-			if not id_multi.is_a? Integer
-				@log.warn("A client tried to take a multiplexer with bad multi_id or network")
-				answer(idmsg, false, "bad multiplexer id or network")
-				return
-			end
-			config = get_multi_config(id_multi)
-			if not config.is_a? Hash
-				@log.warn("A client tried to take an unknown multiplexer")
-				answer(idmsg, false, "unknown mulitplexer")
-				return
-			end
-			if @on_taken && @on_taken.call(id_multi)
-				clean_up(id_multi)
-				config[:network] = @network
-				set_multi_config(id_multi, config)
-				answer(idmsg, true)
-			else
-				answer(idmsg, false, "Failed to reset the multiplexer.")
-			end
-		end
-	
-		# Callback when a client request to take a sensor
-		# @yield [id_multi, network]
-		#
-		def on_taken &block
-			@on_taken = block
-		end
-	
-		def actuator_state_callback msgid, message
-			if not message.is_a? Hash
-				@log.warn("A client tried to change the state of an actuator with an invalid message")
-				anwer(msgid, false, "invalid message")
-			end
-			if not message[:multiplexer].is_a? Integer
-				@log.warn("A client tried to change the state of an invalid multiplexer")
-				answer(msgid, false, "Muliplexer id is invalid")
-				return
-			end
-			if not (message[:state] == 0 or message[:state] == 1)
-				@log.warn("A client requested a bad state for a multiplexer")
-				answer(msgid, false, "bad state")
-				return
-			end
-			if not mine? message[:multiplexer]
-				@log.warn("A client tried to change the state of an unknown multi")
-				answer(msgid, false, "unknown multi")
-				return
-			end
-			if not knows? :actuator, message[:multiplexer], message[:pin]
-				@log.warn("A client tried to change the state of an unknown actu")
-				answer(msgid, false, "unknown actu")
-				return
-			end
-			if @on_actuator_state && @on_actuator_state.call(message[:multiplexer], message[:pin], message[:state])
-				answer(msgid, true)
-			else
-				answer(msgid, false, "the multiplexer did not answer or refused")
-			end
-		end
-
-		# Read the messages and call the callbacks
-		# message : "JSON"
-		#
-		def process_messages
-			while true
-				begin
-					message = JSON.parse(@redis_listener.blpop("#{PREFIX}.network:#{@network}.messages", 0)[1])
-				rescue JSON::JSONError => e
-					@log.warn("A client sent an invalid message")
-					next
-				end
-				message.recursive_symbolize_keys!
-				begin
-					message.must_have(command: String, message: Object)
-					message.can_have(id: Integer)
-				rescue ArgumentError => e
-					@log.warn("A client sent an invalid message.")
-					answer(message[:id], false, e.message)
-					next
-				end
-				msgid = message.delete(:id)
-				command = message.delete(:command)
-				args = message.delete(:message)
-				case command
-					when "add_sensor"
-						register_device msgid, :sensor, args
-					when "add_actuator"
-						register_device msgid, :actuator, args
-					when "delete"
-						unregister_device msgid, args
-					when "take"
-						take_callback msgid, args
-					when "actuator_state"
-						actuator_state_callback msgid, args
-					else
-						@log.warn("A client sent an unknown command : \"#{command}\"")
-						answer(msgid, false, "Unknown command \"#{command}\"")
-				end
-			end
-		end
-	
-		private
-		# Answer a message
-		#
-		def answer(id, ok, message=nil)
-			ok = {true => "OK", false => "KO"}[ok]
-			answer = "#{ok}"
-			answer << "::#{message}" if message
-			@redis.lpush("#{PREFIX}.#{id}", answer) if id
-			@redis.expire("#{PREFIX}.#{id}", 60) if id
 		end
 
 		# Solve a Reverse Polish Notation

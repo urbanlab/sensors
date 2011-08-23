@@ -256,12 +256,13 @@ module Sense
 				return
 			end
 			multi = config.delete(:multiplexer)
-			if (not multi.is_a? Integer) or (not knows_multi? multi)
+			multi_id = get_multi_id(multi)
+			if (not multi_id.is_a? Integer)
 				@log.warn("A client tried to add a #{type} with a bad multiplexer id : #{multi}")
 				answer(msgid, false, "bad multiplexer id")
 				return
 			end
-			multi_config = get_multi_config multi
+			multi_config = get_multi_config multi_id
 			if not multi_config
 				@log.warn("A client tried to add a #{type} with an unknown multiplexer : #{multi}")
 				answer(msgid, false, "unknown multiplexer")
@@ -302,12 +303,12 @@ module Sense
 			end
 			pin = config.delete(:pin)
 			method = {actuator: @on_new_actuator, sensor: @on_new_sensor}[type]
-			if method and method.call(multi, pin, profile[:function], period, *[profile[:option1], profile[:option2]])
+			if method and method.call(multi_id, pin, profile[:function], period, *[profile[:option1], profile[:option2]])
 				if must_take
 					multi_config[:network] = @network
-					set_multi_config multi, multi_config
+					set_multi_config multi_id, multi_config
 				end
-				@redis.hset(path(type, :config, multi), pin, config.to_json)
+				@redis.hset(path(type, :config, multi_id), pin, config.to_json)
 				answer(msgid, true)
 			else
 				answer(msgid, false, "Refused by multi, or multi disconnected")

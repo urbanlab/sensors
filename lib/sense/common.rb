@@ -55,34 +55,58 @@ module Sense
 	
 		# get a multiplexer's config
 		# @return [Hash] config of the multi or nil if it doesn't exists or invalid
+		# @param [Integer, String] multi Id or name of the multiplexer
 		#
-		def get_multi_config( multi_id )
-			return nil unless knows_multi? multi_id
-			begin
-				JSON.s_parse(@redis.hget(path(), multi_id))
-			rescue Exception => e
-				return nil
+		def get_multi_config( multi )
+			if multi.is_a? Integer
+				return nil unless knows_multi? multi
+				begin
+					JSON.s_parse(@redis.hget(path(), multi))
+				rescue Exception => e
+					return nil
+				end
+			else
+				id, config = list_multis.find{|id, conf| conf[:description] == multi}
+				return config
 			end
 		end
-	
+		
+		# Get id of a multiplexer by its name or by its id
+		#
+		def get_multi_id( multi )
+			return multi if multi.is_a? Integer
+			id, config = list_multis.find{|id, conf| conf[:description] == multi}
+			return id
+		end
+		
+		# Get pin of a multiplexer from it's multiplexer and device
+		#
+		def get_pin(type, multi, device)
+			return device if device.is_a? Integer
+			dev_list = list(type, multi)
+			return nil unless dev_list.is_a? Hash
+			pin, conf = dev_list.find{|pin, conf| conf[:name] == device}
+			return pin
+		end
+		
 		# @return true if a multi is registered
 		#
-		def knows_multi? multi_id
-			@redis.hexists(path(), multi_id)
+		def knows_multi? multi
+			@redis.hexists(path(), multi)
 		end
 	
 		# @return true if a multi is registered and belong to my network
 		#
-		def mine? multi_id
-			c = get_multi_config(multi_id)
+		def mine? multi
+			c = get_multi_config(multi)
 			return false if (not c) or (not c[:network])
 			return c[:network] == @network
 		end
 	
 		# @return true if the device exists, false if not.
 		#
-		def knows? type, multi_id, pin
-			(knows_multi? multi_id) && @redis.hexists(path(type, :config, multi_id), pin)
+		def knows? type, multi, pin
+			(mine? multi) && @redis.hexists(path(type, :config, get_multi_id(multi)), pin)
 		end
 	
 		# Get a device's config
@@ -102,7 +126,8 @@ module Sense
 		# @return [Hash] List of devices in form +{pin => config}+
 		# @return [nil] if the multi does not exists or invalid datas
 		#
-		def list type, multi_id
+		def list type, multi
+			multi_id = get_multi_id(multi)
 			return nil unless knows_multi? multi_id
 			path = path(type, multi_id)
 			begin

@@ -114,6 +114,7 @@ module Sense
 		# @param [Integer] multi Id of the multiplexer
 		#
 		def list_devices(multi)
+			multi = $redis.get_multi_id multi
 			if $redis.knows_multi? multi
 				puts "Sensors :"
 				$redis.list(:sensor, multi).sort.each do |pin, conf|

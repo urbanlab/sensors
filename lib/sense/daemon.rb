@@ -194,27 +194,29 @@ module Sense
 				@log.warn("A client tried to change the state of an actuator with an invalid message")
 				anwer(msgid, false, "invalid message")
 			end
-			if not message[:multiplexer].is_a? Integer
+			if not (message[:multiplexer].is_a? Integer or message[:multiplexer].is_a? String)
 				@log.warn("A client tried to change the state of an invalid multiplexer")
 				answer(msgid, false, "Muliplexer id is invalid")
 				return
 			end
+			multi_id = get_multi_id(message[:multiplexer])
+			pin = get_pin(:actuator, multi_id, message[:pin])
 			if not (message[:state] == 0 or message[:state] == 1)
 				@log.warn("A client requested a bad state for a multiplexer")
 				answer(msgid, false, "bad state")
 				return
 			end
-			if not mine? message[:multiplexer]
+			if not mine? multi_id
 				@log.warn("A client tried to change the state of an unknown multi")
 				answer(msgid, false, "unknown multi")
 				return
 			end
-			if not knows? :actuator, message[:multiplexer], message[:pin]
+			if not knows? :actuator, multi_id, pin
 				@log.warn("A client tried to change the state of an unknown actu")
 				answer(msgid, false, "unknown actu")
 				return
 			end
-			if @on_actuator_state && @on_actuator_state.call(message[:multiplexer], message[:pin], message[:state])
+			if @on_actuator_state && @on_actuator_state.call(multi_id, pin, message[:state])
 				answer(msgid, true)
 			else
 				answer(msgid, false, "the multiplexer did not answer or refused")
@@ -223,7 +225,8 @@ module Sense
 		
 		# Call the on_taken callback
 		#
-		def take_callback idmsg, id_multi
+		def take_callback idmsg, multi
+			id_multi = get_multi_id(multi)
 			if not id_multi.is_a? Integer
 				@log.warn("A client tried to take a multiplexer with bad multi_id or network")
 				answer(idmsg, false, "bad multiplexer id or network")
@@ -254,12 +257,13 @@ module Sense
 				return
 			end
 			multi = config.delete(:multiplexer)
-			if (not multi.is_a? Integer) or (not knows_multi? multi)
+			multi_id = get_multi_id(multi)
+			if (not multi_id.is_a? Integer)
 				@log.warn("A client tried to add a #{type} with a bad multiplexer id : #{multi}")
 				answer(msgid, false, "bad multiplexer id")
 				return
 			end
-			multi_config = get_multi_config multi
+			multi_config = get_multi_config multi_id
 			if not multi_config
 				@log.warn("A client tried to add a #{type} with an unknown multiplexer : #{multi}")
 				answer(msgid, false, "unknown multiplexer")
@@ -300,12 +304,12 @@ module Sense
 			end
 			pin = config.delete(:pin)
 			method = {actuator: @on_new_actuator, sensor: @on_new_sensor}[type]
-			if method and method.call(multi, pin, profile[:function], period, *[profile[:option1], profile[:option2]])
+			if method and method.call(multi_id, pin, profile[:function], period, *[profile[:option1], profile[:option2]])
 				if must_take
 					multi_config[:network] = @network
-					set_multi_config multi, multi_config
+					set_multi_config multi_id, multi_config
 				end
-				@redis.hset(path(type, :config, multi), pin, config.to_json)
+				@redis.hset(path(type, :config, multi_id), pin, config.to_json)
 				answer(msgid, true)
 			else
 				answer(msgid, false, "Refused by multi, or multi disconnected")
@@ -315,25 +319,27 @@ module Sense
 		# Call the callback to unregister a device
 		#
 		def unregister_device msgid, config
-			if (not config[:multiplexer].is_a? Integer)
+			if not (config[:multiplexer].is_a? Integer or config[:multiplexer].is_a? String)
 				@log.warn("A client tried to delete a #{type} with bad multiplexer id : #{parse[:multiplexer]}")
 				answer(msgid, false, "Bad multiplexer id")
 				return
 			end
-			if (not config[:pin].is_a? Integer)
+			if not (config[:pin].is_a? Integer or config[:pin].is_a? String)
 				@log.warn("A client tried to delete a #{type} with bad pin : #{pin}")
 				answer(msgid, false, "Bad id")
 				return
 			end
-			if not knows?(config[:type], config[:multiplexer], config[:pin])
-				@log.warn("A client tried to delete an unknown #{config[:type]} : #{config[:multiplexer]}:pin")
+			multi_id = get_multi_id(config[:multiplexer])
+			pin = get_pin(config[:type], multi_id, config[:pin])
+			if not knows?(config[:type], multi_id, pin)
+				@log.warn("A client tried to delete an unknown #{config[:type]} : #{config[:multiplexer]}:#{config[:pin]}")
 				answer(msgid, false, "unknown #{config[:type]} or multiplexer")
 				return
 			end
 			callback = {sensor: @on_deleted_sensor, actuator: @on_deleted_actuator}[config[:type].intern]
-			if callback && callback.call(config[:multiplexer], config[:pin])
-				@redis.del(path(config[:type], :value, config[:multiplexer], config[:pin]))
-				@redis.hdel(path(config[:type], :config, config[:multiplexer]), config[:pin])
+			if callback && callback.call(multi_id, pin)
+				@redis.del(path(config[:type], :value, multi_id, pin))
+				@redis.hdel(path(config[:type], :config, multi_id), pin)
 				answer(msgid, true)
 			else
 				answer(msgid, false, "Refused by multiplexer or multiplexer did not answer")

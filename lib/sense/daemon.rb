@@ -75,10 +75,12 @@ require 'logger'
 			if profile[:precision].is_a? Integer
 				value = value.round profile[:precision]
 			end
-			old_value = @redis.hget(path, :value)
-			old_value = old_value.to_f if old_value
 			key = {value: value, timestamp: Time.now.to_f, unit: profile[:unit], name: config[:name]}
-			@redis.mapped_hmset(path, key)
+			old_value, set = @redis.multi do
+				@redis.hget(path, "value")
+				@redis.mapped_hmset(path, key)
+			end
+			old_value = old_value.to_f if old_value
 			if (old_value) && (old_value != key[:value])
 				@redis.publish(path, key.to_json) #TODO ne publier que la valeur ?
 			end

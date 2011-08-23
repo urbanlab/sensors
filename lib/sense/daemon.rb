@@ -225,7 +225,8 @@ module Sense
 		
 		# Call the on_taken callback
 		#
-		def take_callback idmsg, id_multi
+		def take_callback idmsg, multi
+			id_multi = get_multi_id(multi)
 			if not id_multi.is_a? Integer
 				@log.warn("A client tried to take a multiplexer with bad multi_id or network")
 				answer(idmsg, false, "bad multiplexer id or network")

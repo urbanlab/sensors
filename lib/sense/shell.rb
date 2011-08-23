@@ -121,7 +121,7 @@ module Sense
 				end
 				puts "Actuators :"
 				$redis.list(:actuator, multi).sort.each do |pin, conf|
-					puts "#{pin} : #{conf[:name]}, #{conf[:profile]}"
+					puts " - #{pin} : #{conf[:name]}, #{conf[:profile]}"
 				end
 			else
 				puts "The multiplexer doesn't exist"

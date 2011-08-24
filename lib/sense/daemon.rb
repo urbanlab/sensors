@@ -44,6 +44,13 @@ module Sense
 			@redis.hset(path(), multi_id, config.to_json)
 			@log.debug("Registering multiplexer's configuration : #{config}")
 		end
+		
+		# Get an unassigned id
+		# @return [Integer] the id
+		def get_unassigned_id
+			ids = @redis.hkeys(path()).inject([]){|a,i|a << i.to_i}
+			(Array(1..255) - ids)[0]
+		end
 	
 		# Publish a sensor's value
 		# @return true if the value was succefully published. false with log otherwise
@@ -141,8 +148,8 @@ module Sense
 		def process_messages
 			while true
 				chan, message = @redis_listener.blpop("#{PREFIX}.network:#{@network}.messages", 0)
-				msgid, command, args = parse(message)
 				@log.debug("A client sent the message : #{message}")
+				msgid, command, args = parse(message)
 				unless command
 					@log.warn("A client sent an invalid message.")
 					next
@@ -156,7 +163,7 @@ module Sense
 					when "delete"
 						unregister_device msgid, args
 					when "take"
-						take_callback msgid, args
+						take_callback msgid, args.to_i
 					when "actuator_state"
 						actuator_state_callback msgid, args
 					else
@@ -204,7 +211,6 @@ module Sense
 			end
 			multi_id = get_multi_id(message[:multiplexer])
 			pin = get_pin(:actuator, multi_id, message[:pin])
-			p pin
 			if not (message[:state] == 0 or message[:state] == 1)
 				@log.warn("A client requested a bad state for a multiplexer")
 				answer(msgid, false, "bad state")

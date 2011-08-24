@@ -59,9 +59,9 @@ def launch
 	$serial.on_new_multi do |id|
 		config = $redis.get_multi_config(id)
 		if (id == 0 or id == 255)  # Unconfigured, bad id
-			new_id = (Array(1..255) - $redis.list_multis.keys)[0] # first unused id
-			if ($serial.change_id(id, new_id) && $network == 1) #only network 1 will changes the ids...
-				$redis.set_multi_config(new_id, {network: 0, description: "no name", supported: $serial.list_implementations(id)})
+			new_id = $redis.get_unassigned_id
+			if $serial.change_id(id, new_id)
+				$redis.set_multi_config(new_id, {network: 0, description: "no name", supported: $serial.list_implementations(new_id)})
 			end
 		elsif (not ($redis.knows_multi? id))   # valid id, but not registered
 			$redis.set_multi_config(id, {network: 0, description: "no name", supported: $serial.list_implementations(id)})

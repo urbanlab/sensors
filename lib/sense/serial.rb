@@ -46,10 +46,16 @@ module Sense
 		def process_messages
 			loop do
 				buff = ""
+				old_time = 0
 				while not buff.end_with?("\n")
 					i = 0
+					if (Time.now.to_f - old_time > 0.1) && (not buff.empty?) # only work when gets is non blocking
+						@log.debug("Received an incomplete message")
+						buff.clear
+					end
 					begin
 						@serial.wait
+						old_time = Time.now.to_f
 						buff << @serial.gets
 					rescue StandardError => e
 						@log.error("The serial line had a problem : #{e.message}, retrying...")
@@ -61,11 +67,12 @@ module Sense
 						retry				
 					end
 				end
-				begin
-					@log.debug("Received \"#{buff.delete("\r\n")}\"")
-				rescue Exception => e
-					p buff
+				if not buff.ascii_only?
+					@log.debug("Received a malformed message")
+					buff.clear
+					next
 				end
+				@log.debug("Received \"#{buff.delete("\r\n")}\"")
 				pattern, pipe = @wait_for.detect{|pattern, pipe| buff.match(pattern)}
 				if pattern
 					pipe.write(buff)

@@ -201,6 +201,7 @@ module Sense
 			end
 			multi_id = get_multi_id(message[:multiplexer])
 			pin = get_pin(:actuator, multi_id, message[:pin])
+			p pin
 			if not (message[:state] == 0 or message[:state] == 1)
 				@log.warn("A client requested a bad state for a multiplexer")
 				answer(msgid, false, "bad state")

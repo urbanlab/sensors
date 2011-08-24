@@ -37,5 +37,7 @@ byte nbTask = 0;
 char idstr[4];
 char completeMessageSnd[msgSize]; // buffer that will be sent
 char* messageSnd; // buffer where function will write to send messages
-char buffRcv[msgSize];
+char buffRcv[msgSize] = "\0";
+unsigned long lastMsgTime = 0;
+unsigned int lastMsgPos = 0;
 

@@ -6,12 +6,12 @@ void setup(){
   strcpy(messageSnd, "NEW");
   snd_complete();
   while(get_id() == 0) {
-    process_message(true);
+    read_input(true);
   }
 }
 
 void loop() {
-  process_message(false);
+  read_input(false);
   for (int i=0 ; i < nbPin ; i++) {
     if ((taskList[i] != NULL) && (taskList[i]->period != 0) && cycleCheck(taskList[i]->lastTime, taskList[i]->period))
       taskList[i]->function(i, taskList[i]->space);
@@ -80,139 +80,139 @@ void snd_message(unsigned int sensor, int value) {
 // Get and process a message from the server.
 // Return true if a message for the arduino arrived
 //
-boolean process_message(boolean block){
+boolean read_input(boolean block){
   boolean valid = false;
   do {
-    char car = ' ';
-    int nbArgs = 1;
-    char* msgrcv[wordNb];
-    buffRcv[0] = '\0';
     boolean rcvd = false;
     do {                                  // Reception message
-      rcvd = get_message(buffRcv, block);
-    } 
-    while (!rcvd && block);
-    msgrcv[0] = buffRcv;
-    int i=0;
-    while (car != '\0') {                 // Decoupage message
-      car = buffRcv[i];
-      if (car == ' '){
-        buffRcv[i] = '\0';
-        msgrcv[nbArgs++] = buffRcv+i+1;
-      }
-      i++;
+      rcvd = append_message();
+    } while (!rcvd && block);
+    if (rcvd) {
+      valid = process_message();
     }
-    if (strcmp(msgrcv[0], idstr) == 0) {  // Identification
-      valid = true;
-      boolean accepted = false;
-      switch (msgrcv[1][0]) {             // Traitement
-      case 'p':
-        strcpy(messageSnd, "PONG");
-        break;
+  } while (!valid && block);
+}
 
-      case 's':
-        save_state();
-        strcpy(messageSnd, "SAVED");
-        break;
+boolean process_message(){
+  char car = ' ';
+  int nbArgs = 1;
+  int i=0;
+  char* msgrcv[wordNb];
+  boolean identified = false;
+  msgrcv[0] = buffRcv;
+  while (car != '\0') {                 // Decoupage message
+    car = buffRcv[i];
+    if (car == ' '){
+      buffRcv[i] = '\0';
+      msgrcv[nbArgs++] = buffRcv+i+1;
+    }
+    i++;
+  }
+  if (strcmp(msgrcv[0], idstr) == 0) {  // Identification
+    identified = true;
+    boolean accepted = false;
+    switch (msgrcv[1][0]) {             // Traitement
+    case 'p':
+      strcpy(messageSnd, "PONG");
+      break;
 
-      case 'l':
-        strcpy(messageSnd, "LIST ");
-        for (byte j = 0 ; j < nbCmd ; j++){
-          strcat(messageSnd, commandList[j].name);
+    case 's':
+      save_state();
+      strcpy(messageSnd, "SAVED");
+      break;
+
+    case 'l':
+      strcpy(messageSnd, "LIST ");
+      for (byte j = 0 ; j < nbCmd ; j++){
+        strcat(messageSnd, commandList[j].name);
+        strcat(messageSnd, " ");
+      }
+      break;
+
+    case 't':
+      strcpy(messageSnd, "TASKS ");
+      for (int i = 0 ; i < nbPin ; i++){
+        if (taskList[i] != NULL) {
+          char pin[3] = "";
+          itoa(i, pin, 10);
+          strcat(messageSnd, pin);
+          strcat(messageSnd, ":");
+          strcat(messageSnd, commandList[taskList[i]->idx_command].name);
           strcat(messageSnd, " ");
         }
-        break;
-
-      case 't':
-        strcpy(messageSnd, "TASKS ");
-        for (int i = 0 ; i < nbPin ; i++){
-          if (taskList[i] != NULL) {
-            char pin[3] = "";
-            itoa(i, pin, 10);
-            strcat(messageSnd, pin);
-            strcat(messageSnd, ":");
-            strcat(messageSnd, commandList[taskList[i]->idx_command].name);
-            strcat(messageSnd, " ");
-          }
-        }
-        break;
-
-      case 'i':
-        set_id(atoi(msgrcv[2]));
-        strcpy(messageSnd, "ID");
-        break;
-
-      case 'r':
-        for (unsigned int i = 0 ; i < nbPin ; i++)
-          delete_task(i);
-        strcpy(messageSnd, "RST");
-        break;
-
-      case 'a':
-        for (int i = 0 ; i < nbCmd ; i++){
-          if((strcmp(commandList[i].name, msgrcv[2]) == 0) && (commandList[i].nbArgs == nbArgs - 5) && atoi(msgrcv[4]) < nbPin){ // Meme nom et meme nombre d'arg
-            unsigned int period = atoi(msgrcv[3]);
-            unsigned int pin = atoi(msgrcv[4]);
-            int args[spaceSize];
-            for (int j = 0 ; j < commandList[i].nbArgs ; j++) {
-              args[j] = atoi(msgrcv[j+5]);
-            }
-            accepted = add_task(pin, i, period, args);
-          }
-        }
-        strcpy(messageSnd, "ADD ");
-        strcat(messageSnd, msgrcv[4]);
-        strcat(messageSnd, accepted ? " OK" : " KO");
-        break;
-
-      case 'd':
-        strcpy(messageSnd, "DEL ");
-        strcat(messageSnd, msgrcv[2]);
-        strcat(messageSnd, delete_task(atoi(msgrcv[2])) ? " OK" : " KO");
-        break;
       }
-      snd_complete();
+      break;
+
+    case 'i':
+      set_id(atoi(msgrcv[2]));
+      strcpy(messageSnd, "ID");
+      break;
+
+    case 'r':
+      for (unsigned int i = 0 ; i < nbPin ; i++)
+        delete_task(i);
+      strcpy(messageSnd, "RST");
+      break;
+
+    case 'a':
+      for (int i = 0 ; i < nbCmd ; i++){
+        if((strcmp(commandList[i].name, msgrcv[2]) == 0) && (commandList[i].nbArgs == nbArgs - 5) && atoi(msgrcv[4]) < nbPin){ // Meme nom et meme nombre d'arg
+          unsigned int period = atoi(msgrcv[3]);
+          unsigned int pin = atoi(msgrcv[4]);
+          int args[spaceSize];
+          for (int j = 0 ; j < commandList[i].nbArgs ; j++) {
+            args[j] = atoi(msgrcv[j+5]);
+          }
+          accepted = add_task(pin, i, period, args);
+        }
+      }
+      strcpy(messageSnd, "ADD ");
+      strcat(messageSnd, msgrcv[4]);
+      strcat(messageSnd, accepted ? " OK" : " KO");
+      break;
+
+    case 'd':
+      strcpy(messageSnd, "DEL ");
+      strcat(messageSnd, msgrcv[2]);
+      strcat(messageSnd, delete_task(atoi(msgrcv[2])) ? " OK" : " KO");
+      break;
     }
-  } 
-  while (!valid && block);
-  return valid;
+    snd_complete();
+  }
+  lastMsgPos = 0;
+  return identified;
 }
 
 #ifndef SERIAL_DEBUG
-boolean get_message(char* msg, boolean block){
-  int i=0;
+boolean append_message(){
   boolean valid = false;
-  do{
-    if(Serial.available()){
-      delay(100);
-      while(i< msgSize-1 && (msg[i-1] != '\n')) { //probleme au premier passage si '\n' précède ?
-        if (Serial.available())
-          msg[i++] = Serial.read();
-      }
-      msg[i-1]='\0';
-      valid = true;
-    }
-  } 
-  while(!valid && block);
+  if ((millis() - lastMsgTime) > 100) { // Last message was not complete or invalid, delete it.
+    lastMsgPos = 0;
+  }
+  while(Serial.available() && lastMsgPos < msgSize-1){
+    delay(10);
+    lastMsgTime = millis();
+    buffRcv[lastMsgPos++] = Serial.read();
+  }
+  if (buffRcv[lastMsgPos-1] == '\n'){
+    valid = true;
+    buffRcv[lastMsgPos-1] = '\0';
+  }
   return valid;
 }
 
 #else /* SERIAL_DEBUG */
 // For science, you monster.
-boolean get_message(char* msg, boolean block){
-  int i=0;
+boolean append_message(){
   boolean valid = false;
-  do{
-    if(Serial.available()){
-      delay(100);
-      while(i< msgSize-1 && Serial.available()) {
-        msg[i++] = Serial.read();
-      }
-      msg[i++]='\0';
-      valid = true;
-    }
-  } 
-  while(!valid && block);
+  while(Serial.available() && lastMsgPos < msgSize-1){
+    delay(10);
+    valid = true;
+    buffRcv[lastMsgPos++] = Serial.read();
+  }
+  if (valid){
+    buffRcv[lastMsgPos++] = '\0';
+  }
   return valid;
 }
 #endif /* SERIAL_DEBUG */

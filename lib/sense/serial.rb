@@ -61,7 +61,11 @@ module Sense
 						retry				
 					end
 				end
-				@log.debug("Received \"#{buff.delete("\r\n")}\"")
+				begin
+					@log.debug("Received \"#{buff.delete("\r\n")}\"")
+				rescue Exception => e
+					p buff
+				end
 				pattern, pipe = @wait_for.detect{|pattern, pipe| buff.match(pattern)}
 				if pattern
 					pipe.write(buff)

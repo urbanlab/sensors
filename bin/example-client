@@ -18,6 +18,9 @@ cli.on_published_value(:sensor) do |multi, pin, value, unit, name|
 		else "#{value}#{unit}"
 	end
 	puts s
+	cli.set_actuator_state(multi, "Alerte", 1) if (name == 'Temp') and (value > 31)
+	cli.set_actuator_state(multi, "Alerte", 0) if (name == 'Temp') and (value < 27)
+
 end
 
 sleep

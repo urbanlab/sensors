@@ -142,6 +142,7 @@ module Sense
 			while true
 				chan, message = @redis_listener.blpop("#{PREFIX}.network:#{@network}.messages", 0)
 				msgid, command, args = parse(message)
+				@log.debug("A client sent the message : #{message}")
 				unless command
 					@log.warn("A client sent an invalid message.")
 					next

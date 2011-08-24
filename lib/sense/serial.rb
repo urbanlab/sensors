@@ -79,7 +79,7 @@ module Sense
 					pipe.close
 					@wait_for.delete pattern
 				else
-					@log.warn("Received an unhandled message : #{buff}")
+					@log.debug("Received an unhandled message : #{buff}")
 				end
 			end
 		end

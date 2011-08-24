@@ -129,10 +129,17 @@ module Sense
 		#
 		def send(command, args)
 			id_message = rand.hash.abs
-			message = {id: id_message, command: command, message: args}
-			@redis.lpush("#{PREFIX}.network:#@network.messages", message.to_json)
+			message = "#{id_message}:#{command}#{encode(args)}"
+			@redis.lpush("#{PREFIX}.network:#@network.messages", message)
 			chan, answer = @redis.blpop("#{PREFIX}.#{id_message}", 10)
 			return [answer.split("::")[0] == "OK", answer.split("::")[1]]
+		end
+		
+		# Encode a message
+		#
+		def encode message
+			return message unless message.is_a? Hash
+			return message.inject("") {|s, k| s << " #{k[0]}:#{k[1]}"}
 		end
 	end
 end

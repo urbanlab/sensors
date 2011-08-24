@@ -140,24 +140,13 @@ module Sense
 		#
 		def process_messages
 			while true
-				begin
-					message = JSON.parse(@redis_listener.blpop("#{PREFIX}.network:#{@network}.messages", 0)[1])
-				rescue JSON::JSONError => e
-					@log.warn("A client sent an invalid message")
-					next
-				end
-				message.recursive_symbolize_keys!
-				begin
-					message.must_have(command: String, message: Object)
-					message.can_have(id: Integer)
-				rescue ArgumentError => e
+				chan, message = @redis_listener.blpop("#{PREFIX}.network:#{@network}.messages", 0)
+				msgid, command, args = parse(message)
+				unless command
 					@log.warn("A client sent an invalid message.")
-					answer(message[:id], false, e.message)
 					next
 				end
-				msgid = message.delete(:id)
-				command = message.delete(:command)
-				args = message.delete(:message)
+				
 				case command
 					when "add_sensor"
 						register_device msgid, :sensor, args
@@ -177,6 +166,19 @@ module Sense
 		end
 	
 		private
+		# Parse an incoming message
+		#
+		def parse message
+			id, command = message.slice!(/\S+/).scan(/(\d+:)?(\w+)/).flatten
+			id = id.delete(":").to_i if id
+			id = nil if id == 0
+			if message.include?(':')
+				message = Hash[*message.scan(/(\w+):([^:\s]+)/).flatten].symbolize_keys if message.include?(':')
+				message.each_key {|k| message[k] = message[k].to_i if message[k].is_numeric?}
+			end
+			return [id, command, message]
+		end
+		
 		# Answer a message
 		#
 		def answer(id, ok, message=nil)

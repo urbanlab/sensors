@@ -489,7 +489,7 @@ Baudrate communication (probably 19200)
         <span class='name'>logger</span>
       
       
-        <span class='type'>(<tt>optional</tt>, <tt>Logger</tt>)</span>
+        <span class='type'>(<tt>Logger</tt>)</span>
       
       
         <em class="default">(defaults to: <tt>Logger.new(nil)</tt>)</em>
@@ -563,8 +563,7 @@ Number of time to retry to send a command before
 38
 39
 40
-41
-42</pre>
+41</pre>
     </td>
     <td>
       <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 27</span>
@@ -580,8 +579,7 @@ Number of time to retry to send a command before
 	<span class='ivar'>@wait_for</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span> <span class='comment'># {pattern =&gt; wpipe}
 </span>	<span class='ivar'>@timeout</span> <span class='op'>=</span> <span class='id timeout'>timeout</span>
 	<span class='ivar'>@retry</span> <span class='op'>=</span> <span class='id retry_nb'>retry_nb</span>
-	<span class='comment'># Thread.abort_on_exception = true
-</span>	<span class='id listener'>listener</span> <span class='op'>=</span> <span class='const'>Thread</span><span class='period'>.</span><span class='id new'>new</span> <span class='lbrace'>{</span>
+	<span class='id listener'>listener</span> <span class='op'>=</span> <span class='const'>Thread</span><span class='period'>.</span><span class='id new'>new</span> <span class='lbrace'>{</span>
 		<span class='id process_messages'>process_messages</span>
 	<span class='rbrace'>}</span>
 <span class='kw'>end</span></pre>
@@ -730,6 +728,7 @@ answered or invalid answer
       <pre class="lines">
 
 
+110
 111
 112
 113
@@ -740,11 +739,10 @@ answered or invalid answer
 118
 119
 120
-121
-122</pre>
+121</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 111</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 110</span>
 
 <span class='kw'>def</span> <span class='id add_task'>add_task</span><span class='lparen'>(</span><span class='id multi'>multi</span><span class='comma'>,</span> <span class='id pin'>pin</span><span class='comma'>,</span> <span class='id function'>function</span><span class='comma'>,</span> <span class='id period'>period</span><span class='comma'>,</span> <span class='op'>*</span><span class='id args'>args</span><span class='rparen'>)</span>
 	<span class='id args'>args</span><span class='period'>.</span><span class='id delete'>delete</span> <span class='kw'>nil</span>
@@ -844,12 +842,12 @@ true if somebody change its id
       <pre class="lines">
 
 
+144
 145
-146
-147</pre>
+146</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 145</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 144</span>
 
 <span class='kw'>def</span> <span class='id change_id'>change_id</span><span class='lparen'>(</span><span class='id old'>old</span><span class='comma'>,</span> <span class='id new'>new</span><span class='rparen'>)</span>
 	<span class='id snd_message'>snd_message</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^</span><span class='embexpr_beg'>#{</span><span class='id new'>new</span><span class='rbrace'>}</span><span class='tstring_content'> ID</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='id old'>old</span><span class='comma'>,</span> <span class='symbol'>:id</span><span class='comma'>,</span> <span class='id new'>new</span><span class='rparen'>)</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_end'>&quot;</span></span>
@@ -923,13 +921,13 @@ or nil if no answer
       <pre class="lines">
 
 
+152
 153
 154
-155
-156</pre>
+155</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 153</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 152</span>
 
 <span class='kw'>def</span> <span class='id list_implementations'>list_implementations</span><span class='lparen'>(</span><span class='id multi'>multi</span><span class='rparen'>)</span>
 	<span class='id ans'>ans</span> <span class='op'>=</span> <span class='id snd_message'>snd_message</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^</span><span class='embexpr_beg'>#{</span><span class='id multi'>multi</span><span class='rbrace'>}</span><span class='tstring_content'> LIST</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='id multi'>multi</span><span class='comma'>,</span> <span class='symbol'>:list</span><span class='rparen'>)</span>
@@ -1004,13 +1002,13 @@ in form <tt>{pin =&gt; task}</tt> or nil if no answer
       <pre class="lines">
 
 
+161
 162
 163
-164
-165</pre>
+164</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 162</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 161</span>
 
 <span class='kw'>def</span> <span class='id list_tasks'>list_tasks</span><span class='lparen'>(</span><span class='id multi'>multi</span><span class='rparen'>)</span>
 	<span class='id ans'>ans</span> <span class='op'>=</span> <span class='id snd_message'>snd_message</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^</span><span class='embexpr_beg'>#{</span><span class='id multi'>multi</span><span class='rbrace'>}</span><span class='tstring_content'> TASKS</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='id multi'>multi</span><span class='comma'>,</span> <span class='symbol'>:tasks</span><span class='rparen'>)</span>
@@ -1064,16 +1062,16 @@ Id of the plugged multiplexer
       <pre class="lines">
 
 
+169
 170
 171
 172
 173
 174
-175
-176</pre>
+175</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 170</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 169</span>
 
 <span class='kw'>def</span> <span class='id on_new_multi'>on_new_multi</span>
 	<span class='const'>Thread</span><span class='period'>.</span><span class='id new'>new</span> <span class='kw'>do</span>
@@ -1130,17 +1128,17 @@ Processing of the value
       <pre class="lines">
 
 
+180
 181
 182
 183
 184
 185
 186
-187
-188</pre>
+187</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 181</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 180</span>
 
 <span class='kw'>def</span> <span class='id on_sensor_value'>on_sensor_value</span><span class='lparen'>(</span><span class='op'>&amp;</span><span class='id block'>block</span><span class='rparen'>)</span>
 	<span class='const'>Thread</span><span class='period'>.</span><span class='id new'>new</span> <span class='kw'>do</span>
@@ -1219,12 +1217,12 @@ True if the multiplexer is alive
       <pre class="lines">
 
 
+98
 99
-100
-101</pre>
+100</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 99</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 98</span>
 
 <span class='kw'>def</span> <span class='id ping'>ping</span><span class='lparen'>(</span><span class='id multi'>multi</span><span class='rparen'>)</span>
 	<span class='id snd_message'>snd_message</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^</span><span class='embexpr_beg'>#{</span><span class='id multi'>multi</span><span class='rbrace'>}</span><span class='tstring_content'> PONG</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='id multi'>multi</span><span class='comma'>,</span> <span class='symbol'>:ping</span><span class='rparen'>)</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_end'>&quot;</span></span>
@@ -1258,6 +1256,7 @@ Listen to the incoming messages and process them according to @wait_for
       <pre class="lines">
 
 
+45
 46
 47
 48
@@ -1296,11 +1295,10 @@ Listen to the incoming messages and process them according to @wait_for
 81
 82
 83
-84
-85</pre>
+84</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 46</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 45</span>
 
 <span class='kw'>def</span> <span class='id process_messages'>process_messages</span>
 	<span class='id loop'>loop</span> <span class='kw'>do</span>
@@ -1308,7 +1306,7 @@ Listen to the incoming messages and process them according to @wait_for
 		<span class='id old_time'>old_time</span> <span class='op'>=</span> <span class='int'>0</span>
 		<span class='kw'>while</span> <span class='kw'>not</span> <span class='id buff'>buff</span><span class='period'>.</span><span class='id end_with?'>end_with?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>\n</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 			<span class='id i'>i</span> <span class='op'>=</span> <span class='int'>0</span>
-			<span class='kw'>if</span> <span class='lparen'>(</span><span class='const'>Time</span><span class='period'>.</span><span class='id now'>now</span><span class='period'>.</span><span class='id to_f'>to_f</span> <span class='op'>-</span> <span class='id old_time'>old_time</span> <span class='op'>&gt;</span> <span class='float'>0.1</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='lparen'>(</span><span class='kw'>not</span> <span class='id buff'>buff</span><span class='period'>.</span><span class='id empty?'>empty?</span><span class='rparen'>)</span> <span class='comment'># only work when gets is non blocking
+			<span class='kw'>if</span> <span class='lparen'>(</span><span class='const'>Time</span><span class='period'>.</span><span class='id now'>now</span><span class='period'>.</span><span class='id to_f'>to_f</span> <span class='op'>-</span> <span class='id old_time'>old_time</span> <span class='op'>&gt;</span> <span class='float'>0.1</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='lparen'>(</span><span class='kw'>not</span> <span class='id buff'>buff</span><span class='period'>.</span><span class='id empty?'>empty?</span><span class='rparen'>)</span> <span class='comment'># only work when gets is non blocking (seems to become non blocking after some time...)
 </span>				<span class='ivar'>@log</span><span class='period'>.</span><span class='id debug'>debug</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Received an incomplete message</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 				<span class='id buff'>buff</span><span class='period'>.</span><span class='id clear'>clear</span>
 			<span class='kw'>end</span>
@@ -1429,6 +1427,7 @@ answered, or invalid answer
       <pre class="lines">
 
 
+128
 129
 130
 131
@@ -1437,11 +1436,10 @@ answered, or invalid answer
 134
 135
 136
-137
-138</pre>
+137</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 129</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 128</span>
 
 <span class='kw'>def</span> <span class='id rem_task'>rem_task</span><span class='lparen'>(</span><span class='id multi'>multi</span><span class='comma'>,</span> <span class='id pin'>pin</span><span class='rparen'>)</span>
 	<span class='kw'>case</span> <span class='id snd_message'>snd_message</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^</span><span class='embexpr_beg'>#{</span><span class='id multi'>multi</span><span class='rbrace'>}</span><span class='tstring_content'> DEL </span><span class='embexpr_beg'>#{</span><span class='id pin'>pin</span><span class='rbrace'>}</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='id multi'>multi</span><span class='comma'>,</span> <span class='symbol'>:remove</span><span class='comma'>,</span> <span class='id pin'>pin</span><span class='rparen'>)</span>
@@ -1522,12 +1520,12 @@ True if the multiplexer was reseted
       <pre class="lines">
 
 
+91
 92
-93
-94</pre>
+93</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 92</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/serial.rb', line 91</span>
 
 <span class='kw'>def</span> <span class='id reset'>reset</span><span class='lparen'>(</span><span class='id multi'>multi</span><span class='rparen'>)</span>
 	<span class='id snd_message'>snd_message</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>^</span><span class='embexpr_beg'>#{</span><span class='id multi'>multi</span><span class='rbrace'>}</span><span class='tstring_content'> RST</span><span class='regexp_end'>/</span></span><span class='comma'>,</span> <span class='id multi'>multi</span><span class='comma'>,</span> <span class='symbol'>:reset</span><span class='rparen'>)</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_end'>&quot;</span></span>
@@ -1542,7 +1540,7 @@ True if the multiplexer was reseted
 </div>
     
     <div id="footer">
-  Generated on Thu Aug 25 12:33:31 2011 by 
+  Generated on Thu Aug 25 17:40:28 2011 by 
   <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.7.2 (ruby-1.9.2).
 </div>

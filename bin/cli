@@ -149,7 +149,12 @@ if network.is_integer?
 		exit
 	end
 	if options.empty?
-		load_from_file STDIN
+		if STDIN.tty?
+			puts opts
+			exit
+		else
+			load_from_file STDIN
+		end
 	end
 else
 	puts opts

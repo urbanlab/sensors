@@ -2,7 +2,8 @@ require 'sense/common'
 require 'logger'
 
 module Sense
-	# Contain methods userful for the demon : multiplexer's registration and dynamic callbacks of clients' messages
+	# Contain methods userful for the daemon : multiplexer's registration and dynamic callbacks of clients' messages
+	# Use it to implement a new daemon
 	#
 	class Daemon
 		include Sense::Common
@@ -29,7 +30,7 @@ module Sense
 	
 		# Clean up a multiplexer's sensors and actuators
 		# @param [Integer] multi_id Id of the multi to be cleaned
-		# TODO :test
+		#
 		def clean_up(multi_id)
 			net = get_multi_config(multi_id)[:network]
 			@redis.del(network_path(net, :sensor, :value, multi_id))
@@ -41,13 +42,13 @@ module Sense
 		# Assign a config to a multiplexer
 		#
 		def set_multi_config multi_id, config
-			config[:id] = multi_id
 			@redis.hset(path(), multi_id, config.to_json)
 			@log.debug("Registering multiplexer's configuration : #{config}")
 		end
 		
 		# Get an unassigned id
 		# @return [Integer] the id
+		#
 		def get_unassigned_id
 			ids = @redis.hkeys(path()).inject([]){|a,i|a << i.to_i}
 			(Array(1..255) - ids)[0]
@@ -55,6 +56,9 @@ module Sense
 	
 		# Publish a sensor's value
 		# @return true if the value was succefully published. false with log otherwise
+		# @param [Integer] multi_id Id of the multiplexer that got the value
+		# @param [Integer] sensor Pin of the sensor
+		# @param [Integer] raw_value unormalized value
 		#
 		def publish_value(multi_id, sensor, raw_value)
 			return false unless knows? :sensor, multi_id, sensor
@@ -99,7 +103,7 @@ module Sense
 	
 		# Callback when a client request to add a sensor
 		# @yield [multi_id, pin, function, period, *[option1, option2]] Block will be called when a client request a new sensor with client's parameters
-		# @yieldreturn True if the new sensor is accepted, False if not
+		# @yieldreturn True if the new sensor is accepted, False if not, nil if nobody answered
 		#
 		def on_new_sensor &block
 			@on_new_sensor = block
@@ -107,7 +111,7 @@ module Sense
 	
 		# Callback when a client request to add an actu
 		# @yield [multi_id, pin, function, period, *[option1, option2]] Block will be called when a client request a new actuator with client's parameters
-		# @yieldreturn True if the new actuator is accepted, False if not
+		# @yieldreturn True if the new actuator is accepted, False if not, nil if nobody answered
 		#
 		def on_new_actuator &block
 			@on_new_actuator = block
@@ -115,7 +119,7 @@ module Sense
 	
 		# Callback when a client request to delete a sensor
 		# @yield [multi_id, pin] Action to do when a client request to delete a device on a pin of the multiplexer multi_id
-		# @yieldreturn True if the destruction was accepted
+		# @yieldreturn True if the destruction was accepted, False if not, nil if nobody answered
 		#
 		def on_deleted_sensor(&block)
 			@on_deleted_sensor = block
@@ -123,7 +127,7 @@ module Sense
 		
 		# Callback when a client request to delete an actuator
 		# @yield [multi_id, pin] Action to do when a client request to delete a device on a pin of the multiplexer multi_id
-		# @yieldreturn True if the destruction was accepted
+		# @yieldreturn True if the destruction was accepted, False if not, nil if nobody answered
 		#
 		def on_deleted_actuator(&block)
 			@on_deleted_actuator = block
@@ -131,7 +135,7 @@ module Sense
 		
 		# Callback when a client request to change the state of an actuator
 		# @yield [multi_id, pin, value] Action to change the state of an actuator
-		# @yieldreturn True if it was a sucess
+		# @yieldreturn True if it was a sucess, False if not, nil if nobody answered
 		#
 		def on_actuator_state(&block)
 			@on_actuator_state = block
@@ -139,6 +143,7 @@ module Sense
 	
 		# Callback when a client request to take a sensor
 		# @yield [id_multi, network]
+		# @yieldreturn True if it was taken, False if not, nil if nobody answered
 		#
 		def on_taken &block
 			@on_taken = block

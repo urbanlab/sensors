@@ -30,7 +30,7 @@ end
 #
 class Hash
 	# Taken from rails source
-	# Return a new hash with all keys converted to symbols.
+	# @return [Hash] a new hash with all keys converted to symbols.
 	#
 	def symbolize_keys
 		inject({}) do |options, (key, value)|

@@ -11,6 +11,7 @@ module Sense
 		end
 	
 		# Return the list of supported profile from a list of arduino functions
+		# @param [Array<String>] functions the arduino functions
 		# @return [Array<String>] the profiles
 		#
 		def support(functions)
@@ -21,9 +22,11 @@ module Sense
 	
 		# Register description of a multiplexer.
 		# @return [boolean] true if the description was succefully changed
+		# @param [String, Integer] multi name or id of the multiplexer
+		# @param [String] description New name
 		#
-		#
-		def set_description multi_id, description
+		def set_description multi, description
+			multi_id = get_multi_id multi
 			raise ArgumentError "Description must be a string" unless description.is_a?(String)
 			return false unless knows_multi?(multi_id)
 			config = JSON.s_parse(@redis.hget(path(), multi_id))
@@ -33,10 +36,10 @@ module Sense
 		end
 	
 		# Associate a multi to the network
-		# @param [Integer] multi_id Id of the multi
+		# @param [Integer] multi_id Id or name of the multi
 		#
-		def take multi_id
-			send("take", multi_id)
+		def take multi
+			send("take", multi)
 		end
 	
 		# Register a sensor or an actuator.
@@ -46,30 +49,33 @@ module Sense
 		# @option config [Integer] :period Sensor only : Period beetween to sensor reading (in ms) (optional if the profile has a default period)
 		# @option config [Integer, optional] :value Actuator only : Initial value
 		# @option config [Integer] :pin Pin where the device is plugged
-		# @param [Integer] multi_id Multiplexer's Id
+		# @param [Integer, String] multi Multiplexer's Id or name
 		# @param [Symbol] type Device type, can be :sensor or :actuator
 		#
-		def add type, multi_id, config = {}
-			config[:multiplexer] = multi_id
+		def add type, multi, config = {}
+			config[:multiplexer] = multi
 			send("add_#{type}", config)
 		end
 	
 		# Unregister a sensor
 		# @param [Symbol] type Device type, can be :sensor or :actuator
-		# @param [Integer] multi_id Id of the multiplexer
+		# @param [Integer, String] multi Id or name of the multiplexer
 		# @param [Integer] pin Pin where the device was plugged
 		# @return [boolean] true if a demon was listening
 		#
-		def remove type, multi_id, pin
-			opts = {multiplexer: multi_id, pin: pin}
+		def remove type, multi, pin
+			opts = {multiplexer: multi, pin: pin}
 			send("delete_#{type}", opts)
 		end
 	
 		
 		# Activate or deactivate an actuator
+		# @param [Integer, String] multi Id or name of the multiplexer the actuator is plugged to
+		# @param [Integer, String] pin pin or name of the actuator
+		# @param [Integer] state 0 or 1
 		#
-		def set_actuator_state(multi_id, pin, state)
-			send("actuator_state", {multiplexer: multi_id, state: state, pin: pin})
+		def set_actuator_state(multi, pin, state)
+			send("actuator_state", {multiplexer: multi, state: state, pin: pin})
 		end
 	
 		# Register a sensor profile
@@ -93,6 +99,8 @@ module Sense
 	
 		# Unregister a profile
 		# @return true if something was removed
+		# @param [Symbol] type :sensor or :actuator
+		# @param [String] name Name of the profile
 		#
 		def remove_profile( type, name )
 			@redis.hdel(path(type), name) == 1
@@ -135,7 +143,7 @@ module Sense
 			return [answer.split("::")[0] == "OK", answer.split("::")[1]]
 		end
 		
-		# Encode a message
+		# Encode a message in order to send it
 		#
 		def encode message
 			return " #{message}" unless message.is_a? Hash

@@ -48,6 +48,7 @@ module Sense
 		# @param [String] name Name given to the sensor
 		# @param [String] profile Name of the profile of the device
 		# @param [Integer] period duration between 2 check, in milliseconds
+		# @param [Hash] args optionnal additionnal informations
 		#
 		def add_sensor(multi, pin, name, profile, period = nil, args = {})
 			args.merge!({multi: multi, name: name, profile: profile, pin: pin})
@@ -227,6 +228,8 @@ module Sense
 		
 		private
 		
+		# Produce readable description of a function from YARD registry
+		#
 		def describe function
 			doc = YARD::Registry["#{self.class}##{function}"]
 			return nil unless doc

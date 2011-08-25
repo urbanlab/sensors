@@ -130,7 +130,7 @@ module Sense
 		def send(command, args)
 			id_message = rand.hash.abs
 			message = "#{id_message}:#{command}#{encode(args)}"
-			@redis.lpush("#{PREFIX}.network:#@network.messages", message)
+			@redis.lpush("#{PREFIX}.network:#@network.messages", message) #TODO generate with path ?
 			chan, answer = @redis.blpop("#{PREFIX}.#{id_message}", 10)
 			return [answer.split("::")[0] == "OK", answer.split("::")[1]]
 		end

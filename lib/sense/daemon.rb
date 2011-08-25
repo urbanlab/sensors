@@ -17,6 +17,7 @@ module Sense
 			load(network, host, port)
 			@redis_listener = Redis.new host: host, port: port, thread_safe: false
 			@log = logger
+			@failed_cmds = Array.new(10)
 		end
 	
 		# Destroy the entire database and configuration
@@ -147,7 +148,7 @@ module Sense
 					next
 				end
 				
-				ans, message = case command
+				ans, info = case command
 					when "add_sensor"
 						register_device :sensor, args
 					when "add_actuator"
@@ -158,19 +159,23 @@ module Sense
 						take_callback args
 					when "actuator_state"
 						actuator_state_callback args
-					when "fail" # act as if nobody responds after 2s
-						sleep 2
-						[nil, nil]
 					else
 						@log.warn("A client sent an unknown command : \"#{command}\"")
 						[false, "Unknown command \"#{command}\""]
 				end
 				case ans
 					when true  # Success
-						answer(true)
+						answer(msgid, true)
 					when false # Failure
-						answer(false, message)
-					else       # Timeout error => transmit to another daemon
+						answer(msgid, false, info)
+					else       # Timeout error
+						if @failed_cmds.include? msgid # Every daemon tries (blpop act as first waiting, first served)
+							answer(msgid, false, "No daemon could contact the multiplexer")
+						else                           # transmit to another daemon
+							@failed_cmds.push(msgid).unshift
+							#answer(msgid, false, "wait") # TODO utile ?
+							@redis_listener.lpush("#{PREFIX}.network:#@network.messages", message) #TODO generate with path?
+						end
 				end
 			end
 		end
@@ -179,6 +184,7 @@ module Sense
 		# Parse an incoming message
 		#
 		def parse message
+			message = message.dup
 			id, command = message.slice!(/\S+/).scan(/(\d+:)?(\w+)/).flatten
 			id = id.delete(":").to_i if id
 			id = nil if id == 0

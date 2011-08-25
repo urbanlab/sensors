@@ -180,6 +180,10 @@ module Sense
 						if @failed_cmds.include? msgid # Every daemon tries (blpop act as first waiting, first served)
 							answer(msgid, false, "No daemon could contact the multiplexer")
 						else                           # transmit to another daemon
+							if not msgid			   # Generate an id only for daemons
+								msgid = rand.hash.abs
+								message = "#{msgid}:message"
+							end
 							@failed_cmds.push(msgid).unshift
 							#answer(msgid, false, "wait") # TODO utile ?
 							@redis_listener.lpush("#{PREFIX}.network:#@network.messages", message) #TODO generate with path?

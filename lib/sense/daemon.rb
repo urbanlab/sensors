@@ -166,7 +166,7 @@ module Sense
 					when "delete_actuator"
 						unregister_device :actuator, args
 					when "take"
-						take_callback args.to_i
+						take_callback args
 					when "actuator_state"
 						actuator_state_callback args
 					else
@@ -198,13 +198,18 @@ module Sense
 		# Parse an incoming message
 		#
 		def parse message
+			return nil unless message.valid_encoding?
 			message = message.dup
-			id, command = message.slice!(/\S+/).scan(/(\d+:)?(\w+)/).flatten
+			prefix = message.slice!(/\S+/)
+			return nil unless prefix
+			id, command = prefix.scan(/(\d+:)?(\w+)/).flatten
 			id = id.delete(":").to_i if id
 			id = nil if id == 0
 			if message.include?(':')
 				message = Hash[*message.scan(/(\w+):([^:\s]+)/).flatten].symbolize_keys if message.include?(':')
 				message.each_key {|k| message[k] = message[k].to_i if message[k].is_numeric?}
+			else
+				message.delete!(' ')
 			end
 			return [id, command, message]
 		end
@@ -258,6 +263,8 @@ module Sense
 		# Call the on_taken callback
 		#
 		def take_callback multi
+			return false, "invalid multiplexer" unless multi.is_a? String
+			multi = multi.to_i if multi.is_integer?
 			id_multi = get_multi_id(multi)
 			if not id_multi.is_a? Integer
 				@log.warn("A client tried to take a multiplexer with bad multi_id or network")

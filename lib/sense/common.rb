@@ -49,8 +49,13 @@ module Sense
 		# @return [Hash] list in form +{id => config}+
 		#
 		def list_multis(network = @network)
-			configs = @redis.hgetall(path())
-			return Hash[*configs.collect{|id, conf| [id.to_i, JSON.s_parse(conf)]}.flatten].select{|id, conf| conf[:network] == network}
+			configs = Hash[*@redis.hgetall(path()).collect{|id, conf| [id.to_i, JSON.s_parse(conf)]}.flatten]
+			if network.is_a? Integer
+				return configs.select{|id, conf| conf[:network] == network}
+			elsif network == '*'
+				return configs
+			else return nil
+			end
 		end
 	
 		# get a multiplexer's config
@@ -75,7 +80,7 @@ module Sense
 		#
 		def get_multi_id( multi )
 			return multi if multi.is_a? Integer
-			id, config = list_multis.find{|id, conf| conf[:description] == multi}
+			id, config = list_multis('*').find{|id, conf| conf[:description] == multi}
 			return id
 		end
 		

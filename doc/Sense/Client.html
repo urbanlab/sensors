@@ -1,0 +1,1406 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>
+  Class: Sense::Client
+  
+    &mdash; Documentation by YARD 0.7.2
+  
+</title>
+
+  <link rel="stylesheet" href="../css/style.css" type="text/css" media="screen" charset="utf-8" />
+
+  <link rel="stylesheet" href="../css/common.css" type="text/css" media="screen" charset="utf-8" />
+
+<script type="text/javascript" charset="utf-8">
+  relpath = '..';
+  if (relpath != '') relpath += '/';
+</script>
+
+  <script type="text/javascript" charset="utf-8" src="../js/jquery.js"></script>
+
+  <script type="text/javascript" charset="utf-8" src="../js/app.js"></script>
+
+
+  </head>
+  <body>
+    <script type="text/javascript" charset="utf-8">
+      if (window.top.frames.main) document.body.className = 'frames';
+    </script>
+    
+    <div id="header">
+      <div id="menu">
+  
+    <a href="../_index.html">Index (C)</a> &raquo; 
+    <span class='title'><span class='object_link'><a href="../Sense.html" title="Sense (module)">Sense</a></span></span>
+     &raquo; 
+    <span class="title">Client</span>
+  
+  
+  <div class="noframes"><span class="title">(</span><a href="." target="_top">no frames</a><span class="title">)</span></div>
+</div>
+
+      <div id="search">
+  
+    <a id="class_list_link" href="#">Class List</a>
+  
+    <a id="method_list_link" href="#">Method List</a>
+  
+    <a id="file_list_link" href="#">File List</a>
+  
+</div>
+      <div class="clear"></div>
+    </div>
+    
+    <iframe id="search_frame"></iframe>
+    
+    <div id="content"><h1>Class: Sense::Client
+  
+  
+  
+</h1>
+
+<dl class="box">
+  
+    <dt class="r1">Inherits:</dt>
+    <dd class="r1">
+      <span class="inheritName">Object</span>
+      
+        <ul class="fullTree">
+          <li>Object</li>
+          
+            <li class="next">Sense::Client</li>
+          
+        </ul>
+        <a href="#" class="inheritanceTree">show all</a>
+      
+      </dd>
+    
+  
+  
+    
+  
+    
+      <dt class="r2">Includes:</dt>
+      <dd class="r2"><span class='object_link'><a href="Common.html" title="Sense::Common (module)">Common</a></span></dd>
+      
+    
+  
+  
+  
+    <dt class="r1 last">Defined in:</dt>
+    <dd class="r1 last">lib/sense/client.rb</dd>
+  
+</dl>
+<div class="clear"></div>
+
+<h2>Overview</h2><div class="docstring">
+  <div class="discussion">
+    <p>
+Contain useful methods for the client : writing sensors&#8217;
+configuration, reading published values&#8230;
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+</div>
+  <h2>Constant Summary</h2>
+  
+
+
+  
+  
+  
+  
+  <h3 class="inherited">Constants included from <span class='object_link'><a href="Common.html" title="Sense::Common (module)">Common</a></span></h3>
+  <p class="inherited"><span class='object_link'><a href="Common.html#CONFIG-constant" title="Sense::Common::CONFIG (constant)">CONFIG</a></span>, <span class='object_link'><a href="Common.html#PREFIX-constant" title="Sense::Common::PREFIX (constant)">PREFIX</a></span>, <span class='object_link'><a href="Common.html#PROFILE-constant" title="Sense::Common::PROFILE (constant)">PROFILE</a></span></p>
+
+
+
+  
+  
+  
+
+  
+    <h2>
+      Instance Method Summary
+      <small>(<a href="#" class="summary_toggle">collapse</a>)</small>
+    </h2>
+
+    <ul class="summary">
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#add-instance_method" title="#add (instance method)">- (boolean) <strong>add</strong>(type, multi_id, config = {}) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>
+Register a sensor or an actuator.
+</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#add_profile-instance_method" title="#add_profile (instance method)">- (Object) <strong>add_profile</strong>(type, name, profile = {}) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>
+Register a sensor profile.
+</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#initialize-instance_method" title="#initialize (instance method)">- (Client) <strong>initialize</strong>(network, host = 'localhost', port = 6379) </a>
+    
+
+    
+  </span>
+  
+    <span class="note title constructor">constructor</span>
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>
+A new instance of Client.
+</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#on_published_value-instance_method" title="#on_published_value (instance method)">- (Object) <strong>on_published_value</strong>(type, multi = &quot;*&quot;, pin = &quot;*&quot;) {|multi_id, pin, value, unit, name| ... }</a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>
+Callback when a value is published on redis.
+</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#remove-instance_method" title="#remove (instance method)">- (boolean) <strong>remove</strong>(type, multi_id, pin) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>
+Unregister a sensor.
+</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#remove_profile-instance_method" title="#remove_profile (instance method)">- (Object) <strong>remove_profile</strong>(type, name) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>
+Unregister a profile.
+</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#set_actuator_state-instance_method" title="#set_actuator_state (instance method)">- (Object) <strong>set_actuator_state</strong>(multi_id, pin, state) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>
+Activate or deactivate an actuator.
+</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#set_description-instance_method" title="#set_description (instance method)">- (boolean) <strong>set_description</strong>(multi_id, description) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>
+Register description of a multiplexer.
+</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#support-instance_method" title="#support (instance method)">- (Array&lt;String&gt;) <strong>support</strong>(functions) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>
+Return the list of supported profile from a list of arduino functions.
+</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#take-instance_method" title="#take (instance method)">- (Object) <strong>take</strong>(multi_id) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>
+Associate a multi to the network.
+</p>
+</div></span>
+  
+</li>
+
+      
+    </ul>
+  
+
+
+  
+  
+  
+  
+  
+  
+  
+  <h3 class="inherited">Methods included from <span class='object_link'><a href="Common.html" title="Sense::Common (module)">Common</a></span></h3>
+  <p class="inherited"><span class='object_link'><a href="Common.html#get_actuator_state-instance_method" title="Sense::Common#get_actuator_state (method)">#get_actuator_state</a></span>, <span class='object_link'><a href="Common.html#get_config-instance_method" title="Sense::Common#get_config (method)">#get_config</a></span>, <span class='object_link'><a href="Common.html#get_multi_config-instance_method" title="Sense::Common#get_multi_config (method)">#get_multi_config</a></span>, <span class='object_link'><a href="Common.html#get_multi_id-instance_method" title="Sense::Common#get_multi_id (method)">#get_multi_id</a></span>, <span class='object_link'><a href="Common.html#get_pin-instance_method" title="Sense::Common#get_pin (method)">#get_pin</a></span>, <span class='object_link'><a href="Common.html#get_profile-instance_method" title="Sense::Common#get_profile (method)">#get_profile</a></span>, <span class='object_link'><a href="Common.html#get_sensor_value-instance_method" title="Sense::Common#get_sensor_value (method)">#get_sensor_value</a></span>, <span class='object_link'><a href="Common.html#knows%3F-instance_method" title="Sense::Common#knows? (method)">#knows?</a></span>, <span class='object_link'><a href="Common.html#knows_multi%3F-instance_method" title="Sense::Common#knows_multi? (method)">#knows_multi?</a></span>, <span class='object_link'><a href="Common.html#knows_profile%3F-instance_method" title="Sense::Common#knows_profile? (method)">#knows_profile?</a></span>, <span class='object_link'><a href="Common.html#list-instance_method" title="Sense::Common#list (method)">#list</a></span>, <span class='object_link'><a href="Common.html#list_multis-instance_method" title="Sense::Common#list_multis (method)">#list_multis</a></span>, <span class='object_link'><a href="Common.html#list_profiles-instance_method" title="Sense::Common#list_profiles (method)">#list_profiles</a></span>, <span class='object_link'><a href="Common.html#load-instance_method" title="Sense::Common#load (method)">#load</a></span>, <span class='object_link'><a href="Common.html#mine%3F-instance_method" title="Sense::Common#mine? (method)">#mine?</a></span></p>
+<div id="constructor_details" class="method_details_list">
+  <h2>Constructor Details</h2>
+  
+    <div class="method_details first">
+  <p class="signature first" id="initialize-instance_method">
+  
+    - (<tt><span class='object_link'><a href="" title="Sense::Client (class)">Client</a></span></tt>) <strong>initialize</strong>(network, host = 'localhost', port = 6379) 
+  
+
+  
+</p><div class="docstring">
+  <div class="discussion">
+    <p>
+A new instance of Client
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+8
+9
+10
+11</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sense/client.rb', line 8</span>
+
+<span class='kw'>def</span> <span class='id initialize'>initialize</span><span class='lparen'>(</span><span class='id network'>network</span><span class='comma'>,</span> <span class='id host'>host</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>'</span><span class='tstring_content'>localhost</span><span class='tstring_end'>'</span></span><span class='comma'>,</span> <span class='id port'>port</span> <span class='op'>=</span> <span class='int'>6379</span><span class='rparen'>)</span>
+	<span class='ivar'>@id</span> <span class='op'>=</span> <span class='int'>0</span>
+	<span class='id load'>load</span><span class='lparen'>(</span><span class='id network'>network</span><span class='comma'>,</span> <span class='id host'>host</span><span class='comma'>,</span> <span class='id port'>port</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+  
+</div>
+
+
+  <div id="instance_method_details" class="method_details_list">
+    <h2>Instance Method Details</h2>
+    
+    
+      <div class="method_details first">
+  <p class="signature first" id="add-instance_method">
+  
+    - (<tt>boolean</tt>) <strong>add</strong>(type, multi_id, config = {}) 
+  
+
+  
+</p><div class="docstring">
+  <div class="discussion">
+    <p>
+Register a sensor or an actuator.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <h3>Parameters:</h3>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>multi_id</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>
+Multiplexer&#8217;s Id
+</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>type</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>
+Device type, can be :sensor or :actuator
+</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>config</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>{}</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>
+a customizable set of options
+</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+  
+    
+    
+    
+    
+    
+    
+    <h3>Options Hash (<tt>config</tt>):</h3>
+    <ul class="option">
+      
+        <li>
+          <span class="name">:name</span>
+          <span class="type">(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>)</span>
+          <span class="default">
+            
+          </span>
+          &mdash; <div class='inline'><p>
+Name of the device
+</p>
+</div>
+        </tr>
+      
+        <li>
+          <span class="name">:profile</span>
+          <span class="type">(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>)</span>
+          <span class="default">
+            
+          </span>
+          &mdash; <div class='inline'><p>
+Profile associated to the device
+</p>
+</div>
+        </tr>
+      
+        <li>
+          <span class="name">:period</span>
+          <span class="type">(<tt>Integer</tt>)</span>
+          <span class="default">
+            
+          </span>
+          &mdash; <div class='inline'><p>
+Sensor only : Period beetween to sensor reading (in ms) (optional if the
+profile has a default period)
+</p>
+</div>
+        </tr>
+      
+        <li>
+          <span class="name">:value</span>
+          <span class="type">(<tt>Integer</tt>, <tt>optional</tt>)</span>
+          <span class="default">
+            
+          </span>
+          &mdash; <div class='inline'><p>
+Actuator only : Initial value
+</p>
+</div>
+        </tr>
+      
+        <li>
+          <span class="name">:pin</span>
+          <span class="type">(<tt>Integer</tt>)</span>
+          <span class="default">
+            
+          </span>
+          &mdash; <div class='inline'><p>
+Pin where the device is plugged
+</p>
+</div>
+        </tr>
+      
+    </ul>
+  
+<h3>Returns:</h3>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>
+true if a demon was listening
+</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+52
+53
+54
+55</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sense/client.rb', line 52</span>
+
+<span class='kw'>def</span> <span class='id add'>add</span> <span class='id type'>type</span><span class='comma'>,</span> <span class='id multi_id'>multi_id</span><span class='comma'>,</span> <span class='id config'>config</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span>
+	<span class='id config'>config</span><span class='lbracket'>[</span><span class='symbol'>:multiplexer</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id multi_id'>multi_id</span>
+	<span class='id send'>send</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>add_</span><span class='embexpr_beg'>#{</span><span class='id type'>type</span><span class='rbrace'>}</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id config'>config</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <p class="signature " id="add_profile-instance_method">
+  
+    - (<tt>Object</tt>) <strong>add_profile</strong>(type, name, profile = {}) 
+  
+
+  
+</p><div class="docstring">
+  <div class="discussion">
+    <p>
+Register a sensor profile
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <h3>Parameters:</h3>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>type</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>
+Profile type, can be :sensor or :actuator
+</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>name</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>
+Profile name
+</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>profile</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../Hash.html" title="Hash (class)">Hash</a></span></tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>{}</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>
+a customizable set of options
+</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+  
+    
+    
+    
+    
+    
+    
+    <h3>Options Hash (<tt>profile</tt>):</h3>
+    <ul class="option">
+      
+        <li>
+          <span class="name">:function</span>
+          <span class="type">(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>)</span>
+          <span class="default">
+            
+          </span>
+          &mdash; <div class='inline'><p>
+Arduino&#8217;s function the profile uses
+</p>
+</div>
+        </tr>
+      
+        <li>
+          <span class="name">:period</span>
+          <span class="type">(<tt>Integer</tt>, <tt>optional</tt>)</span>
+          <span class="default">
+            
+          </span>
+          &mdash; <div class='inline'><p>
+default period
+</p>
+</div>
+        </tr>
+      
+        <li>
+          <span class="name">:option1</span>
+          <span class="type">(<tt>Integer</tt>, <tt>optional</tt>)</span>
+          <span class="default">
+            
+          </span>
+          &mdash; <div class='inline'><p>
+first function&#8217;s argument (see its description)
+</p>
+</div>
+        </tr>
+      
+        <li>
+          <span class="name">:option2</span>
+          <span class="type">(<tt>Integer</tt>, <tt>optional</tt>)</span>
+          <span class="default">
+            
+          </span>
+          &mdash; <div class='inline'><p>
+second function&#8217;s argument (see its description)
+</p>
+</div>
+        </tr>
+      
+        <li>
+          <span class="name">:unit</span>
+          <span class="type">(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>)</span>
+          <span class="default">
+            
+          </span>
+          &mdash; <div class='inline'><p>
+unit of the sensor&#8217;s value (sensor only)
+</p>
+</div>
+        </tr>
+      
+        <li>
+          <span class="name">:rpn</span>
+          <span class="type">(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>, <tt>optional</tt>)</span>
+          <span class="default">
+            
+          </span>
+          &mdash; <div class='inline'><p>
+optional RPN transformation to apply to raw value (sensor only)
+</p>
+</div>
+        </tr>
+      
+        <li>
+          <span class="name">:precision</span>
+          <span class="type">(<tt>Integer</tt>, <tt>optional</tt>)</span>
+          <span class="default">
+            
+          </span>
+          &mdash; <div class='inline'><p>
+optional precision of the sensor (eg. 3 for value like 334.411, -1 for
+value like 330)
+</p>
+</div>
+        </tr>
+      
+    </ul>
+  
+<h3>Raises:</h3>
+<ul class="raise">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>ArgumentError</tt>)</span>
+      
+      
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+86
+87
+88
+89
+90
+91
+92</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sense/client.rb', line 86</span>
+
+<span class='kw'>def</span> <span class='id add_profile'>add_profile</span><span class='lparen'>(</span> <span class='id type'>type</span><span class='comma'>,</span> <span class='id name'>name</span><span class='comma'>,</span> <span class='id profile'>profile</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span> <span class='rparen'>)</span>
+	<span class='id raise'>raise</span> <span class='const'>ArgumentError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Name should be a String</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>unless</span> <span class='id name'>name</span><span class='period'>.</span><span class='id is_a?'>is_a?</span> <span class='const'>String</span>
+	<span class='id raise'>raise</span><span class='lparen'>(</span><span class='const'>ArgumentError</span><span class='comma'>,</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>type should be :actuator or :sensor</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> <span class='kw'>unless</span> <span class='lparen'>(</span><span class='id type'>type</span> <span class='op'>==</span> <span class='symbol'>:actuator</span> <span class='kw'>or</span> <span class='id type'>type</span> <span class='op'>==</span> <span class='symbol'>:sensor</span><span class='rparen'>)</span>
+	<span class='id profile'>profile</span><span class='period'>.</span><span class='id must_have'>must_have</span><span class='lparen'>(</span><span class='const'>PROFILE</span><span class='lbracket'>[</span><span class='id type'>type</span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='symbol'>:necessary</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+	<span class='id profile'>profile</span><span class='period'>.</span><span class='id can_have'>can_have</span><span class='lparen'>(</span><span class='const'>PROFILE</span><span class='lbracket'>[</span><span class='id type'>type</span><span class='rbracket'>]</span><span class='lbracket'>[</span><span class='symbol'>:optional</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+	<span class='ivar'>@redis</span><span class='period'>.</span><span class='id hset'>hset</span><span class='lparen'>(</span><span class='id path'>path</span><span class='lparen'>(</span><span class='id type'>type</span><span class='rparen'>)</span><span class='comma'>,</span> <span class='id name'>name</span><span class='comma'>,</span> <span class='id profile'>profile</span><span class='period'>.</span><span class='id to_json'>to_json</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <p class="signature " id="on_published_value-instance_method">
+  
+    - (<tt>Object</tt>) <strong>on_published_value</strong>(type, multi = &quot;*&quot;, pin = &quot;*&quot;) {|multi_id, pin, value, unit, name| ... }
+  
+
+  
+</p><div class="docstring">
+  <div class="discussion">
+    <p>
+Callback when a value is published on redis.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <h3>Parameters:</h3>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>multi</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>, <tt>Integer</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>&quot;*&quot;</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>
+id of the multiplexer you need to listen to, or &#8217;*&#8217; for all
+multiplexers
+</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>pin</span>
+      
+      
+        <span class='type'>(<tt><span class='object_link'><a href="../String.html" title="String (class)">String</a></span></tt>, <tt>Integer</tt>)</span>
+      
+      
+        <em class="default">(defaults to: <tt>&quot;*&quot;</tt>)</em>
+      
+      
+        &mdash;
+        <div class='inline'><p>
+Pin you need to listen to, or &#8217;*&#8217; for all the pins
+</p>
+</div>
+      
+    </li>
+  
+</ul>
+<h3>Yields:</h3>
+<ul class="yield">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>multi_id</tt>, <tt>pin</tt>, <tt>value</tt>, <tt>unit</tt>, <tt>name</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>
+Processing of the published value for type = :sensor
+</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>multi_id</tt>, <tt>pin</tt>, <tt>value</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>
+Processing of the published value for type = :actuator
+</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sense/client.rb', line 108</span>
+
+<span class='kw'>def</span> <span class='id on_published_value'>on_published_value</span><span class='lparen'>(</span><span class='id type'>type</span><span class='comma'>,</span> <span class='id multi'>multi</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>*</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id pin'>pin</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>*</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+	<span class='const'>Thread</span><span class='period'>.</span><span class='id new'>new</span> <span class='kw'>do</span>
+		<span class='id redis'>redis</span> <span class='op'>=</span> <span class='const'>Redis</span><span class='period'>.</span><span class='id new'>new</span> <span class='label'>host:</span> <span class='ivar'>@host</span><span class='comma'>,</span> <span class='label'>port:</span> <span class='ivar'>@port</span>
+		<span class='id redis'>redis</span><span class='period'>.</span><span class='id psubscribe'>psubscribe</span><span class='lparen'>(</span><span class='id path'>path</span><span class='lparen'>(</span><span class='id type'>type</span><span class='comma'>,</span> <span class='symbol'>:value</span><span class='comma'>,</span> <span class='id multi'>multi</span><span class='comma'>,</span> <span class='id pin'>pin</span><span class='rparen'>)</span><span class='rparen'>)</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id on'>on</span><span class='op'>|</span>
+			<span class='id on'>on</span><span class='period'>.</span><span class='id pmessage'>pmessage</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id pattern'>pattern</span><span class='comma'>,</span> <span class='id channel'>channel</span><span class='comma'>,</span> <span class='id value'>value</span><span class='op'>|</span>
+				<span class='id parse'>parse</span> <span class='op'>=</span> <span class='const'>Hash</span><span class='lbracket'>[</span> <span class='op'>*</span><span class='id channel'>channel</span><span class='period'>.</span><span class='id scan'>scan</span><span class='lparen'>(</span><span class='tstring'><span class='regexp_beg'>/</span><span class='tstring_content'>(\w+):(\w+)</span><span class='regexp_end'>/</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id flatten'>flatten</span> <span class='rbracket'>]</span><span class='period'>.</span><span class='id symbolize_keys'>symbolize_keys</span>
+				<span class='kw'>case</span> <span class='id type'>type</span>
+					<span class='kw'>when</span> <span class='symbol'>:sensor</span>
+						<span class='id parse'>parse</span><span class='period'>.</span><span class='id merge!'>merge!</span><span class='lparen'>(</span><span class='const'>JSON</span><span class='period'>.</span><span class='id s_parse'>s_parse</span><span class='lparen'>(</span><span class='id value'>value</span><span class='rparen'>)</span><span class='rparen'>)</span>
+						<span class='kw'>yield</span> <span class='id parse'>parse</span><span class='lbracket'>[</span><span class='symbol'>:multiplexer</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id to_i'>to_i</span><span class='comma'>,</span> <span class='id parse'>parse</span><span class='lbracket'>[</span><span class='id type'>type</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id to_i'>to_i</span><span class='comma'>,</span> <span class='id parse'>parse</span><span class='lbracket'>[</span><span class='symbol'>:value</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id to_f'>to_f</span><span class='comma'>,</span> <span class='id parse'>parse</span><span class='lbracket'>[</span><span class='symbol'>:unit</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='id parse'>parse</span><span class='lbracket'>[</span><span class='symbol'>:name</span><span class='rbracket'>]</span>
+					<span class='kw'>when</span> <span class='symbol'>:actuator</span>
+						<span class='kw'>yield</span> <span class='id parse'>parse</span><span class='lbracket'>[</span><span class='symbol'>:multiplexer</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id to_i'>to_i</span><span class='comma'>,</span> <span class='id parse'>parse</span><span class='lbracket'>[</span><span class='id type'>type</span><span class='rbracket'>]</span><span class='period'>.</span><span class='id to_i'>to_i</span><span class='comma'>,</span> <span class='id value'>value</span><span class='period'>.</span><span class='id to_i'>to_i</span>
+				<span class='kw'>end</span>
+			<span class='kw'>end</span>
+		<span class='kw'>end</span>
+	<span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <p class="signature " id="remove-instance_method">
+  
+    - (<tt>boolean</tt>) <strong>remove</strong>(type, multi_id, pin) 
+  
+
+  
+</p><div class="docstring">
+  <div class="discussion">
+    <p>
+Unregister a sensor
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <h3>Parameters:</h3>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>type</span>
+      
+      
+        <span class='type'>(<tt>Symbol</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>
+Device type, can be :sensor or :actuator
+</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>multi_id</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>
+Id of the multiplexer
+</p>
+</div>
+      
+    </li>
+  
+    <li>
+      
+        <span class='name'>pin</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>
+Pin where the device was plugged
+</p>
+</div>
+      
+    </li>
+  
+</ul>
+<h3>Returns:</h3>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>
+true if a demon was listening
+</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+63
+64
+65
+66</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sense/client.rb', line 63</span>
+
+<span class='kw'>def</span> <span class='id remove'>remove</span> <span class='id type'>type</span><span class='comma'>,</span> <span class='id multi_id'>multi_id</span><span class='comma'>,</span> <span class='id pin'>pin</span>
+	<span class='id opts'>opts</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='label'>type:</span> <span class='id type'>type</span><span class='comma'>,</span> <span class='label'>multiplexer:</span> <span class='id multi_id'>multi_id</span><span class='comma'>,</span> <span class='label'>pin:</span> <span class='id pin'>pin</span><span class='rbrace'>}</span>
+	<span class='id send'>send</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>delete</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id opts'>opts</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <p class="signature " id="remove_profile-instance_method">
+  
+    - (<tt>Object</tt>) <strong>remove_profile</strong>(type, name) 
+  
+
+  
+</p><div class="docstring">
+  <div class="discussion">
+    <p>
+Unregister a profile
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <h3>Returns:</h3>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'></span>
+      
+      
+      
+        
+        <div class='inline'><p>
+true if something was removed
+</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+97
+98
+99</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sense/client.rb', line 97</span>
+
+<span class='kw'>def</span> <span class='id remove_profile'>remove_profile</span><span class='lparen'>(</span> <span class='id type'>type</span><span class='comma'>,</span> <span class='id name'>name</span> <span class='rparen'>)</span>
+	<span class='ivar'>@redis</span><span class='period'>.</span><span class='id hdel'>hdel</span><span class='lparen'>(</span><span class='id path'>path</span><span class='lparen'>(</span><span class='id type'>type</span><span class='rparen'>)</span><span class='comma'>,</span> <span class='id name'>name</span><span class='rparen'>)</span> <span class='op'>==</span> <span class='int'>1</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <p class="signature " id="set_actuator_state-instance_method">
+  
+    - (<tt>Object</tt>) <strong>set_actuator_state</strong>(multi_id, pin, state) 
+  
+
+  
+</p><div class="docstring">
+  <div class="discussion">
+    <p>
+Activate or deactivate an actuator
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+71
+72
+73</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sense/client.rb', line 71</span>
+
+<span class='kw'>def</span> <span class='id set_actuator_state'>set_actuator_state</span><span class='lparen'>(</span><span class='id multi_id'>multi_id</span><span class='comma'>,</span> <span class='id pin'>pin</span><span class='comma'>,</span> <span class='id state'>state</span><span class='rparen'>)</span>
+	<span class='id send'>send</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>actuator_state</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='lbrace'>{</span><span class='label'>multiplexer:</span> <span class='id multi_id'>multi_id</span><span class='comma'>,</span> <span class='label'>state:</span> <span class='id state'>state</span><span class='comma'>,</span> <span class='label'>pin:</span> <span class='id pin'>pin</span><span class='rbrace'>}</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <p class="signature " id="set_description-instance_method">
+  
+    - (<tt>boolean</tt>) <strong>set_description</strong>(multi_id, description) 
+  
+
+  
+</p><div class="docstring">
+  <div class="discussion">
+    <p>
+Register description of a multiplexer.
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <h3>Returns:</h3>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>boolean</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>
+true if the description was succefully changed
+</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+26
+27
+28
+29
+30
+31
+32
+33</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sense/client.rb', line 26</span>
+
+<span class='kw'>def</span> <span class='id set_description'>set_description</span> <span class='id multi_id'>multi_id</span><span class='comma'>,</span> <span class='id description'>description</span>
+	<span class='id raise'>raise</span> <span class='const'>ArgumentError</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>Description must be a string</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>unless</span> <span class='id description'>description</span><span class='period'>.</span><span class='id is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>String</span><span class='rparen'>)</span>
+	<span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id knows_multi?'>knows_multi?</span><span class='lparen'>(</span><span class='id multi_id'>multi_id</span><span class='rparen'>)</span>
+	<span class='id config'>config</span> <span class='op'>=</span> <span class='const'>JSON</span><span class='period'>.</span><span class='id s_parse'>s_parse</span><span class='lparen'>(</span><span class='ivar'>@redis</span><span class='period'>.</span><span class='id hget'>hget</span><span class='lparen'>(</span><span class='id path'>path</span><span class='lparen'>(</span><span class='rparen'>)</span><span class='comma'>,</span> <span class='id multi_id'>multi_id</span><span class='rparen'>)</span><span class='rparen'>)</span>
+	<span class='id config'>config</span><span class='lbracket'>[</span><span class='symbol'>:description</span><span class='rbracket'>]</span> <span class='op'>=</span> <span class='id description'>description</span>
+	<span class='ivar'>@redis</span><span class='period'>.</span><span class='id hset'>hset</span><span class='lparen'>(</span><span class='id path'>path</span><span class='lparen'>(</span><span class='rparen'>)</span><span class='comma'>,</span> <span class='id multi_id'>multi_id</span><span class='comma'>,</span> <span class='id config'>config</span><span class='period'>.</span><span class='id to_json'>to_json</span><span class='rparen'>)</span>
+	<span class='kw'>return</span> <span class='kw'>true</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <p class="signature " id="support-instance_method">
+  
+    - (<tt>Array&lt;<span class='object_link'><a href="../String.html" title="String (class)">String</a></span>&gt;</tt>) <strong>support</strong>(functions) 
+  
+
+  
+</p><div class="docstring">
+  <div class="discussion">
+    <p>
+Return the list of supported profile from a list of arduino functions
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <h3>Returns:</h3>
+<ul class="return">
+  
+    <li>
+      
+      
+        <span class='type'>(<tt>Array&lt;<span class='object_link'><a href="../String.html" title="String (class)">String</a></span>&gt;</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>
+the profiles
+</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+16
+17
+18
+19
+20</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sense/client.rb', line 16</span>
+
+<span class='kw'>def</span> <span class='id support'>support</span><span class='lparen'>(</span><span class='id functions'>functions</span><span class='rparen'>)</span>
+	<span class='id list_profiles'>list_profiles</span><span class='lparen'>(</span><span class='symbol'>:actuator</span><span class='rparen'>)</span><span class='period'>.</span><span class='id merge'>merge</span><span class='lparen'>(</span><span class='id list_profiles'>list_profiles</span><span class='lparen'>(</span><span class='symbol'>:sensor</span><span class='rparen'>)</span><span class='rparen'>)</span><span class='period'>.</span><span class='id select'>select</span> <span class='lbrace'>{</span> <span class='op'>|</span><span class='id name'>name</span><span class='comma'>,</span> <span class='id profile'>profile</span><span class='op'>|</span>
+		<span class='id functions'>functions</span><span class='period'>.</span><span class='id include?'>include?</span> <span class='id profile'>profile</span><span class='lbracket'>[</span><span class='symbol'>:function</span><span class='rbracket'>]</span>
+	<span class='rbrace'>}</span><span class='period'>.</span><span class='id keys'>keys</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <p class="signature " id="take-instance_method">
+  
+    - (<tt>Object</tt>) <strong>take</strong>(multi_id) 
+  
+
+  
+</p><div class="docstring">
+  <div class="discussion">
+    <p>
+Associate a multi to the network
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  <h3>Parameters:</h3>
+<ul class="param">
+  
+    <li>
+      
+        <span class='name'>multi_id</span>
+      
+      
+        <span class='type'>(<tt>Integer</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'><p>
+Id of the multi
+</p>
+</div>
+      
+    </li>
+  
+</ul>
+
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+38
+39
+40</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sense/client.rb', line 38</span>
+
+<span class='kw'>def</span> <span class='id take'>take</span> <span class='id multi_id'>multi_id</span>
+	<span class='id send'>send</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>take</span><span class='tstring_end'>&quot;</span></span><span class='comma'>,</span> <span class='id multi_id'>multi_id</span><span class='rparen'>)</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+  </div>
+
+</div>
+    
+    <div id="footer">
+  Generated on Thu Aug 25 12:33:31 2011 by 
+  <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
+  0.7.2 (ruby-1.9.2).
+</div>
+
+  </body>
+</html>

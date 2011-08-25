@@ -23,15 +23,15 @@ def launch
 
 	$redis.on_deleted_sensor do |id_multi, sensor|
 		ans = $serial.rem_task(id_multi, sensor)
-		return true if (ans == true) or (ans == false) # If the tasks didn't exist (ans == false), should remove it from redis
-		return nil                                     # If the multi didn't answer (ans == nil) should not remove it and try another
+		next true if (ans == true) or (ans == false) # If the tasks didn't exist (ans == false), should remove it from redis
+		next nil                                     # If the multi didn't answer (ans == nil) should not remove it and try another
 	end
 
 	$redis.on_deleted_actuator do |id_multi, actuator|
 		if $redis.get_config(:actuator, id_multi, actuator) # if the actuator was running, should ensure it will stop TODO
 			ans = $serial.rem_task(id_multi, actuator)
-			return true if (ans == true) or (ans == false) #delete from redis only if the task is no more running
-			return nil
+			next true if (ans == true) or (ans == false) #delete from redis only if the task is no more running
+			next nil
 		else
 			true #don't care if the multi knows it, the task wasn't running.
 		end
@@ -44,7 +44,7 @@ def launch
 				profile = $redis.get_profile(:actuator, config[:profile])
 				if (not (config && profile))
 					$log.warn("A client tried to switch on an actuator without config or profile")
-					next
+					next false
 				end
 				period = config[:period] || profile[:period] || 0
 				$serial.add_task(multi, pin, profile[:function], period)
@@ -97,12 +97,13 @@ def restore_multi_state multi_id
 		end
 		config[:state] = true
 		$redis.set_multi_config(multi_id, config)
+		return true
 	else
 		$log.warn "Multiplexer #{multi_id} seems to be disconnected."
 		config[:state] = false
 		$redis.set_multi_config(multi_id, config)
+		return nil
 	end
-	true
 end
 
 options = {}

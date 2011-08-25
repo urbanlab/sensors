@@ -19,16 +19,18 @@ module Sense
 		def list_multi #TODO limiter accès redis
 			$redis.list_multis.sort.each do |multi, config|
 				supported = $redis.support(config[:supported])
-				puts "#{multi} : #{config[:description]} (supports : #{supported.join(", ")})"
+				online = config[:state] ? "ON" : "OFF"
+				puts "#{multi} (#{online}): #{config[:description]} (supports : #{supported.join(", ")})"
 			end
 		end
 		
 		# Print the list of multiplexers that don't have any task running
 		#
 		def list_unconfigured
-			$redis.list_multis.select {|multi, config| config[:network] == 0}.each do |multi, config|
+			$redis.list_multis(0).each do |multi, config|
 				supported = $redis.support(config[:supported])
-				puts "#{multi} : #{config[:description]} (supports : #{supported.join(", ")})"
+				online = config[:state] ? "ON" : "OFF"
+				puts "#{multi} (#{online}): #{config[:description]} (supports : #{supported.join(", ")})"
 			end
 		end
 		
@@ -36,7 +38,8 @@ module Sense
 		# @param (see Sense::Client#take)
 		#
 		def take multi_id
-			$redis.take multi_id
+			success, message = $redis.take multi_id
+			puts success ? "OK" : "KO : #{message}"
 		end
 		
 		# Add a sensor to a multiplexer
@@ -47,25 +50,19 @@ module Sense
 		# @param [Integer] period duration between 2 check, in milliseconds
 		#
 		def add_sensor(multi, pin, name, profile, period = nil, args = {})
-			begin
-				args.merge!({multi: multi, name: name, profile: profile, pin: pin})
-				args[:period] = period if period
-				puts $redis.add :sensor, args.delete(:multi), args
-			rescue ArgumentError => error
-				puts error.message
-			end
+			args.merge!({multi: multi, name: name, profile: profile, pin: pin})
+			args[:period] = period if period
+			success, message = $redis.add :sensor, args.delete(:multi), args
+			puts success ? "OK" : "KO : #{message}"
 		end
 		
 		# Add an actuator to a multiplexer
 		# @param (see Sense::Shell#add_sensor)
 		def add_actuator(multi, pin, name, profile, period = nil, args = {})
-			begin
-				args.merge!({multi: multi, pin: pin, name: name, profile: profile})
-				args[:period] = period if period
-				puts $redis.add :actuator, args.delete(:multi), args
-			rescue ArgumentError => error
-				puts error.message
-			end
+			args.merge!({multi: multi, pin: pin, name: name, profile: profile})
+			args[:period] = period if period
+			success, message = $redis.add :actuator, args.delete(:multi), args
+			puts success ? "OK" : "KO : #{message}"
 		end
 		
 		# Turn on an actuator of a multi
@@ -73,14 +70,16 @@ module Sense
 		# @param [Integer] pin Pin of the actuator
 		#
 		def switch_on(multi, pin)
-			puts $redis.set_actuator_state(multi, pin, 1)
+			success, message = $redis.set_actuator_state(multi, pin, 1)
+			puts success ? "OK" : "KO : #{message}"
 		end
 		
 		# Turn off an actuator of a multi
 		# @param (see Sense::Shell#switch_on)
 		#
 		def switch_off(multi, pin)
-			puts $redis.set_actuator_state(multi, pin, 0)
+			success, message = $redis.set_actuator_state(multi, pin, 0)
+			puts success ? "OK" : "KO : #{message}"
 		end
 		
 		# Modify the description of a multi
@@ -88,6 +87,7 @@ module Sense
 		# @param [String] description The new description
 		#
 		def set_description(multi, description)
+			multi = $redis.get_multi_id(multi)
 			if $redis.set_description(multi, description)
 				puts "OK"
 			else
@@ -100,14 +100,16 @@ module Sense
 		# @param [Integer] pin Pin where the sensor was plugged
 		#
 		def remove_sensor(multi, pin)
-			puts $redis.remove :sensor, multi, pin
+			success, message = $redis.remove :sensor, multi, pin
+			puts success ? "OK" : "KO : #{message}"
 		end
 		
 		# Remove an actuator from a multi
 		# @param (see Sense::Shell#remove_sensor)
 		#
 		def remove_actuator(multi, pin)
-			puts $redis.remove :actuator, multi, pin
+			success, message = $redis.remove :actuator, multi, pin
+			puts success ? "OK" : "KO : #{message}"
 		end
 		
 		# List the sensors and actuators of a multiplexer
@@ -116,13 +118,17 @@ module Sense
 		def list_devices(multi)
 			multi = $redis.get_multi_id multi
 			if $redis.knows_multi? multi
-				puts "Sensors :"
+				puts "===  Sensors  ==="
 				$redis.list(:sensor, multi).sort.each do |pin, conf|
-					puts " - #{pin} : #{conf[:name]}, #{conf[:profile]} (period : #{conf[:period]})"
+					s = "#{pin} : #{conf[:name]} #{conf[:profile]}"
+					s << " - Period : #{conf[:period]}" if conf[:period]
+					puts s
 				end
-				puts "Actuators :"
+				puts "=== Actuators ==="
 				$redis.list(:actuator, multi).sort.each do |pin, conf|
-					puts " - #{pin} : #{conf[:name]}, #{conf[:profile]}"
+					s = "#{pin} : #{conf[:name]} #{conf[:profile]}"
+					s << " - Period : #{conf[:period]}" if conf[:period]
+					puts s
 				end
 			else
 				puts "The multiplexer doesn't exist"
@@ -142,11 +148,12 @@ module Sense
 		end
 		
 		# Add a new actuator profile
+		# @param name (see Sense::Client#add_profile)
+		# @option (see Sense::Client#add_profile)
 		#
-		def add_actuator_profile(args={})
-			args[:type] = :actuator
+		def add_actuator_profile(name, profile={})
 			begin
-				$redis.add_profile args
+				$redis.add_profile :actuator, name, profile
 			rescue ArgumentError => error
 				puts error.message
 			end
@@ -156,7 +163,12 @@ module Sense
 		#
 		def list_sensor_profiles
 			$redis.list_profiles(:sensor).each do |name, profile|
-				puts "#{name} : #{profile[:function]}, #{profile[:rpn]}, #{profile[:unit]}"
+				s = "* #{name} :\nFunction : #{profile[:function]}\nUnit: #{profile[:unit]}"
+				s << "\nPeriod : #{profile[:period]}" if profile[:period]
+				s << "\nRPN : #{profile[:rpn]}" if profile[:rpn]
+				s << "\nPrecision : #{profile[:precision]}" if profile[:precision]
+				s << "\n\n"
+				puts s
 			end
 		end
 		
@@ -164,7 +176,10 @@ module Sense
 		#
 		def list_actuator_profiles
 			$redis.list_profiles(:actuator).each do |name, profile|
-				puts "#{name} : #{profile[:function]}"
+				s = "* #{name} :\nFunction : #{profile[:function]}"
+				s << "\nPeriod : #{profile[:period]}" if profile[:period]
+				s << "\n\n"
+				puts s
 			end
 		end
 		
@@ -186,6 +201,8 @@ module Sense
 		# @param [Integer] multi Id of the multiplexer where the sensor is plugged
 		# @param [Integer] pin Pin of the sensor
 		def get_sensor_value multi, pin
+			multi = $redis.get_multi_id multi
+			pin = $redis.get_pin :sensor, multi, pin
 			hash = $redis.get_sensor_value(multi, pin)
 			puts "#{hash[:name]} : #{hash[:value]}#{hash[:unit]} (this information is #{(Time.now - Time.at(hash[:timestamp])).round(1)}s old)"
 		end

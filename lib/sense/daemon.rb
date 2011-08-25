@@ -161,8 +161,10 @@ module Sense
 						register_device :sensor, args
 					when "add_actuator"
 						register_device :actuator, args
-					when "delete"
-						unregister_device args
+					when "delete_sensor"
+						unregister_device :sensor, args
+					when "delete_actuator"
+						unregister_device :actuator, args
 					when "take"
 						take_callback args.to_i
 					when "actuator_state"
@@ -347,7 +349,7 @@ module Sense
 	
 		# Call the callback to unregister a device
 		#
-		def unregister_device config
+		def unregister_device type, config
 			if not (config[:multiplexer].is_a? Integer or config[:multiplexer].is_a? String)
 				@log.warn("A client tried to delete a #{type} with bad multiplexer id : #{parse[:multiplexer]}")
 				return false, "Bad multiplexer id"
@@ -358,17 +360,17 @@ module Sense
 				return false, "Bad id"
 			end
 			multi_id = get_multi_id(config[:multiplexer])
-			pin = get_pin(config[:type], multi_id, config[:pin])
-			if not knows?(config[:type], multi_id, pin)
-				@log.warn("A client tried to delete an unknown #{config[:type]} : #{config[:multiplexer]}:#{config[:pin]}")
-				return false, "unknown #{config[:type]} or multiplexer"
+			pin = get_pin(type, multi_id, config[:pin])
+			if not knows?(type, multi_id, pin)
+				@log.warn("A client tried to delete an unknown #{type} : #{config[:multiplexer]}:#{config[:pin]}")
+				return false, "unknown #{type} or multiplexer"
 			end
-			callback = {sensor: @on_deleted_sensor, actuator: @on_deleted_actuator}[config[:type].intern]
+			callback = {sensor: @on_deleted_sensor, actuator: @on_deleted_actuator}[type]
 			return [false, "unimplemented command"] unless callback
 			case callback.call(multi_id, pin)
 				when true
-					@redis.del(path(config[:type], :value, multi_id, pin))
-					@redis.hdel(path(config[:type], :config, multi_id), pin)
+					@redis.del(path(type, :value, multi_id, pin))
+					@redis.hdel(path(type, :config, multi_id), pin)
 					return true
 				when false
 					return false, "Refused by multiplexer"

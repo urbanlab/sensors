@@ -61,8 +61,8 @@ module Sense
 		# @return [boolean] true if a demon was listening
 		#
 		def remove type, multi_id, pin
-			opts = {type: type, multiplexer: multi_id, pin: pin}
-			send("delete", opts)
+			opts = {multiplexer: multi_id, pin: pin}
+			send("delete_#{type}", opts)
 		end
 	
 		

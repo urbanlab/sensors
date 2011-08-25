@@ -158,6 +158,9 @@ module Sense
 						take_callback args
 					when "actuator_state"
 						actuator_state_callback args
+					when "fail" # act as if nobody responds after 2s
+						sleep 2
+						[nil, nil]
 					else
 						@log.warn("A client sent an unknown command : \"#{command}\"")
 						[false, "Unknown command \"#{command}\""]

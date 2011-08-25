@@ -56,17 +56,50 @@
     
     <div id="content"><div id='filecontents'><h1>Sense</h1>
 
-<p>Manage a sensor's network.</p>
+<p>version : 0.3.0</p>
+
+<p>Manage a wireless sensor's network controlled by arduinos (called "multiplexers") publishing informations with XBees. It is configured via Redis.</p>
+
+<p>Each arduino can handle multiple sensors.</p>
+
+<p>The arduinos send via the xbees the informations to xbees receivers.</p>
+
+<p>Each xbee receiver has one daemon managing it.</p>
+
+<p>Daemons can be organized in different network id to organize this. (you can have more than one daemon in each network)</p>
+
+<p>Clients control daemons via Redis and read informations via Redis.</p>
+
+<p>More details : <a href="http://doku.erasme.org/doku.php?id=projets:sense:start">wiki</a></p>
+
+<h2>Executables</h2>
 
 <ul>
-<li>bin/daemon interface between the sensors and the clients</li>
-<li>bin/cli controls the daemons</li>
+<li><code>bin/sense-daemon</code> interface between the sensors and the clients (try <code>./sense-daemon --help</code>)</li>
+<li><code>bin/cli controls</code> the daemons (<code>try ./cli --help</code>)</li>
+<li><code>bin/example-client</code> display values published (usage described inside)</li>
 </ul>
 
+
+<h2>Library</h2>
+
+<ul>
+<li>Module <code>Sense</code> contains the whole library</li>
+<li><code>Sense::Common</code> contains general methods to interface with the network</li>
+<li><code>Sense::Client</code> contains an interface to redis to implement a client</li>
+<li><code>Sense::Daemon</code> contains an interface to redis to implement a daemon</li>
+<li><code>Sense::Serial</code> contains an interface to the Serial Port where the xbee receiver is plugged</li>
+<li><code>Sense::Shell</code> is called by cli to produce an interactive shell</li>
+</ul>
+
+
+<h2>Arduino</h2>
+
+<p>The folder "firmware" contain code of the firmware that must be load into each multiplexer.</p>
 </div></div>
     
     <div id="footer">
-  Generated on Thu Aug 25 12:33:31 2011 by 
+  Generated on Thu Aug 25 17:40:27 2011 by 
   <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.7.2 (ruby-1.9.2).
 </div>

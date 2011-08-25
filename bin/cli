@@ -3,7 +3,6 @@ require 'optparse'
 require 'sense/extensions'
 
 ##### Saving utilities #####
-# TODO : -i non requit pour sauvegarde et chargement de config
 #
 def redis_to_json
 	require 'sense/client'

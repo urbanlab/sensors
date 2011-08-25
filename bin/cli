@@ -3,7 +3,6 @@ require 'optparse'
 require 'sense/extensions'
 
 ##### Saving utilities #####
-# TODO : -i non requit pour sauvegarde et chargement de config
 #
 def redis_to_json
 	require 'sense/client'
@@ -22,19 +21,25 @@ def redis_to_json
 	JSON.pretty_generate(config)
 end
 
+# Load the profiles from redis and generate a JSON string
+#
 def profiles_to_json
 	require 'sense/client'
 	require 'json'
-	r = Sense::Client.new $network
+	net = 0
+	r = Sense::Client.new 0
 	config = {}
 	config["profile"] = {sensor: r.list_profiles(:sensor), actuator: r.list_profiles(:actuator)}
 	JSON.pretty_generate(config)
 end
 
+# Parse a JSON file and send it to redis
+#
 def load_from_file file
 	require 'sense/client'
 	require 'json'
-	r = Sense::Client.new $network, $r_options[:redis_host], $r_options[:redis_port]
+	net = $network || 0
+	r = Sense::Client.new net, $r_options[:redis_host], $r_options[:redis_port]
 	conf_json = file.read
 	config = JSON.parse(conf_json)
 	# JSON ne garde pas les types de clefs, ni la difference entre string et symbol pour les valeurs
@@ -50,6 +55,10 @@ def load_from_file file
 	end
 
 	if config[:multiplexer]
+		if not $network
+			puts "The configuration file contains multiplexers informations but you didn't gave any network. Skipping the multiplexers..."
+			return
+		end
 		config[:multiplexer].integerize_keys!
 		config[:multiplexer].each do |multi_id, config|
 			config.symbolize_keys!
@@ -69,8 +78,11 @@ end
 options = {}
 $r_options = {}
 opts = OptionParser.new do |opts|
-	opts.banner = "Usage: cli.rb [options] network"
-
+	opts.banner = "Usage: cli.rb [options]"
+	
+	opts.on("-n", "--network NETWORK", Integer, "Define the network you work on") do |network|
+		options[:network] = network
+	end
 	opts.on("-i", "--interactive", "Launch interactive shell") do
 		options[:interactive] = true
 	end
@@ -111,50 +123,54 @@ opts = OptionParser.new do |opts|
 	end
 end
 
-if ARGV.size == 0
-	puts opts
-	exit
-end
+opts.parse!
 
-network = ARGV.pop
-if network.is_integer?
-	$network = network.to_i
-	opts.parse!
-	
-	if options[:load]
-		f = File.new(options[:load], "r")
-		load_from_file f
-		f.close
-	end
-	if options[:delete_multiplexers]
-		puts "Deleting multiplexers not implemented yet"
-	end
-	if options[:delete_all]
-		puts "Deleting all not implemented yet"
-	end
-	if options[:save_profiles]
-		f = File.new(options[:save_profiles], "w")
-		f << profiles_to_json
-		f.close
-	end
-	if options[:save_all]
+$network = options.delete :network
+
+if options[:load]
+	f = File.new(options[:load], "r")
+	load_from_file f
+	f.close
+end
+if options[:delete_multiplexers]
+	puts "Deleting multiplexers not implemented yet"
+end
+if options[:delete_all]
+	puts "Deleting all not implemented yet"
+end
+if options[:save_profiles]
+	f = File.new(options[:save_profiles], "w")
+	f << profiles_to_json
+	f.close
+end
+if options[:save_all]
+	if not $network
+		puts "Can't save all without network given"
+	else
 		f = File.new(options[:save_all], "w")
 		f << redis_to_json
 		f.close
 	end
-	if options[:interactive]
+end
+if options[:interactive]
+	if not $network
+		puts "Can't launch interactive shell without network given"
+	else
 		require 'sense/shell'
 		require 'yard'
 		Bombshell.launch(Sense::Shell)
 		exit
 	end
-	if options.empty?
+end
+if options.empty?
+	if STDIN.tty?
+		puts opts
+		exit
+	else
 		load_from_file STDIN
 	end
-else
-	puts opts
-	exit
 end
+
 
 
 

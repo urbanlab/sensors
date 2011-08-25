@@ -1,6 +1,6 @@
 require 'rubygems'
 require 'json'
-#require 'redis/connection/hiredis'
+begin require('redis/connection/hiredis'); rescue LoadError; end
 require 'redis'
 
 require 'sense/extensions'
@@ -36,6 +36,9 @@ module Sense
 	
 		# Common function that should be load by initilize of classes using the
 		# module
+		# @param [Integer] network Network identifier
+		# @param [String] host Redis host
+		# @param [Integer] port Redis port
 		#
 		def load(network, host = 'localhost', port = 6379)
 			@host = host
@@ -46,50 +49,96 @@ module Sense
 		end
 	
 		# get all the multiplexers' config
+		# @param [Integer, String] network Network identifier of the multi, or '*'
 		# @return [Hash] list in form +{id => config}+
 		#
 		def list_multis(network = @network)
-			configs = @redis.hgetall(path())
-			return Hash[*configs.collect{|id, conf| [id.to_i, JSON.s_parse(conf)]}.flatten].select{|id, conf| conf[:network] == network}
+			configs = Hash[*@redis.hgetall(path()).collect{|id, conf| [id.to_i, JSON.s_parse(conf)]}.flatten]
+			if network.is_a? Integer
+				return configs.select{|id, conf| conf[:network] == network}
+			elsif network == '*'
+				return configs
+			else return {}
+			end
 		end
 	
 		# get a multiplexer's config
 		# @return [Hash] config of the multi or nil if it doesn't exists or invalid
+		# @param [Integer, String] multi Id or name of the multiplexer
 		#
-		def get_multi_config( multi_id )
-			return nil unless knows_multi? multi_id
-			begin
-				JSON.s_parse(@redis.hget(path(), multi_id))
-			rescue Exception => e
+		def get_multi_config( multi )
+			multi = get_multi_id(multi)
+			if multi.is_a? Integer
+				return nil unless knows_multi? multi
+				begin
+					JSON.s_parse(@redis.hget(path(), multi))
+				rescue Exception => e
+					return nil
+				end
+			else
 				return nil
 			end
 		end
-	
-		# @return true if a multi is registered
+		
+		# Get id of a multiplexer by its name or by its id
+		# @param [Integer, String] multi id or name of the multiplexer
+		# @return [Integer] id corresponding
+		# @return nil if nothing found
 		#
-		def knows_multi? multi_id
-			@redis.hexists(path(), multi_id)
+		def get_multi_id( multi )
+			return multi if multi.is_a? Integer
+			id, config = list_multis('*').find{|id, conf| conf[:description] == multi}
+			return id
+		end
+		
+		# Get pin of a multiplexer from it's multiplexer and device
+		# @param [Symbol] type :actuator or :sensor
+		# @param [Integer, String] multi id or name of the multiplexer the device is plugged on
+		# @param [Integer, String] device pin or name of the device
+		#
+		def get_pin(type, multi, device)
+			return device if device.is_a? Integer
+			dev_list = list(type, multi)
+			return nil unless dev_list.is_a? Hash
+			pin, conf = dev_list.find{|pin, conf| conf[:name] == device}
+			return pin
+		end
+		
+		# @return true if a multi is registered
+		# @param [Integer, String] multi id or name of the multiplexer
+		#
+		def knows_multi? multi
+			@redis.hexists(path(), get_multi_id(multi))
 		end
 	
 		# @return true if a multi is registered and belong to my network
+		# @param [Integer, String] multi id or name of the multiplexer
 		#
-		def mine? multi_id
-			c = get_multi_config(multi_id)
+		def mine? multi
+			c = get_multi_config(multi)
 			return false if (not c) or (not c[:network])
 			return c[:network] == @network
 		end
 	
 		# @return true if the device exists, false if not.
+		# @param [Symbol] type :actuator or :sensor
+		# @param [Integer, String] multi id or name of the multiplexer the device is plugged in
+		# @param [Integer, String] pin pin or name of the device
 		#
-		def knows? type, multi_id, pin
-			(knows_multi? multi_id) && @redis.hexists(path(type, :config, multi_id), pin)
+		def knows? type, multi, pin
+			(mine? multi) && @redis.hexists(path(type, :config, get_multi_id(multi)), pin)
 		end
 	
 		# Get a device's config
 		# @return [Hash] Hash representing the config
 		# @return [nil] if invalid or unknown pin or multi
+		# @param [Symbol] type :actuator or :sensor
+		# @param [Integer, String] multi id or name of the multiplexer
+		# @param [Integer, string] pin pin or name of the device
 		#
-		def get_config type, multi_id, pin
+		def get_config type, multi, pin
+			multi_id = get_multi_id multi
+			pin = get_pin type, multi_id, pin
 			return nil unless knows? type, multi_id, pin
 			begin
 				JSON.s_parse(@redis.hget(path(type, :config, multi_id), pin))
@@ -101,8 +150,11 @@ module Sense
 		# Get all sensors config of a multi, in form +{pin => config}+
 		# @return [Hash] List of devices in form +{pin => config}+
 		# @return [nil] if the multi does not exists or invalid datas
+		# @param [Symbol] type :actuator or :sensor
+		# @param [Integer, String] multi id or name of the multiplexer
 		#
-		def list type, multi_id
+		def list type, multi
+			multi_id = get_multi_id(multi)
 			return nil unless knows_multi? multi_id
 			path = path(type, multi_id)
 			begin
@@ -115,7 +167,11 @@ module Sense
 		# Get the value of a sensor
 		# @return [Hash] with keys :value (normalized), :timestamp (when the value was mesured), :name and :unit
 		# @return [nil] if the sensor or the multi doesn't exist
-		def get_sensor_value multi_id, pin
+		# @param [Integer, String] multi id or name of the multiplexer
+		# @param [Integer, String] pin pin or name of the sensor
+		def get_sensor_value multi, pin
+			multi_id = get_multi_id(multi)
+			pin = get_pin(:sensor, multi_id, pin)
 			return nil unless knows? :sensor, multi_id, pin
 			hash = @redis.hgetall(path(:sensor, :value, multi_id, pin)).symbolize_keys
 			return {value: hash[:value].to_f, timestamp: hash[:timestamp].to_f, name: hash[:name], unit: hash[:unit]}
@@ -123,13 +179,19 @@ module Sense
 	
 		# Get the state of an actuator
 		# @return [boolean] True for on, false for off, or nil if the actuator is unknown
+		# @param [Integer, String] multi id or name of the multiplexer
+		# @param [Integer, String] pin pin or name of the actuator
 		#
-		def get_actuator_state(multi_id, pin)
+		def get_actuator_state(multi, pin)
+			multi_id = get_multi_id(multi)
+			pin = get_pin(:actuator, multi_id, pin)
 			return nil unless knows?(:actuator, multi_id, pin)
 			@redis.hget(path(:actuator, :value, multi_id, pin))
 		end
 	
 		# @return [boolean] true if the profile exists
+		# @param [Symbol] type :actuator or :sensor
+		# @param [String] name name of the profile
 		#
 		def knows_profile?( type, name )
 			@redis.hexists(path(type), name)
@@ -174,7 +236,9 @@ module Sense
 		def path(*args)
 			network_path(@network, *args)
 		end
-	
+		
+		# Like path, with personalized network
+		#
 		def network_path(network, *args)
 			case args.size
 				when 0 then "#{PREFIX}.config.multiplexer"

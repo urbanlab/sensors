@@ -2,7 +2,8 @@ require 'sense/common'
 require 'logger'
 
 module Sense
-	# Contain methods userful for the demon : multiplexer's registration and dynamic callbacks of clients' messages
+	# Contain methods userful for the daemon : multiplexer's registration and dynamic callbacks of clients' messages
+	# Use it to implement a new daemon
 	#
 	class Daemon
 		include Sense::Common
@@ -17,6 +18,7 @@ module Sense
 			load(network, host, port)
 			@redis_listener = Redis.new host: host, port: port, thread_safe: false
 			@log = logger
+			@failed_cmds = Array.new(10)
 		end
 	
 		# Destroy the entire database and configuration
@@ -28,7 +30,7 @@ module Sense
 	
 		# Clean up a multiplexer's sensors and actuators
 		# @param [Integer] multi_id Id of the multi to be cleaned
-		# TODO :test
+		#
 		def clean_up(multi_id)
 			net = get_multi_config(multi_id)[:network]
 			@redis.del(network_path(net, :sensor, :value, multi_id))
@@ -40,13 +42,23 @@ module Sense
 		# Assign a config to a multiplexer
 		#
 		def set_multi_config multi_id, config
-			config[:id] = multi_id
 			@redis.hset(path(), multi_id, config.to_json)
 			@log.debug("Registering multiplexer's configuration : #{config}")
+		end
+		
+		# Get an unassigned id
+		# @return [Integer] the id
+		#
+		def get_unassigned_id
+			ids = @redis.hkeys(path()).inject([]){|a,i|a << i.to_i}
+			(Array(1..255) - ids)[0]
 		end
 	
 		# Publish a sensor's value
 		# @return true if the value was succefully published. false with log otherwise
+		# @param [Integer] multi_id Id of the multiplexer that got the value
+		# @param [Integer] sensor Pin of the sensor
+		# @param [Integer] raw_value unormalized value
 		#
 		def publish_value(multi_id, sensor, raw_value)
 			return false unless knows? :sensor, multi_id, sensor
@@ -91,7 +103,7 @@ module Sense
 	
 		# Callback when a client request to add a sensor
 		# @yield [multi_id, pin, function, period, *[option1, option2]] Block will be called when a client request a new sensor with client's parameters
-		# @yieldreturn True if the new sensor is accepted, False if not
+		# @yieldreturn True if the new sensor is accepted, False if not, nil if nobody answered
 		#
 		def on_new_sensor &block
 			@on_new_sensor = block
@@ -99,7 +111,7 @@ module Sense
 	
 		# Callback when a client request to add an actu
 		# @yield [multi_id, pin, function, period, *[option1, option2]] Block will be called when a client request a new actuator with client's parameters
-		# @yieldreturn True if the new actuator is accepted, False if not
+		# @yieldreturn True if the new actuator is accepted, False if not, nil if nobody answered
 		#
 		def on_new_actuator &block
 			@on_new_actuator = block
@@ -107,7 +119,7 @@ module Sense
 	
 		# Callback when a client request to delete a sensor
 		# @yield [multi_id, pin] Action to do when a client request to delete a device on a pin of the multiplexer multi_id
-		# @yieldreturn True if the destruction was accepted
+		# @yieldreturn True if the destruction was accepted, False if not, nil if nobody answered
 		#
 		def on_deleted_sensor(&block)
 			@on_deleted_sensor = block
@@ -115,7 +127,7 @@ module Sense
 		
 		# Callback when a client request to delete an actuator
 		# @yield [multi_id, pin] Action to do when a client request to delete a device on a pin of the multiplexer multi_id
-		# @yieldreturn True if the destruction was accepted
+		# @yieldreturn True if the destruction was accepted, False if not, nil if nobody answered
 		#
 		def on_deleted_actuator(&block)
 			@on_deleted_actuator = block
@@ -123,7 +135,7 @@ module Sense
 		
 		# Callback when a client request to change the state of an actuator
 		# @yield [multi_id, pin, value] Action to change the state of an actuator
-		# @yieldreturn True if it was a sucess
+		# @yieldreturn True if it was a sucess, False if not, nil if nobody answered
 		#
 		def on_actuator_state(&block)
 			@on_actuator_state = block
@@ -131,6 +143,7 @@ module Sense
 	
 		# Callback when a client request to take a sensor
 		# @yield [id_multi, network]
+		# @yieldreturn True if it was taken, False if not, nil if nobody answered
 		#
 		def on_taken &block
 			@on_taken = block
@@ -140,43 +153,72 @@ module Sense
 		#
 		def process_messages
 			while true
-				begin
-					message = JSON.parse(@redis_listener.blpop("#{PREFIX}.network:#{@network}.messages", 0)[1])
-				rescue JSON::JSONError => e
-					@log.warn("A client sent an invalid message")
-					next
-				end
-				message.recursive_symbolize_keys!
-				begin
-					message.must_have(command: String, message: Object)
-					message.can_have(id: Integer)
-				rescue ArgumentError => e
+				chan, message = @redis_listener.blpop("#{PREFIX}.network:#{@network}.messages", 0)
+				@log.debug("A client sent the message : #{message}")
+				msgid, command, args = parse(message)
+				unless command
 					@log.warn("A client sent an invalid message.")
-					answer(message[:id], false, e.message)
 					next
 				end
-				msgid = message.delete(:id)
-				command = message.delete(:command)
-				args = message.delete(:message)
-				case command
+				
+				ans, info = case command
 					when "add_sensor"
-						register_device msgid, :sensor, args
+						register_device :sensor, args
 					when "add_actuator"
-						register_device msgid, :actuator, args
-					when "delete"
-						unregister_device msgid, args
+						register_device :actuator, args
+					when "delete_sensor"
+						unregister_device :sensor, args
+					when "delete_actuator"
+						unregister_device :actuator, args
 					when "take"
-						take_callback msgid, args
+						take_callback args
 					when "actuator_state"
-						actuator_state_callback msgid, args
+						actuator_state_callback args
 					else
 						@log.warn("A client sent an unknown command : \"#{command}\"")
-						answer(msgid, false, "Unknown command \"#{command}\"")
+						[false, "Unknown command \"#{command}\""]
+				end
+				case ans
+					when true  # Success
+						answer(msgid, true)
+					when false # Failure
+						answer(msgid, false, info)
+					else       # Timeout error
+						if @failed_cmds.include? msgid # Every daemon tries (blpop act as first waiting, first served)
+							answer(msgid, false, "No daemon could contact the multiplexer")
+						else                           # transmit to another daemon
+							if not msgid			   # Generate an id only for daemons
+								msgid = rand.hash.abs
+								message = "#{msgid}:message"
+							end
+							@failed_cmds.push(msgid).unshift
+							#answer(msgid, false, "wait") # TODO utile ?
+							@redis_listener.lpush("#{PREFIX}.network:#@network.messages", message) #TODO generate with path?
+						end
 				end
 			end
 		end
 	
 		private
+		# Parse an incoming message
+		#
+		def parse message
+			return nil unless message.valid_encoding?
+			message = message.dup
+			prefix = message.slice!(/\S+/)
+			return nil unless prefix
+			id, command = prefix.scan(/(\d+:)?(\w+)/).flatten
+			id = id.delete(":").to_i if id
+			id = nil if id == 0
+			if message.include?(':')
+				message = Hash[*message.scan(/(\w+):([^:\s]+)/).flatten].symbolize_keys if message.include?(':')
+				message.each_key {|k| message[k] = message[k].to_i if message[k].is_numeric?}
+			else
+				message.delete!(' ')
+			end
+			return [id, command, message]
+		end
+		
 		# Answer a message
 		#
 		def answer(id, ok, message=nil)
@@ -189,81 +231,86 @@ module Sense
 
 		# Call the callback when a client request to change the state of an actu
 		#
-		def actuator_state_callback msgid, message
+		def actuator_state_callback message
 			if not message.is_a? Hash
 				@log.warn("A client tried to change the state of an actuator with an invalid message")
-				anwer(msgid, false, "invalid message")
+				return false, "invalid message"
 			end
-			if not message[:multiplexer].is_a? Integer
+			if not (message[:multiplexer].is_a? Integer or message[:multiplexer].is_a? String)
 				@log.warn("A client tried to change the state of an invalid multiplexer")
-				answer(msgid, false, "Muliplexer id is invalid")
-				return
+				return false, "Muliplexer id is invalid"
 			end
+			multi_id = get_multi_id(message[:multiplexer])
+			pin = get_pin(:actuator, multi_id, message[:pin])
 			if not (message[:state] == 0 or message[:state] == 1)
 				@log.warn("A client requested a bad state for a multiplexer")
-				answer(msgid, false, "bad state")
-				return
+				return false, "bad state"
 			end
-			if not mine? message[:multiplexer]
+			if not mine? multi_id
 				@log.warn("A client tried to change the state of an unknown multi")
-				answer(msgid, false, "unknown multi")
-				return
+				return false, "unknown multi"
 			end
-			if not knows? :actuator, message[:multiplexer], message[:pin]
+			if not knows? :actuator, multi_id, pin
 				@log.warn("A client tried to change the state of an unknown actu")
-				answer(msgid, false, "unknown actu")
-				return
+				return false, "unknown actu"
 			end
-			if @on_actuator_state && @on_actuator_state.call(message[:multiplexer], message[:pin], message[:state])
-				answer(msgid, true)
-			else
-				answer(msgid, false, "the multiplexer did not answer or refused")
+			return [false, "unimplemented method"] unless @on_actuator_state
+			case @on_actuator_state.call(multi_id, pin, message[:state])
+				when true
+					return true
+				when false
+					return false, "the multiplexer refused"
+				else
+					return nil
 			end
 		end
 		
 		# Call the on_taken callback
 		#
-		def take_callback idmsg, id_multi
+		def take_callback multi
+			return false, "invalid multiplexer" unless multi.is_a? String
+			multi = multi.to_i if multi.is_integer?
+			id_multi = get_multi_id(multi)
 			if not id_multi.is_a? Integer
 				@log.warn("A client tried to take a multiplexer with bad multi_id or network")
-				answer(idmsg, false, "bad multiplexer id or network")
-				return
+				return false, "bad multiplexer id or network"
 			end
 			config = get_multi_config(id_multi)
 			if not config.is_a? Hash
 				@log.warn("A client tried to take an unknown multiplexer")
-				answer(idmsg, false, "unknown mulitplexer")
-				return
+				return false, "unknown multiplexer"
 			end
-			if @on_taken && @on_taken.call(id_multi)
-				clean_up(id_multi)
-				config[:network] = @network
-				set_multi_config(id_multi, config)
-				answer(idmsg, true)
-			else
-				answer(idmsg, false, "Failed to reset the multiplexer.")
+			return false, "unimplemented method" unless @on_taken
+			case @on_taken.call(id_multi)
+				when true
+					clean_up(id_multi)
+					config[:network] = @network
+					set_multi_config(id_multi, config)
+					return true
+				when false
+					return false, "Failed to reset the multiplexer"
+				else
+					return nil
 			end
 		end
 		
 		# Call the callback to register a sensor
 		#
-		def register_device msgid, type, config
+		def register_device type, config
 			if not config.is_a? Hash
 				@log.warn("A client tried to add a #{type} with a bad message")
-				answer(msgid, false, "bad message")
-				return
+				return false, "bad message"
 			end
 			multi = config.delete(:multiplexer)
-			if (not multi.is_a? Integer) or (not knows_multi? multi)
+			multi_id = get_multi_id(multi)
+			if (not multi_id.is_a? Integer)
 				@log.warn("A client tried to add a #{type} with a bad multiplexer id : #{multi}")
-				answer(msgid, false, "bad multiplexer id")
-				return
+				return false, "bad multiplexer id"
 			end
-			multi_config = get_multi_config multi
+			multi_config = get_multi_config multi_id
 			if not multi_config
 				@log.warn("A client tried to add a #{type} with an unknown multiplexer : #{multi}")
-				answer(msgid, false, "unknown multiplexer")
-				return
+				return false, "unknown multiplexer"
 			end
 			must_take = false
 			case multi_config[:network]
@@ -273,14 +320,12 @@ module Sense
 					# rien à faire ?
 				else
 					@log.warn("A client tried to add a #{type} that belong to another network : #{multi_config[:network]}")
-					answer(msgid, false, "multiplexer belong to network #{multi_config[:networ]}")
-					return
+					return false, "multiplexer belong to network #{multi_config[:network]}"
 			end
 			profile = get_profile type, config[:profile]
 			if profile == nil
 				@log.warn("A client tried to add a #{type} with an unknown profile : #{config[:profile]} (multiplexer : #{multi})")
-				answer(msgid, false, "unknown profile")
-				return
+				return false, "unknown profile"
 			end
 			begin
 				config.must_have(CONFIG[type][:necessary])
@@ -289,54 +334,60 @@ module Sense
 				profile.can_have(PROFILE[type][:optional])
 			rescue ArgumentError => error
 				@log.warn("A client tried to add a bad sensor config or profile : #{error.message}")
-				answer(msgid, false, "Incomplete config or profile : #{error.message}")
-				return
+				return false, "Incomplete config or profile : #{error.message}"
 			end
 			period = config[:period] || profile[:period]
 			if not period #TODO : allow non looping sensors ?
 				@log.warn("A client tried to add the sensor #{multi}:#{config[:pin]} without period. Config : #{config}, profile : #{profile}")
-				answer(msgid, false, "Period is missing in profile and config")
-				return
+				return false, "Period is missing in profile and config"
 			end
 			pin = config.delete(:pin)
 			method = {actuator: @on_new_actuator, sensor: @on_new_sensor}[type]
-			if method and method.call(multi, pin, profile[:function], period, *[profile[:option1], profile[:option2]])
-				if must_take
-					multi_config[:network] = @network
-					set_multi_config multi, multi_config
-				end
-				@redis.hset(path(type, :config, multi), pin, config.to_json)
-				answer(msgid, true)
-			else
-				answer(msgid, false, "Refused by multi, or multi disconnected")
+			return [false, "unimplemented command"] unless method
+			case method.call(multi_id, pin, profile[:function], period, *[profile[:option1], profile[:option2]])
+				when true
+					if must_take
+						multi_config[:network] = @network
+						set_multi_config multi_id, multi_config
+					end
+					@redis.hset(path(type, :config, multi_id), pin, config.to_json)
+					return true
+				when false
+					return false, "Refused by multi"
+				else
+					return nil
 			end
 		end
 	
 		# Call the callback to unregister a device
 		#
-		def unregister_device msgid, config
-			if (not config[:multiplexer].is_a? Integer)
+		def unregister_device type, config
+			if not (config[:multiplexer].is_a? Integer or config[:multiplexer].is_a? String)
 				@log.warn("A client tried to delete a #{type} with bad multiplexer id : #{parse[:multiplexer]}")
-				answer(msgid, false, "Bad multiplexer id")
-				return
+				return false, "Bad multiplexer id"
 			end
-			if (not config[:pin].is_a? Integer)
+			if not (config[:pin].is_a? Integer or config[:pin].is_a? String)
 				@log.warn("A client tried to delete a #{type} with bad pin : #{pin}")
 				answer(msgid, false, "Bad id")
-				return
+				return false, "Bad id"
 			end
-			if not knows?(config[:type], config[:multiplexer], config[:pin])
-				@log.warn("A client tried to delete an unknown #{config[:type]} : #{config[:multiplexer]}:pin")
-				answer(msgid, false, "unknown #{config[:type]} or multiplexer")
-				return
+			multi_id = get_multi_id(config[:multiplexer])
+			pin = get_pin(type, multi_id, config[:pin])
+			if not knows?(type, multi_id, pin)
+				@log.warn("A client tried to delete an unknown #{type} : #{config[:multiplexer]}:#{config[:pin]}")
+				return false, "unknown #{type} or multiplexer"
 			end
-			callback = {sensor: @on_deleted_sensor, actuator: @on_deleted_actuator}[config[:type].intern]
-			if callback && callback.call(config[:multiplexer], config[:pin])
-				@redis.del(path(config[:type], :value, config[:multiplexer], config[:pin]))
-				@redis.hdel(path(config[:type], :config, config[:multiplexer]), config[:pin])
-				answer(msgid, true)
-			else
-				answer(msgid, false, "Refused by multiplexer or multiplexer did not answer")
+			callback = {sensor: @on_deleted_sensor, actuator: @on_deleted_actuator}[type]
+			return [false, "unimplemented command"] unless callback
+			case callback.call(multi_id, pin)
+				when true
+					@redis.del(path(type, :value, multi_id, pin))
+					@redis.hdel(path(type, :config, multi_id), pin)
+					return true
+				when false
+					return false, "Refused by multiplexer"
+				when nil
+					return nil
 			end
 		end
 

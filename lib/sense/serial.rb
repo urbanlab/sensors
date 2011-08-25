@@ -19,7 +19,7 @@ module Sense
 		# Construction of the interface
 		# @param [Integer] port Port where the xbee receiver is plugged (eg. '/dev/ttyUSB0')
 		# @param [Integer] baudrate Baudrate communication (probably 19200)
-		# @param [optional, Logger] logger to log informations concerning the serial line
+		# @param [Logger] logger to log informations concerning the serial line
 		# @param [Integer] timeout Time in second before a command without answer
 		# is considered as lost
 		# @param [Integer] retry_nb Number of time to retry to send a command before
@@ -35,7 +35,6 @@ module Sense
 			@wait_for = {} # {pattern => wpipe}
 			@timeout = timeout
 			@retry = retry_nb
-			# Thread.abort_on_exception = true
 			listener = Thread.new {
 				process_messages
 			}
@@ -46,10 +45,16 @@ module Sense
 		def process_messages
 			loop do
 				buff = ""
+				old_time = 0
 				while not buff.end_with?("\n")
 					i = 0
+					if (Time.now.to_f - old_time > 0.1) && (not buff.empty?) # only work when gets is non blocking (seems to become non blocking after some time...)
+						@log.debug("Received an incomplete message")
+						buff.clear
+					end
 					begin
 						@serial.wait
+						old_time = Time.now.to_f
 						buff << @serial.gets
 					rescue StandardError => e
 						@log.error("The serial line had a problem : #{e.message}, retrying...")
@@ -61,6 +66,11 @@ module Sense
 						retry				
 					end
 				end
+				if not buff.ascii_only?
+					@log.debug("Received a malformed message")
+					buff.clear
+					next
+				end
 				@log.debug("Received \"#{buff.delete("\r\n")}\"")
 				pattern, pipe = @wait_for.detect{|pattern, pipe| buff.match(pattern)}
 				if pattern
@@ -68,7 +78,7 @@ module Sense
 					pipe.close
 					@wait_for.delete pattern
 				else
-					@log.warn("Received an unhandled message : #{buff}")
+					@log.debug("Received an unhandled message : #{buff}")
 				end
 			end
 		end

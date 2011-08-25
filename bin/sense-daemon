@@ -6,8 +6,9 @@ require 'logger'
 require 'optparse'
 
 # TODO limiter les accès redis
-# TODO supprimer class Xbee_Daemon
-	
+
+# Launch the daemon
+#
 def launch
 	trap(:INT){$log.info "Exiting"; exit 0}
 	restore_state
@@ -23,14 +24,15 @@ def launch
 
 	$redis.on_deleted_sensor do |id_multi, sensor|
 		ans = $serial.rem_task(id_multi, sensor)
-		(ans == true) or (ans == false) # If the tasks didn't exist (ans == false), should remove it from redis
-			                            # If the multi didn't answer (ans == nil) should not remove it
+		next true if (ans == true) or (ans == false) # If the tasks didn't exist (ans == false), should remove it from redis
+		next nil                                     # If the multi didn't answer (ans == nil) should not remove it and try another
 	end
 
 	$redis.on_deleted_actuator do |id_multi, actuator|
-		if $redis.get_config(:actuator, id_multi, actuator) # if the actuator was running, should ensure it will stop
+		if $redis.get_config(:actuator, id_multi, actuator) # if the actuator was running, should ensure it will stop TODO
 			ans = $serial.rem_task(id_multi, actuator)
-			(ans == true) or (ans == false) #delete from redis only if the task is no more running
+			next true if (ans == true) or (ans == false) #delete from redis only if the task is no more running
+			next nil
 		else
 			true #don't care if the multi knows it, the task wasn't running.
 		end
@@ -43,7 +45,7 @@ def launch
 				profile = $redis.get_profile(:actuator, config[:profile])
 				if (not (config && profile))
 					$log.warn("A client tried to switch on an actuator without config or profile")
-					next
+					next false
 				end
 				period = config[:period] || profile[:period] || 0
 				$serial.add_task(multi, pin, profile[:function], period)
@@ -56,15 +58,15 @@ def launch
 		$serial.reset(id_multi)
 	end
 	
-	$serial.on_new_multi do |id|
+	$serial.on_new_multi do |id| #TODO : adapt multi-demon
 		config = $redis.get_multi_config(id)
 		if (id == 0 or id == 255)  # Unconfigured, bad id
-			new_id = (Array(1..255) - $redis.list_multis.keys)[0] # first unused id
-			if ($serial.change_id(id, new_id) && $network == 1) #only network 1 will changes the ids...
-				$redis.set_multi_config(new_id, {network: 0, description: "no name", supported: $serial.list_implementations(id)})
+			new_id = $redis.get_unassigned_id
+			if $serial.change_id(id, new_id)
+				$redis.set_multi_config(new_id, {network: 0, description: "no_name", supported: $serial.list_implementations(new_id), state: true})
 			end
 		elsif (not ($redis.knows_multi? id))   # valid id, but not registered
-			$redis.set_multi_config(id, {network: 0, description: "no name", supported: $serial.list_implementations(id)})
+			$redis.set_multi_config(id, {network: 0, description: "no_name", supported: $serial.list_implementations(id), state: true})
 		elsif (config[:network]) == $network # registered multiplexer on my network
 			restore_multi_state id
 		end
@@ -75,7 +77,9 @@ def launch
 	end
 	$redis.process_messages
 end
-	
+
+# Restore the state of the multiplexers from the database
+#
 def restore_state
 	$log.info("Restoring state from database...")
 	$redis.list_multis.each do |id_multi, config|
@@ -83,7 +87,9 @@ def restore_state
 	end
 	$log.info("Restoration complete.")
 end
-	
+
+# Restore the state of a multiplexer from the database
+#	
 def restore_multi_state multi_id
 	config = $redis.get_multi_config(multi_id)
 	return false unless config
@@ -96,12 +102,13 @@ def restore_multi_state multi_id
 		end
 		config[:state] = true
 		$redis.set_multi_config(multi_id, config)
+		return true
 	else
 		$log.warn "Multiplexer #{multi_id} seems to be disconnected."
 		config[:state] = false
 		$redis.set_multi_config(multi_id, config)
+		return nil
 	end
-	true
 end
 
 options = {}

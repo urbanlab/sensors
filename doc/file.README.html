@@ -1,0 +1,108 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>
+  File: README
+  
+    &mdash; Documentation by YARD 0.7.2
+  
+</title>
+
+  <link rel="stylesheet" href="css/style.css" type="text/css" media="screen" charset="utf-8" />
+
+  <link rel="stylesheet" href="css/common.css" type="text/css" media="screen" charset="utf-8" />
+
+<script type="text/javascript" charset="utf-8">
+  relpath = '';
+  if (relpath != '') relpath += '/';
+</script>
+
+  <script type="text/javascript" charset="utf-8" src="js/jquery.js"></script>
+
+  <script type="text/javascript" charset="utf-8" src="js/app.js"></script>
+
+
+  </head>
+  <body>
+    <script type="text/javascript" charset="utf-8">
+      if (window.top.frames.main) document.body.className = 'frames';
+    </script>
+    
+    <div id="header">
+      <div id="menu">
+  
+    <a href="_index.html" title="Index">Index</a> &raquo; 
+    <span class="title">File: README</span>
+  
+  
+  <div class="noframes"><span class="title">(</span><a href="." target="_top">no frames</a><span class="title">)</span></div>
+</div>
+
+      <div id="search">
+  
+    <a id="class_list_link" href="#">Class List</a>
+  
+    <a id="method_list_link" href="#">Method List</a>
+  
+    <a id="file_list_link" href="#">File List</a>
+  
+</div>
+      <div class="clear"></div>
+    </div>
+    
+    <iframe id="search_frame"></iframe>
+    
+    <div id="content"><div id='filecontents'><h1>Sense</h1>
+
+<p>version : 0.3.0</p>
+
+<p>Manage a wireless sensor's network controlled by arduinos (called "multiplexers") publishing informations with XBees. It is configured via Redis.</p>
+
+<p>Each arduino can handle multiple sensors.</p>
+
+<p>The arduinos send via the xbees the informations to xbees receivers.</p>
+
+<p>Each xbee receiver has one daemon managing it.</p>
+
+<p>Daemons can be organized in different network id to organize this. (you can have more than one daemon in each network)</p>
+
+<p>Clients control daemons via Redis and read informations via Redis.</p>
+
+<p>More details : <a href="http://doku.erasme.org/doku.php?id=projets:sense:start">wiki</a></p>
+
+<h2>Executables</h2>
+
+<ul>
+<li><code>bin/sense-daemon</code> interface between the sensors and the clients (try <code>./sense-daemon --help</code>)</li>
+<li><code>bin/cli controls</code> the daemons (<code>try ./cli --help</code>)</li>
+<li><code>bin/example-client</code> display values published (usage described inside)</li>
+</ul>
+
+
+<h2>Library</h2>
+
+<ul>
+<li>Module <code>Sense</code> contains the whole library</li>
+<li><code>Sense::Common</code> contains general methods to interface with the network</li>
+<li><code>Sense::Client</code> contains an interface to redis to implement a client</li>
+<li><code>Sense::Daemon</code> contains an interface to redis to implement a daemon</li>
+<li><code>Sense::Serial</code> contains an interface to the Serial Port where the xbee receiver is plugged</li>
+<li><code>Sense::Shell</code> is called by cli to produce an interactive shell</li>
+</ul>
+
+
+<h2>Arduino</h2>
+
+<p>The folder "firmware" contain code of the firmware that must be load into each multiplexer.</p>
+</div></div>
+    
+    <div id="footer">
+  Generated on Thu Aug 25 17:40:27 2011 by 
+  <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
+  0.7.2 (ruby-1.9.2).
+</div>
+
+  </body>
+</html>

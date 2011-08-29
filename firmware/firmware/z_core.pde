@@ -1,7 +1,6 @@
 void setup(){
   Serial.begin(baudrate);
-  Serial.flush();
-  delay(1000);
+  delay(200);
   #ifndef SERIAL_DEBUG
   configure_xbee();
   #endif /*SERIAL_DEBUG*/
@@ -23,30 +22,13 @@ void loop() {
 
 void configure_xbee()
 {
-  int i = 0;
-  byte inbyte = 0;
-  Serial.println("start");
-  delay(5000);
+  delay(1200);
   Serial.print("+++");
-  delay(2000);
-  //while (not strcmp(buffRcv, "OK\r")){
-    buffRcv[0] = '\0';
-    i = 0;
-    while ((i <= 3)){// && buffRcv[i] != (char)-1){
-      buffRcv[i++] = Serial.read();
-      delay(10);
-    }
-    buffRcv[i-1] = '\0';
-  //}
+  delay(1200);
   Serial.print("ATRE,ID3666,BD3,MY1,DL0,DH0,WR,CN\r");
-  delay(1000);
-  Serial.print("ATCN\r");
-  Serial.println("done.");
-  Serial.println(buffRcv);
-  delay(1000);
-  while(Serial.available()){
-    Serial.print(Serial.read(), BYTE);
-  }
+  delay(1200);
+  Serial.flush();
+  Serial.println("lost");
 }
 
 boolean cycleCheck(unsigned long &lastTime, unsigned int period)

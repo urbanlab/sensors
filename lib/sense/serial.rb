@@ -19,7 +19,7 @@ module Sense
 	
 		# Construction of the interface
 		# @param [Integer] port Port where the xbee receiver is plugged (eg. '/dev/ttyUSB0')
-		# @param [Integer] baudrate Baudrate communication (probably 19200)
+		# @param [Integer] baudrate Baudrate communication (probably 9600)
 		# @param [Logger] logger to log informations concerning the serial line
 		# @param [Integer] timeout Time in second before a command without answer
 		# is considered as lost

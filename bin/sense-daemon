@@ -132,7 +132,7 @@ opts = OptionParser.new do |opts|
 		options[:serial_port] = serial
 	end
 	
-	opts.on("-b", "--baudrate BAUDRATE", Integer, "Baudrate of the receiver (default : 19200)") do |baudrate|
+	opts.on("-b", "--baudrate BAUDRATE", Integer, "Baudrate of the receiver (default : 9600)") do |baudrate|
 		options[:baudrate] = baudrate
 	end
 	

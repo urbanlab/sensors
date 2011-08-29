@@ -7,7 +7,7 @@ const int signature = 12351;             // Should change at each firmware modif
 const int spaceSize = 2;                 // Size of personnal space of the tasks
 const int wordNb = 10;                   // Max number of words in the message (including id and mode...)
 const int msgSize = 50;                  // Max size of a message transmitted
-const int baudrate = 19200;              // Serial baudrate
+const int baudrate = 9600;              // Serial baudrate
 const int nbPin = 22;                    // Nb of pin (and max nb of task)
 
 typedef void (*looper)(int, int*); // Arguments are : pin, personnal space (containing optionals arguments)

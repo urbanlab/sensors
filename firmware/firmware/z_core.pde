@@ -2,6 +2,9 @@ void setup(){
   Serial.begin(baudrate);
   Serial.flush();
   delay(1000);
+  #ifndef SERIAL_DEBUG
+  configure_xbee();
+  #endif /*SERIAL_DEBUG*/
   restore_state();
   strcpy(messageSnd, "NEW");
   snd_complete();
@@ -15,6 +18,34 @@ void loop() {
   for (int i=0 ; i < nbPin ; i++) {
     if ((taskList[i] != NULL) && (taskList[i]->period != 0) && cycleCheck(taskList[i]->lastTime, taskList[i]->period))
       taskList[i]->function(i, taskList[i]->space);
+  }
+}
+
+void configure_xbee()
+{
+  int i = 0;
+  byte inbyte = 0;
+  Serial.println("start");
+  delay(5000);
+  Serial.print("+++");
+  delay(2000);
+  //while (not strcmp(buffRcv, "OK\r")){
+    buffRcv[0] = '\0';
+    i = 0;
+    while ((i <= 3)){// && buffRcv[i] != (char)-1){
+      buffRcv[i++] = Serial.read();
+      delay(10);
+    }
+    buffRcv[i-1] = '\0';
+  //}
+  Serial.print("ATID3666,BD4,MY1,DL0,DH0,WR,CN\r");
+  delay(1000);
+  Serial.print("ATCN\r");
+  Serial.println("done.");
+  Serial.println(buffRcv);
+  delay(1000);
+  while(Serial.available()){
+    Serial.print(Serial.read(), BYTE);
   }
 }
 

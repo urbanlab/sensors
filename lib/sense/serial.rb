@@ -210,7 +210,7 @@ module Sense
 					else
 						port = not_tested.find do |port|
 							@log.debug("Trying with #{port}")
-							if Sense::Xbee.xbee_setup(port, :daemon)
+							if Sense::Xbee.setup(port, :daemon)
 								@log.info("Found an xbee on #{port}, use it as receiver")
 								true
 							else

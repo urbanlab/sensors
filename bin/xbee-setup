@@ -1,0 +1,19 @@
+#!/usr/bin/env ruby
+
+require 'sense/xbee'
+
+if not ARGV.size == 2 && (ARGV[1] == "daemon" || ARGV[1] == "arduino")
+	puts "Usage : xbee-setup port type"
+	puts "Configure an xbee"
+	puts "Port : something like /dev/ttyUSB0"
+	puts "Type : daemon or arduino"
+	exit
+end
+puts "Should not block for more than 2s"
+[9600, 19200, 115200, 57600, 38400, 1200, 2400, 4800].each do |bd|
+	puts "Trying with baudrate #{bd}"
+	break if Sense::Xbee.setup(ARGV[0], ARGV[1].intern, bd, true)
+	puts "Fail"
+end
+
+

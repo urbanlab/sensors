@@ -188,7 +188,8 @@ module Sense
 	
 		private
 	
-		# Look for serial ports to listen to
+		# Look for serial ports to listen to.
+		# TODO : send "+++" to test if it's a xbee and configure it ?
 		#
 		def search_port
 			port = nil

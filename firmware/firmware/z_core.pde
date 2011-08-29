@@ -38,7 +38,7 @@ void configure_xbee()
     }
     buffRcv[i-1] = '\0';
   //}
-  Serial.print("ATID3666,BD4,MY1,DL0,DH0,WR,CN\r");
+  Serial.print("ATRE,ID3666,BD3,MY1,DL0,DH0,WR,CN\r");
   delay(1000);
   Serial.print("ATCN\r");
   Serial.println("done.");

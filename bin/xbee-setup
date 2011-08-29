@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+
+require 'sense/xbee'
+
+if not ARGV.size == 2 && (ARGV[1] == "daemon" || ARGV[1] == "arduino")
+	puts "Usage : xbee-setup port type"
+	puts "Configure an xbee"
+	puts "Port : something like /dev/ttyUSB0"
+	puts "Type : daemon or arduino"
+	exit
+end
+
+Sense::Xbee.setup(ARGV[0], ARGV[1].intern, true)
+

@@ -5,6 +5,7 @@ require 'thread'
 require 'io/wait'
 require 'logger'
 require 'sense/extensions'
+require 'sense/xbee'
 
 module Sense
 	# Interface to serial port in order to get and send message to the multiplexers
@@ -206,14 +207,20 @@ module Sense
 						@log.error("No /dev/ttyUSB available, demon won't anything while not fixed") unless @down
 						@down = true
 						nil
-					when 1
-						@log.info("Trying with port #{candidates[0]}")
-						@down = false
-						not_tested[0]
 					else
-						@log.info("More than 1 port are available, taking #{candidates[0]}")
-						@down = false
-						not_tested[0]
+						port = not_tested.find do |port|
+							@log.debug("Trying with #{port}")
+							if Sense::Xbee.xbee_setup(port, :daemon)
+								@log.info("Found an xbee on #{port}, use it as receiver")
+								true
+							else
+								@down_ports.push(port)
+								@log.debug("#{port} is not an xbee")
+								false
+							end
+						end
+						@down = false if port
+						port
 				end
 				sleep 1
 			end

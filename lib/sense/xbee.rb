@@ -35,11 +35,11 @@ module Sense
 				send_message("ATWR\r")
 				send_message("ATCN\r")
 				return true
-			rescue Exception => e
-				puts e.message if verbose
+			rescue Errno, IOError => e
+				puts e if verbose
 				return false
 			ensure
-				@s.close if device.is_a? String
+				@s.close if device.is_a?(String) && @s.is_a?(File)
 			end
 		end
 		

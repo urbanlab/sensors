@@ -14,13 +14,22 @@ module Sense
 			$redis = Sense::Client.new $network, $r_options[:redis_host], $r_options[:redis_port]
 		end
 		
-		# Print the list of multiplexers
+		# Print the list of multiplexers on my network
 		#
-		def list_multi #TODO limiter accès redis
+		def list_multis #TODO limiter accès redis
 			$redis.list_multis.sort.each do |multi, config|
 				supported = $redis.support(config[:supported])
-				online = config[:state] ? "ON" : "OFF"
-				puts "#{multi} (#{online}): #{config[:description]} (supports : #{supported.join(", ")})"
+				#online = config[:state] ? "ON" : "OFF"
+				puts "#{multi} : #{config[:description]} (supports : #{supported.join(", ")})"
+			end
+		end
+		
+		# Print the list of all the multiplexers
+		#
+		def list_all_multis
+			$redis.list_multis('*').sort.each do |multi, config|
+				supported = $redis.support(config[:supported])
+				puts "#{multi} (network #{config[:network]}) (supports : #{supported.join(", ")})"
 			end
 		end
 		

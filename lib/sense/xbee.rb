@@ -1,4 +1,3 @@
-require 'serialport'
 require 'io/wait'
 
 module Sense
@@ -8,9 +7,8 @@ module Sense
 		# @param[String, SerialPort] device SerialPort or path to configure
 		# @param[Symbol] type :daemon or :arduino
 		# @param[Boolean] verbose print what it sends and get
-		# @param[Integer] baudrate Communication baudrate
 		#
-		def self.setup(device, type, baudrate = 9600, verbose = false)
+		def self.setup(device, type, verbose = false)
 			@s = nil
 			@v = verbose
 			answers = []
@@ -23,8 +21,8 @@ module Sense
 			
 			begin
 				if device.is_a? String
-					@s = SerialPort.new device, baudrate
-				elsif device.is_a? SerialPort
+					@s = File.new device, "w+"
+				elsif device.is_a? File
 					@s = device
 				else
 					return false
@@ -37,11 +35,11 @@ module Sense
 				send_message("ATWR\r")
 				send_message("ATCN\r")
 				return true
-			rescue Exception => e
-				puts e.message if verbose
+			rescue Errno, IOError => e
+				puts e if verbose
 				return false
 			ensure
-				@s.close if device.is_a? String
+				@s.close if device.is_a?(String) && @s.is_a?(File)
 			end
 		end
 		
@@ -55,12 +53,14 @@ module Sense
 			while not ans
 				puts ">#{message}" if @v
 				@s.write(message)
+
 				if not @s.wait(2)
 					return false if (try+=1) > 2
 					redo
 				end
+
 				sleep 0.1
-				ans = @s.gets
+				ans = @s.gets("\r")
 				if not ans
 					return false if (try+=1) > 2
 					redo

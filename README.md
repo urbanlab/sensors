@@ -1,6 +1,6 @@
 Sense
 =====
-version : 0.3.0
+version : 0.4.0
 
 Manage a wireless sensor's network controlled by arduinos (called "multiplexers") publishing informations with XBees. It is configured via Redis.
 
@@ -21,6 +21,7 @@ Executables
  - `bin/sense-daemon` interface between the sensors and the clients (try `./sense-daemon --help`)
  - `bin/cli controls` the daemons (`try ./cli --help`)
  - `bin/example-client` display values published (usage described inside)
+ - `bin/xbee-setup` is a basic configurator for the xbees. Use it when arduinos fail at sending messages (they can't configure it when baudrate is bad)
  
 Library
 -------

@@ -1,5 +1,4 @@
 require 'rubygems'
-require 'serialport'
 require 'timeout'
 require 'thread'
 require 'io/wait'
@@ -19,19 +18,17 @@ module Sense
 	
 		# Construction of the interface
 		# @param [Integer] port Port where the xbee receiver is plugged (eg. '/dev/ttyUSB0')
-		# @param [Integer] baudrate Baudrate communication (probably 19200)
 		# @param [Logger] logger to log informations concerning the serial line
 		# @param [Integer] timeout Time in second before a command without answer
 		# is considered as lost
 		# @param [Integer] retry_nb Number of time to retry to send a command before
 		# the multiplexer is considered as disconnected
-		def initialize port, baudrate, logger = Logger.new(nil), timeout = 1, retry_nb = 3
+		def initialize port, logger = Logger.new(nil), timeout = 1, retry_nb = 3
 			@down = false
 			@log = logger
-			@baudrate = baudrate
 			@down_ports = []
 			@port = port || search_port
-			@serial = SerialPort.new @port, @baudrate
+			@serial = File.open(@port, "w+")
 			@serial.flush
 			@wait_for = {} # {pattern => wpipe}
 			@timeout = timeout
@@ -54,16 +51,16 @@ module Sense
 						buff.clear
 					end
 					begin
-						@serial.wait
+						#@serial.wait
+						buff << @serial.gets("\n")
 						old_time = Time.now.to_f
-						buff << @serial.gets
 					rescue StandardError => e
 						@log.error("The serial line had a problem : #{e.message}, retrying...")
 						@serial.close
 						sleep 1
 						@port = search_port
 						sleep 1
-						@serial = SerialPort.new @port, @baudrate
+						@serial = File.open(@port, "w+")
 						retry				
 					end
 				end

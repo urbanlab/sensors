@@ -1,7 +1,9 @@
 void setup(){
   Serial.begin(baudrate);
-  Serial.flush();
-  delay(1000);
+  delay(200);
+  #ifndef SERIAL_DEBUG
+  configure_xbee();
+  #endif /*SERIAL_DEBUG*/
   restore_state();
   strcpy(messageSnd, "NEW");
   snd_complete();
@@ -16,6 +18,17 @@ void loop() {
     if ((taskList[i] != NULL) && (taskList[i]->period != 0) && cycleCheck(taskList[i]->lastTime, taskList[i]->period))
       taskList[i]->function(i, taskList[i]->space);
   }
+}
+
+void configure_xbee()
+{
+  delay(1200);
+  Serial.print("+++");
+  delay(1200);
+  Serial.print("ATRE,ID3666,BD3,MY1,DL0,DH0,WR,CN\r");
+  delay(1200);
+  Serial.flush();
+  Serial.println("lost");
 }
 
 boolean cycleCheck(unsigned long &lastTime, unsigned int period)

@@ -132,10 +132,6 @@ opts = OptionParser.new do |opts|
 		options[:serial_port] = serial
 	end
 	
-	opts.on("-b", "--baudrate BAUDRATE", Integer, "Baudrate of the receiver (default : 19200)") do |baudrate|
-		options[:baudrate] = baudrate
-	end
-	
 	opts.on("-H", "--redis-host HOST", "Host where Redis is running (default : localhost)") do |host|
 		options[:redis_host] = host
 	end
@@ -183,7 +179,7 @@ $log.datetime_format = "%Y-%m-%d %H:%M:%S"
 $log.info("Starting daemon on port #{options[:serial_port]}")
 begin
 	$redis = Sense::Daemon.new($network, options[:redis_host], options[:redis_port], $log)
-	$serial = Sense::Serial.new(options[:serial_port], options[:baudrate], $log)
+	$serial = Sense::Serial.new(options[:serial_port], $log)
 rescue Errno::ECONNREFUSED => e
 	$log.fatal("Could not connect to Redis, exiting... error : #{e.message}")
 	exit

@@ -176,7 +176,7 @@ end
 
 $log.level = options[:level]
 $log.datetime_format = "%Y-%m-%d %H:%M:%S"
-$log.info("Starting daemon on port #{options[:serial_port]}")
+$log.info("Starting daemon")
 begin
 	$redis = Sense::Daemon.new($network, options[:redis_host], options[:redis_port], $log)
 	$serial = Sense::Serial.new(options[:serial_port], $log)

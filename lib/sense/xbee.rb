@@ -1,4 +1,5 @@
 require 'io/wait'
+require 'serialport'
 
 module Sense
 	# Xbee's configuration tools
@@ -8,7 +9,7 @@ module Sense
 		# @param[Symbol] type :daemon or :arduino
 		# @param[Boolean] verbose print what it sends and get
 		#
-		def self.setup(device, type, verbose = false)
+		def self.setup(device, type, verbose = false, baudrate = 9600)
 			@s = nil
 			@v = verbose
 			answers = []
@@ -21,8 +22,8 @@ module Sense
 			
 			begin
 				if device.is_a? String
-					@s = File.new device, "w+"
-				elsif device.is_a? File
+					@s = Serial.new device, baudrate
+				elsif device.is_a? File or device.is_a? SerialPort
 					@s = device
 				else
 					return false

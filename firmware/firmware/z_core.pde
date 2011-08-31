@@ -1,9 +1,9 @@
 void setup(){
   Serial.begin(baudrate);
   delay(200);
-  #ifndef SERIAL_DEBUG
+  #ifdef CONF_XBEE
   configure_xbee();
-  #endif /*SERIAL_DEBUG*/
+  #endif /*CONF_XBEE*/
   restore_state();
   strcpy(messageSnd, "NEW");
   snd_complete();

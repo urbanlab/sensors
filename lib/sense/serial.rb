@@ -5,6 +5,7 @@ require 'io/wait'
 require 'logger'
 require 'sense/extensions'
 require 'sense/xbee'
+require 'serialport'
 
 module Sense
 	# Interface to serial port in order to get and send message to the multiplexers
@@ -26,6 +27,7 @@ module Sense
 		def initialize port, logger = Logger.new(nil), timeout = 1, retry_nb = 3
 			@down = false
 			@log = logger
+			@baudrate = 9600
 			@down_ports = []
 			@port = port || search_port
 			@serial = File.open(@port, "w+")
@@ -60,7 +62,7 @@ module Sense
 						sleep 1
 						@port = search_port
 						sleep 1
-						@serial = File.open(@port, "w+")
+						@serial = SerialPort.new(@port, @baudrate)#File.open(@port, "w+")
 						retry				
 					end
 				end

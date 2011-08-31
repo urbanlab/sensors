@@ -22,7 +22,7 @@ module Sense
 			
 			begin
 				if device.is_a? String
-					@s = Serial.new device, baudrate
+					@s = SerialPort.new device, baudrate
 				elsif device.is_a? File or device.is_a? SerialPort
 					@s = device
 				else

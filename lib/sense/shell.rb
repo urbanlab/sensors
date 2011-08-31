@@ -7,7 +7,7 @@ module Sense
 	class Shell < Bombshell::Environment
 		include Bombshell::Shell
 
-		prompt_with 'client'
+		prompt_with "sense@#{$r_options[:redis_host]}:#{$network}"
 		
 		before_launch do |arg|
 			$redis = Sense::Client.new $network, $r_options[:redis_host], $r_options[:redis_port]
@@ -27,7 +27,7 @@ module Sense
 		# Switch network
 		#
 		def switch_network network
-			if network.is_a? String
+			if network.is_a? Integer
 				$network = network
 				$redis = Sense::Client.new $network, $r_options[:redis_host], $r_options[:redis_port]
 			else

@@ -14,6 +14,7 @@ def redis_to_json
 	config["multiplexer"].each_key do |id|
 		config["multiplexer"][id][:sensor] = r.list(:sensor, id)
 		config["multiplexer"][id][:actuator] = r.list(:actuator, id)
+		config["multiplexer"][id].delete(:network) # can be in an another network at launch
 		config["multiplexer"][id].delete(:state)
 		config["multiplexer"][id].delete(:supported) #regenerate at launch
 	end

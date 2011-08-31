@@ -2,7 +2,6 @@ require 'bombshell'
 require 'sense/client'
 require 'yard'
 
-# TODO network
 module Sense
 	# Interactive shell
 	class Shell < Bombshell::Environment
@@ -21,6 +20,17 @@ module Sense
 				supported = $redis.support(config[:supported])
 				#online = config[:state] ? "ON" : "OFF"
 				puts "#{multi} : #{config[:description]} (supports : #{supported.join(", ")})"
+			end
+		end
+		
+		# Switch network
+		#
+		def switch_network network
+			if network.is_a? String
+				$network = network
+				$redis = Sense::Client.new $network, $r_options[:redis_host], $r_options[:redis_port]
+			else
+				puts "network must be an integer"
 			end
 		end
 		

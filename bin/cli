@@ -1,6 +1,32 @@
 #!/usr/bin/env ruby
 require 'optparse'
 require 'sense/extensions'
+SENSE_CONF_FILE = "#{ENV['HOME']}/.sense"
+# Load cli configuration
+#
+def load_cli_config
+	options = {"port" => 6379, "host" => "localhost"}
+	begin
+		if not File.exists?(SENSE_CONF_FILE)
+			File.open(SENSE_CONF_FILE, "w") do |f|
+				f << <<-eof
+	host:localhost
+	port:6379
+				eof
+			end
+		else
+			options = Hash[*File.read(SENSE_CONF_FILE).split(/\n|:/)]
+		end
+		options["port"] = Integer(options["port"])
+		options["network"] = Integer(options["network"])
+	rescue Errno::EACCES, Errno::ENOENT  => e
+		puts "Failed to open cli configuration file, ignoring it"
+	rescue ArgumentError
+		puts "Malformed configuration file"
+		options = {"port" => 6379, "host" => "localhost"}
+	end
+	options
+end
 
 ##### Saving utilities #####
 #
@@ -75,9 +101,12 @@ def load_from_file file
 		end
 	end
 end
-
 options = {}
+conf = load_cli_config
 $r_options = {}
+$r_options[:redis_port] = conf["port"]
+$r_options[:redis_host] = conf["host"]
+options[:network] = conf["network"] if conf["network"]
 opts = OptionParser.new do |opts|
 	opts.banner = "Usage: cli.rb [options]"
 	
@@ -88,12 +117,10 @@ opts = OptionParser.new do |opts|
 		options[:interactive] = true
 	end
 
-	$r_options[:redis_host] = 'localhost'
 	opts.on("-H", "--redis-host HOST", "Define redis host you want to connect to") do |host|
 		$r_options[:redis_host] = host
 	end
 	
-	$r_options[:redis_port] = 6379
 	opts.on("-P", "--redis-port PORT", Integer, "Define port where redis is listening to") do |port|
 		$r_options[:redis_port] = port
 	end

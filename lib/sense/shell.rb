@@ -12,6 +12,7 @@ module Sense
 		
 		before_launch do |arg|
 			$redis = Sense::Client.new $network, $r_options[:redis_host], $r_options[:redis_port]
+			puts "Connected to #{$r_options[:redis_host]}:#{$r_options[:redis_port]} on network #{$network}."
 		end
 		
 		# Print the list of multiplexers on my network

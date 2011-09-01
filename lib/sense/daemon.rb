@@ -152,7 +152,7 @@ module Sense
 		# Read the messages from the client and call the callbacks
 		#
 		def process_messages
-			while true
+			loop do
 				chan, message = @redis_listener.blpop("#{PREFIX}.network:#{@network}.messages", 0)
 				@log.debug("A client sent the message : #{message}")
 				msgid, command, args = parse(message)
@@ -160,7 +160,10 @@ module Sense
 					@log.warn("A client sent an invalid message.")
 					next
 				end
-				
+				if @failed_cmds.include? msgid # Every daemon tried to contact the multi (blpop act as first waiting, first served)
+					answer(msgid, false, "No daemon could contact the multiplexer")
+					next
+				end
 				ans, info = case command
 					when "add_sensor"
 						register_device :sensor, args
@@ -183,18 +186,14 @@ module Sense
 						answer(msgid, true)
 					when false # Failure
 						answer(msgid, false, info)
-					else       # Timeout error
-						if @failed_cmds.include? msgid # Every daemon tries (blpop act as first waiting, first served)
-							answer(msgid, false, "No daemon could contact the multiplexer")
-						else                           # transmit to another daemon
-							if not msgid			   # Generate an id only for daemons
-								msgid = rand.hash.abs
-								message = "#{msgid}:message"
-							end
-							@failed_cmds.push(msgid).unshift
-							#answer(msgid, false, "wait") # TODO utile ?
-							@redis_listener.lpush("#{PREFIX}.network:#@network.messages", message) #TODO generate with path?
+					else       # Timeout error, transmit to another daemon
+						if not msgid			   # Generate an id only for daemons
+							msgid = rand.hash.abs
+							message = "#{msgid}:message"
 						end
+						@failed_cmds.push(msgid).unshift
+						#answer(msgid, false, "wait") # TODO utile ?
+						@redis_listener.lpush("#{PREFIX}.network:#@network.messages", message) #TODO generate with path?
 				end
 			end
 		end

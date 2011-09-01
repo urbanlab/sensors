@@ -128,12 +128,12 @@ boolean process_message(){
     case 'p':
       strcpy(messageSnd, "PONG");
       break;
-
+/*
     case 's':
       save_state();
       strcpy(messageSnd, "SAVED");
       break;
-
+*/
     case 'l':
       strcpy(messageSnd, "LIST ");
       for (byte j = 0 ; j < nbCmd ; j++){

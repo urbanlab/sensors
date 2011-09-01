@@ -11,7 +11,7 @@ command commandList[] = {
   {"1wi", 0, one_wire_loop,     one_wire_setup, noconf        },
   // i2c : read in 2wire a value. first args is the request message, 2nd is the reading address
   {"i2c", 2, i2c_loop,          i2c_setup,      noconf        },
-  // pulse : read a value with pulse style. return the nomber of micro-s between to front
+  // pulse : read a value with pulse style. return the nomber of micro-s between 2 fronts
   // see http://www.arduino.cc/en/Reference/PulseIn for arg1
   {"pls", 1, pulse_input_loop,  input_setup,    noconf        }
 };

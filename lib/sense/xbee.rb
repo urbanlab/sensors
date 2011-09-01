@@ -1,5 +1,6 @@
 require 'io/wait'
 require 'serialport'
+require 'timeout'
 
 module Sense
 	# Xbee's configuration tools
@@ -28,7 +29,9 @@ module Sense
 				else
 					return false
 				end
-				return false unless send_message('+++') == "OK\r"
+				@s.flush
+				ans = send_message('+++')
+				return false unless ans.is_a?(String) && ans.end_with?("OK\r")
 				send_message("ATRE\r")
 				opts.each do |k, v|
 					send_message("AT#{k} #{v}\r")
@@ -61,7 +64,12 @@ module Sense
 				end
 
 				sleep 0.1
-				ans = @s.gets("\r")
+				begin
+					Timeout.timeout(1.5){ans = @s.gets("\r")}
+				rescue Exception => e
+					return false if (try+=1) > 2
+					redo
+				end
 				if not ans
 					return false if (try+=1) > 2
 					redo

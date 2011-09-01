@@ -2,14 +2,22 @@
 
 require 'sense/xbee'
 
-if not ARGV.size == 2 && (ARGV[1] == "daemon" || ARGV[1] == "arduino")
-	puts "Usage : xbee-setup port type"
+if not ARGV.size >= 2 && (ARGV[1] == "daemon" || ARGV[1] == "arduino")
+	puts "Usage : xbee-setup port type [baudrate]"
 	puts "Configure an xbee"
 	puts "Port : something like /dev/ttyUSB0"
 	puts "Type : daemon or arduino"
+	puts "Baudrate : default : tries every known baudrate"
 	exit
 end
-puts "Should not block for more than 2s"
-Sense::Xbee.setup(ARGV[0], ARGV[1].intern, true)
 
+puts "Should not block for more than 2s"
+
+baudrates = ARGV[2] ? [ARGV[2].to_i] : [9600, 19200, 115200, 38400, 57600, 1200, 2400, 4800]
+
+baudrates.each do |b|
+	puts "Try to communicate with #{ARGV[2]} at baudrate #{b}"
+	break if Sense::Xbee.setup(ARGV[0], ARGV[1].intern, true, b)
+	puts "Fail"
+end
 

@@ -297,6 +297,30 @@ List the registered actuator profiles.
         <li class="public ">
   <span class="summary_signature">
     
+      <a href="#list_all_multis-instance_method" title="#list_all_multis (instance method)">- (Object) <strong>list_all_multis</strong> </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>
+Print the list of all the multiplexers.
+</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
       <a href="#list_devices-instance_method" title="#list_devices (instance method)">- (Object) <strong>list_devices</strong>(multi) </a>
     
 
@@ -321,7 +345,7 @@ List the sensors and actuators of a multiplexer.
         <li class="public ">
   <span class="summary_signature">
     
-      <a href="#list_multi-instance_method" title="#list_multi (instance method)">- (Object) <strong>list_multi</strong> </a>
+      <a href="#list_multis-instance_method" title="#list_multis (instance method)">- (Object) <strong>list_multis</strong> </a>
     
 
     
@@ -335,7 +359,7 @@ List the sensors and actuators of a multiplexer.
 
   
     <span class="summary_desc"><div class='inline'><p>
-Print the list of multiplexers.
+Print the list of multiplexers on my network.
 </p>
 </div></span>
   
@@ -504,6 +528,30 @@ Remove a sensor profile.
   
     <span class="summary_desc"><div class='inline'><p>
 Modify the description of a multi.
+</p>
+</div></span>
+  
+</li>
+
+      
+        <li class="public ">
+  <span class="summary_signature">
+    
+      <a href="#switch_network-instance_method" title="#switch_network (instance method)">- (Object) <strong>switch_network</strong>(network) </a>
+    
+
+    
+  </span>
+  
+  
+  
+  
+  
+  
+
+  
+    <span class="summary_desc"><div class='inline'><p>
+Switch network.
 </p>
 </div></span>
   
@@ -727,15 +775,15 @@ optionnal additionnal informations
       <pre class="lines">
 
 
-62
-63
-64
-65
-66
-67</pre>
+82
+83
+84
+85
+86
+87</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 62</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 82</span>
 
 <span class='kw'>def</span> <span class='id add_actuator'>add_actuator</span><span class='lparen'>(</span><span class='id multi'>multi</span><span class='comma'>,</span> <span class='id pin'>pin</span><span class='comma'>,</span> <span class='id name'>name</span><span class='comma'>,</span> <span class='id profile'>profile</span><span class='comma'>,</span> <span class='id period'>period</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id args'>args</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
 	<span class='id args'>args</span><span class='period'>.</span><span class='id merge!'>merge!</span><span class='lparen'>(</span><span class='lbrace'>{</span><span class='label'>multi:</span> <span class='id multi'>multi</span><span class='comma'>,</span> <span class='label'>pin:</span> <span class='id pin'>pin</span><span class='comma'>,</span> <span class='label'>name:</span> <span class='id name'>name</span><span class='comma'>,</span> <span class='label'>profile:</span> <span class='id profile'>profile</span><span class='rbrace'>}</span><span class='rparen'>)</span>
@@ -889,16 +937,16 @@ value like 330)
       <pre class="lines">
 
 
-155
-156
-157
-158
-159
-160
-161</pre>
+175
+176
+177
+178
+179
+180
+181</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 155</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 175</span>
 
 <span class='kw'>def</span> <span class='id add_actuator_profile'>add_actuator_profile</span><span class='lparen'>(</span><span class='id name'>name</span><span class='comma'>,</span> <span class='id profile'>profile</span><span class='op'>=</span><span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
 	<span class='kw'>begin</span>
@@ -1046,15 +1094,15 @@ optionnal additionnal informations
       <pre class="lines">
 
 
-53
-54
-55
-56
-57
-58</pre>
+73
+74
+75
+76
+77
+78</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 53</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 73</span>
 
 <span class='kw'>def</span> <span class='id add_sensor'>add_sensor</span><span class='lparen'>(</span><span class='id multi'>multi</span><span class='comma'>,</span> <span class='id pin'>pin</span><span class='comma'>,</span> <span class='id name'>name</span><span class='comma'>,</span> <span class='id profile'>profile</span><span class='comma'>,</span> <span class='id period'>period</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='comma'>,</span> <span class='id args'>args</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
 	<span class='id args'>args</span><span class='period'>.</span><span class='id merge!'>merge!</span><span class='lparen'>(</span><span class='lbrace'>{</span><span class='label'>multi:</span> <span class='id multi'>multi</span><span class='comma'>,</span> <span class='label'>name:</span> <span class='id name'>name</span><span class='comma'>,</span> <span class='label'>profile:</span> <span class='id profile'>profile</span><span class='comma'>,</span> <span class='label'>pin:</span> <span class='id pin'>pin</span><span class='rbrace'>}</span><span class='rparen'>)</span>
@@ -1208,16 +1256,16 @@ value like 330)
       <pre class="lines">
 
 
-143
-144
-145
-146
-147
-148
-149</pre>
+163
+164
+165
+166
+167
+168
+169</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 143</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 163</span>
 
 <span class='kw'>def</span> <span class='id add_sensor_profile'>add_sensor_profile</span><span class='lparen'>(</span><span class='id name'>name</span><span class='comma'>,</span> <span class='id profile'>profile</span><span class='op'>=</span><span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
 	<span class='kw'>begin</span>
@@ -1293,15 +1341,15 @@ Pin of the sensor
       <pre class="lines">
 
 
-204
-205
-206
-207
-208
-209</pre>
+224
+225
+226
+227
+228
+229</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 204</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 224</span>
 
 <span class='kw'>def</span> <span class='id get_sensor_value'>get_sensor_value</span> <span class='id multi'>multi</span><span class='comma'>,</span> <span class='id pin'>pin</span>
 	<span class='id multi'>multi</span> <span class='op'>=</span> <span class='gvar'>$redis</span><span class='period'>.</span><span class='id get_multi_id'>get_multi_id</span> <span class='id multi'>multi</span>
@@ -1361,23 +1409,23 @@ Function to describe
       <pre class="lines">
 
 
-214
-215
-216
-217
-218
-219
-220
-221
-222
-223
-224
-225
-226
-227</pre>
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 214</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 234</span>
 
 <span class='kw'>def</span> <span class='id help'>help</span> <span class='id function'>function</span> <span class='op'>=</span> <span class='kw'>nil</span>
 	<span class='const'>YARD</span><span class='op'>::</span><span class='const'>Registry</span><span class='period'>.</span><span class='id load!'>load!</span>
@@ -1422,17 +1470,17 @@ List the registered actuator profiles
       <pre class="lines">
 
 
-178
-179
-180
-181
-182
-183
-184
-185</pre>
+198
+199
+200
+201
+202
+203
+204
+205</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 178</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 198</span>
 
 <span class='kw'>def</span> <span class='id list_actuator_profiles'>list_actuator_profiles</span>
 	<span class='gvar'>$redis</span><span class='period'>.</span><span class='id list_profiles'>list_profiles</span><span class='lparen'>(</span><span class='symbol'>:actuator</span><span class='rparen'>)</span><span class='period'>.</span><span class='id each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id name'>name</span><span class='comma'>,</span> <span class='id profile'>profile</span><span class='op'>|</span>
@@ -1440,6 +1488,51 @@ List the registered actuator profiles
 		<span class='id s'>s</span> <span class='op'>&lt;&lt;</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>\nPeriod : </span><span class='embexpr_beg'>#{</span><span class='id profile'>profile</span><span class='lbracket'>[</span><span class='symbol'>:period</span><span class='rbracket'>]</span><span class='rbrace'>}</span><span class='tstring_end'>&quot;</span></span> <span class='kw'>if</span> <span class='id profile'>profile</span><span class='lbracket'>[</span><span class='symbol'>:period</span><span class='rbracket'>]</span>
 		<span class='id s'>s</span> <span class='op'>&lt;&lt;</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>\n\n</span><span class='tstring_end'>&quot;</span></span>
 		<span class='id puts'>puts</span> <span class='id s'>s</span>
+	<span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <p class="signature " id="list_all_multis-instance_method">
+  
+    - (<tt>Object</tt>) <strong>list_all_multis</strong> 
+  
+
+  
+</p><div class="docstring">
+  <div class="discussion">
+    <p>
+Print the list of all the multiplexers
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+40
+41
+42
+43
+44
+45</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 40</span>
+
+<span class='kw'>def</span> <span class='id list_all_multis'>list_all_multis</span>
+	<span class='gvar'>$redis</span><span class='period'>.</span><span class='id list_multis'>list_multis</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>'</span><span class='tstring_content'>*</span><span class='tstring_end'>'</span></span><span class='rparen'>)</span><span class='period'>.</span><span class='id sort'>sort</span><span class='period'>.</span><span class='id each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id multi'>multi</span><span class='comma'>,</span> <span class='id config'>config</span><span class='op'>|</span>
+		<span class='id supported'>supported</span> <span class='op'>=</span> <span class='gvar'>$redis</span><span class='period'>.</span><span class='id support'>support</span><span class='lparen'>(</span><span class='id config'>config</span><span class='lbracket'>[</span><span class='symbol'>:supported</span><span class='rbracket'>]</span><span class='rparen'>)</span>
+		<span class='id puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id multi'>multi</span><span class='rbrace'>}</span><span class='tstring_content'> (network </span><span class='embexpr_beg'>#{</span><span class='id config'>config</span><span class='lbracket'>[</span><span class='symbol'>:network</span><span class='rbracket'>]</span><span class='rbrace'>}</span><span class='tstring_content'>) (supports : </span><span class='embexpr_beg'>#{</span><span class='id supported'>supported</span><span class='period'>.</span><span class='id join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>, </span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='rbrace'>}</span><span class='tstring_content'>)</span><span class='tstring_end'>&quot;</span></span>
 	<span class='kw'>end</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -1492,28 +1585,28 @@ Id of the multiplexer
       <pre class="lines">
 
 
-119
-120
-121
-122
-123
-124
-125
-126
-127
-128
-129
-130
-131
-132
-133
-134
-135
-136
-137</pre>
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 119</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 139</span>
 
 <span class='kw'>def</span> <span class='id list_devices'>list_devices</span><span class='lparen'>(</span><span class='id multi'>multi</span><span class='rparen'>)</span>
 	<span class='id multi'>multi</span> <span class='op'>=</span> <span class='gvar'>$redis</span><span class='period'>.</span><span class='id get_multi_id'>get_multi_id</span> <span class='id multi'>multi</span>
@@ -1540,16 +1633,16 @@ Id of the multiplexer
 </div>
     
       <div class="method_details ">
-  <p class="signature " id="list_multi-instance_method">
+  <p class="signature " id="list_multis-instance_method">
   
-    - (<tt>Object</tt>) <strong>list_multi</strong> 
+    - (<tt>Object</tt>) <strong>list_multis</strong> 
   
 
   
 </p><div class="docstring">
   <div class="discussion">
     <p>
-Print the list of multiplexers
+Print the list of multiplexers on my network
 </p>
 
 
@@ -1574,11 +1667,11 @@ Print the list of multiplexers
     <td>
       <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 19</span>
 
-<span class='kw'>def</span> <span class='id list_multi'>list_multi</span> <span class='comment'>#TODO limiter accès redis
+<span class='kw'>def</span> <span class='id list_multis'>list_multis</span> <span class='comment'>#TODO limiter accès redis
 </span>	<span class='gvar'>$redis</span><span class='period'>.</span><span class='id list_multis'>list_multis</span><span class='period'>.</span><span class='id sort'>sort</span><span class='period'>.</span><span class='id each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id multi'>multi</span><span class='comma'>,</span> <span class='id config'>config</span><span class='op'>|</span>
 		<span class='id supported'>supported</span> <span class='op'>=</span> <span class='gvar'>$redis</span><span class='period'>.</span><span class='id support'>support</span><span class='lparen'>(</span><span class='id config'>config</span><span class='lbracket'>[</span><span class='symbol'>:supported</span><span class='rbracket'>]</span><span class='rparen'>)</span>
-		<span class='id online'>online</span> <span class='op'>=</span> <span class='id config'>config</span><span class='lbracket'>[</span><span class='symbol'>:state</span><span class='rbracket'>]</span> <span class='op'>?</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>ON</span><span class='tstring_end'>&quot;</span></span> <span class='op'>:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>OFF</span><span class='tstring_end'>&quot;</span></span>
-		<span class='id puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id multi'>multi</span><span class='rbrace'>}</span><span class='tstring_content'> (</span><span class='embexpr_beg'>#{</span><span class='id online'>online</span><span class='rbrace'>}</span><span class='tstring_content'>): </span><span class='embexpr_beg'>#{</span><span class='id config'>config</span><span class='lbracket'>[</span><span class='symbol'>:description</span><span class='rbracket'>]</span><span class='rbrace'>}</span><span class='tstring_content'> (supports : </span><span class='embexpr_beg'>#{</span><span class='id supported'>supported</span><span class='period'>.</span><span class='id join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>, </span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='rbrace'>}</span><span class='tstring_content'>)</span><span class='tstring_end'>&quot;</span></span>
+		<span class='comment'>#online = config[:state] ? &quot;ON&quot; : &quot;OFF&quot;
+</span>		<span class='id puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='id multi'>multi</span><span class='rbrace'>}</span><span class='tstring_content'> : </span><span class='embexpr_beg'>#{</span><span class='id config'>config</span><span class='lbracket'>[</span><span class='symbol'>:description</span><span class='rbracket'>]</span><span class='rbrace'>}</span><span class='tstring_content'> (supports : </span><span class='embexpr_beg'>#{</span><span class='id supported'>supported</span><span class='period'>.</span><span class='id join'>join</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>, </span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='rbrace'>}</span><span class='tstring_content'>)</span><span class='tstring_end'>&quot;</span></span>
 	<span class='kw'>end</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -1610,19 +1703,19 @@ List the registered sensor profiles
       <pre class="lines">
 
 
-165
-166
-167
-168
-169
-170
-171
-172
-173
-174</pre>
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 165</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 185</span>
 
 <span class='kw'>def</span> <span class='id list_sensor_profiles'>list_sensor_profiles</span>
 	<span class='gvar'>$redis</span><span class='period'>.</span><span class='id list_profiles'>list_profiles</span><span class='lparen'>(</span><span class='symbol'>:sensor</span><span class='rparen'>)</span><span class='period'>.</span><span class='id each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id name'>name</span><span class='comma'>,</span> <span class='id profile'>profile</span><span class='op'>|</span>
@@ -1663,16 +1756,16 @@ Print the list of multiplexers that don&#8217;t have any task running
       <pre class="lines">
 
 
-29
-30
-31
-32
-33
-34
-35</pre>
+49
+50
+51
+52
+53
+54
+55</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 29</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 49</span>
 
 <span class='kw'>def</span> <span class='id list_unconfigured'>list_unconfigured</span>
 	<span class='gvar'>$redis</span><span class='period'>.</span><span class='id list_multis'>list_multis</span><span class='lparen'>(</span><span class='int'>0</span><span class='rparen'>)</span><span class='period'>.</span><span class='id each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id multi'>multi</span><span class='comma'>,</span> <span class='id config'>config</span><span class='op'>|</span>
@@ -1748,13 +1841,13 @@ Pin where the sensor was plugged
       <pre class="lines">
 
 
-111
-112
-113
-114</pre>
+131
+132
+133
+134</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 111</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 131</span>
 
 <span class='kw'>def</span> <span class='id remove_actuator'>remove_actuator</span><span class='lparen'>(</span><span class='id multi'>multi</span><span class='comma'>,</span> <span class='id pin'>pin</span><span class='rparen'>)</span>
 	<span class='id success'>success</span><span class='comma'>,</span> <span class='id message'>message</span> <span class='op'>=</span> <span class='gvar'>$redis</span><span class='period'>.</span><span class='id remove'>remove</span> <span class='symbol'>:actuator</span><span class='comma'>,</span> <span class='id multi'>multi</span><span class='comma'>,</span> <span class='id pin'>pin</span>
@@ -1810,12 +1903,12 @@ Name of the profile
       <pre class="lines">
 
 
-197
-198
-199</pre>
+217
+218
+219</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 197</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 217</span>
 
 <span class='kw'>def</span> <span class='id remove_actuator_profile'>remove_actuator_profile</span> <span class='id name'>name</span>
 	<span class='id puts'>puts</span> <span class='gvar'>$redis</span><span class='period'>.</span><span class='id remove_profile'>remove_profile</span><span class='lparen'>(</span><span class='symbol'>:actuator</span><span class='comma'>,</span> <span class='id name'>name</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>OK</span><span class='tstring_end'>&quot;</span></span> <span class='op'>:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>KO</span><span class='tstring_end'>&quot;</span></span>
@@ -1887,13 +1980,13 @@ Pin where the sensor was plugged
       <pre class="lines">
 
 
-103
-104
-105
-106</pre>
+123
+124
+125
+126</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 103</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 123</span>
 
 <span class='kw'>def</span> <span class='id remove_sensor'>remove_sensor</span><span class='lparen'>(</span><span class='id multi'>multi</span><span class='comma'>,</span> <span class='id pin'>pin</span><span class='rparen'>)</span>
 	<span class='id success'>success</span><span class='comma'>,</span> <span class='id message'>message</span> <span class='op'>=</span> <span class='gvar'>$redis</span><span class='period'>.</span><span class='id remove'>remove</span> <span class='symbol'>:sensor</span><span class='comma'>,</span> <span class='id multi'>multi</span><span class='comma'>,</span> <span class='id pin'>pin</span>
@@ -1949,12 +2042,12 @@ Name of the profile
       <pre class="lines">
 
 
-190
-191
-192</pre>
+210
+211
+212</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 190</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 210</span>
 
 <span class='kw'>def</span> <span class='id remove_sensor_profile'>remove_sensor_profile</span> <span class='id name'>name</span>
 	<span class='id puts'>puts</span> <span class='gvar'>$redis</span><span class='period'>.</span><span class='id remove_profile'>remove_profile</span><span class='lparen'>(</span><span class='symbol'>:sensor</span><span class='comma'>,</span> <span class='id name'>name</span><span class='rparen'>)</span> <span class='op'>?</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>OK</span><span class='tstring_end'>&quot;</span></span> <span class='op'>:</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>KO</span><span class='tstring_end'>&quot;</span></span>
@@ -2026,17 +2119,17 @@ The new description
       <pre class="lines">
 
 
-90
-91
-92
-93
-94
-95
-96
-97</pre>
+110
+111
+112
+113
+114
+115
+116
+117</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 90</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 110</span>
 
 <span class='kw'>def</span> <span class='id set_description'>set_description</span><span class='lparen'>(</span><span class='id multi'>multi</span><span class='comma'>,</span> <span class='id description'>description</span><span class='rparen'>)</span>
 	<span class='id multi'>multi</span> <span class='op'>=</span> <span class='gvar'>$redis</span><span class='period'>.</span><span class='id get_multi_id'>get_multi_id</span><span class='lparen'>(</span><span class='id multi'>multi</span><span class='rparen'>)</span>
@@ -2044,6 +2137,55 @@ The new description
 		<span class='id puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>OK</span><span class='tstring_end'>&quot;</span></span>
 	<span class='kw'>else</span>
 		<span class='id puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>The multiplexer doesn't exist</span><span class='tstring_end'>&quot;</span></span>
+	<span class='kw'>end</span>
+<span class='kw'>end</span></pre>
+    </td>
+  </tr>
+</table>
+</div>
+    
+      <div class="method_details ">
+  <p class="signature " id="switch_network-instance_method">
+  
+    - (<tt>Object</tt>) <strong>switch_network</strong>(network) 
+  
+
+  
+</p><div class="docstring">
+  <div class="discussion">
+    <p>
+Switch network
+</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+</div><table class="source_code">
+  <tr>
+    <td>
+      <pre class="lines">
+
+
+29
+30
+31
+32
+33
+34
+35
+36</pre>
+    </td>
+    <td>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 29</span>
+
+<span class='kw'>def</span> <span class='id switch_network'>switch_network</span> <span class='id network'>network</span>
+	<span class='kw'>if</span> <span class='id network'>network</span><span class='period'>.</span><span class='id is_a?'>is_a?</span> <span class='const'>Integer</span>
+		<span class='gvar'>$network</span> <span class='op'>=</span> <span class='id network'>network</span>
+		<span class='gvar'>$redis</span> <span class='op'>=</span> <span class='const'>Sense</span><span class='op'>::</span><span class='const'>Client</span><span class='period'>.</span><span class='id new'>new</span> <span class='gvar'>$network</span><span class='comma'>,</span> <span class='gvar'>$r_options</span><span class='lbracket'>[</span><span class='symbol'>:redis_host</span><span class='rbracket'>]</span><span class='comma'>,</span> <span class='gvar'>$r_options</span><span class='lbracket'>[</span><span class='symbol'>:redis_port</span><span class='rbracket'>]</span>
+	<span class='kw'>else</span>
+		<span class='id puts'>puts</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>network must be an integer</span><span class='tstring_end'>&quot;</span></span>
 	<span class='kw'>end</span>
 <span class='kw'>end</span></pre>
     </td>
@@ -2113,13 +2255,13 @@ Pin of the actuator
       <pre class="lines">
 
 
-81
-82
-83
-84</pre>
+101
+102
+103
+104</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 81</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 101</span>
 
 <span class='kw'>def</span> <span class='id switch_off'>switch_off</span><span class='lparen'>(</span><span class='id multi'>multi</span><span class='comma'>,</span> <span class='id pin'>pin</span><span class='rparen'>)</span>
 	<span class='id success'>success</span><span class='comma'>,</span> <span class='id message'>message</span> <span class='op'>=</span> <span class='gvar'>$redis</span><span class='period'>.</span><span class='id set_actuator_state'>set_actuator_state</span><span class='lparen'>(</span><span class='id multi'>multi</span><span class='comma'>,</span> <span class='id pin'>pin</span><span class='comma'>,</span> <span class='int'>0</span><span class='rparen'>)</span>
@@ -2192,13 +2334,13 @@ Pin of the actuator
       <pre class="lines">
 
 
-73
-74
-75
-76</pre>
+93
+94
+95
+96</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 73</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 93</span>
 
 <span class='kw'>def</span> <span class='id switch_on'>switch_on</span><span class='lparen'>(</span><span class='id multi'>multi</span><span class='comma'>,</span> <span class='id pin'>pin</span><span class='rparen'>)</span>
 	<span class='id success'>success</span><span class='comma'>,</span> <span class='id message'>message</span> <span class='op'>=</span> <span class='gvar'>$redis</span><span class='period'>.</span><span class='id set_actuator_state'>set_actuator_state</span><span class='lparen'>(</span><span class='id multi'>multi</span><span class='comma'>,</span> <span class='id pin'>pin</span><span class='comma'>,</span> <span class='int'>1</span><span class='rparen'>)</span>
@@ -2254,13 +2396,13 @@ Id or name of the multi
       <pre class="lines">
 
 
-40
-41
-42
-43</pre>
+60
+61
+62
+63</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 40</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/shell.rb', line 60</span>
 
 <span class='kw'>def</span> <span class='id take'>take</span> <span class='id multi_id'>multi_id</span>
 	<span class='id success'>success</span><span class='comma'>,</span> <span class='id message'>message</span> <span class='op'>=</span> <span class='gvar'>$redis</span><span class='period'>.</span><span class='id take'>take</span> <span class='id multi_id'>multi_id</span>
@@ -2276,7 +2418,7 @@ Id or name of the multi
 </div>
     
     <div id="footer">
-  Generated on Mon Aug 29 18:04:32 2011 by 
+  Generated on Thu Sep  1 10:51:00 2011 by 
   <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.7.2 (ruby-1.9.2).
 </div>

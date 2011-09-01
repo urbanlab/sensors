@@ -24,7 +24,7 @@ module Sense
 		# is considered as lost
 		# @param [Integer] retry_nb Number of time to retry to send a command before
 		# the multiplexer is considered as disconnected
-		def initialize port, logger = Logger.new(nil), timeout = 1, retry_nb = 3
+		def initialize port, logger = Logger.new(nil), timeout = 0.4, retry_nb = 3
 			@down = false
 			@log = logger
 			@baudrate = 9600
@@ -89,14 +89,14 @@ module Sense
 		#   @param [Integer] multi Id of the multiplexer
 		#
 		def reset(multi)
-			snd_message(/^#{multi} RST/, multi, :reset) == ""
+			snd_message(/^#{multi} RST/, multi, :reset) == "" ? true : nil
 		end
 	
 		# Ping a multiplexer : test if it is alive
 		# @macro multi
 		# @return [boolean] True if the multiplexer is alive
 		def ping(multi)
-			snd_message(/^#{multi} PONG/, multi, :ping) == ""
+			snd_message(/^#{multi} PONG/, multi, :ping) == "" ? true : nil
 		end
 	
 		# Add a task to a multiplexer.
@@ -142,7 +142,7 @@ module Sense
 		# @param [Integer] new Id of the multiplexer after the change
 		#
 		def change_id(old, new)
-			snd_message(/^#{new} ID/, old, :id, new) == ""
+			snd_message(/^#{new} ID/, old, :id, new) == "" ? true : nil
 		end
 	
 		# Get the list of implementations supported by an arduino

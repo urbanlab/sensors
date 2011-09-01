@@ -234,26 +234,31 @@ module Sense
 		#
 		def snd_message(pattern, multi, command, *args)
 			msg = "#{multi} #{CMD[command]} #{args.join(" ")}".chomp(" ") + "\n"
-			if @serial.closed?
-				@log.error("Could not send the command #{command}, the receiver isn't available")
-			else
-				@serial.write msg
-				@log.debug("Sent : \"#{msg.delete("\n")}\"")
-				if pattern
-					i = 0
-					begin
-						wait_for(pattern)
-					rescue Timeout::Error => e
-						if (i+=1) < @retry
-							@serial.write msg
-							@log.debug("Sent : \"#{msg.delete("\n")}\"")
-							retry
-						else
-							@log.warn("The multiplexer #{multi} did not answered to the command \"#{command}\"")
-							nil
+			begin
+				if @serial.closed?
+					@log.error("Could not send the command #{command}, the receiver isn't available")
+				else
+					@serial.write msg
+					@log.debug("Sent : \"#{msg.delete("\n")}\"")
+					if pattern
+						i = 0
+						begin
+							wait_for(pattern)
+						rescue Timeout::Error => e
+							if (i+=1) < @retry
+								@serial.write msg
+								@log.debug("Sent : \"#{msg.delete("\n")}\"")
+								retry
+							else
+								@log.warn("The multiplexer #{multi} did not answered to the command \"#{command}\"")
+								nil
+							end
 						end
 					end
 				end
+			rescue StandardError => e
+				@log.warn("Could not send message : serial is down")
+				nil
 			end
 		end
 	

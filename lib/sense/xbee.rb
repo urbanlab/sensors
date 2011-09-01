@@ -36,7 +36,7 @@ module Sense
 				send_message("ATWR\r")
 				send_message("ATCN\r")
 				return true
-			rescue Errno, IOError => e
+			rescue StandardError => e
 				puts e if verbose
 				return false
 			ensure

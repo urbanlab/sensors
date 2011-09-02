@@ -1,6 +1,6 @@
 Sense
 =====
-version : 1.0.0
+version : 1.0.1
 
 Manage a wireless sensor's network controlled by arduinos (called "multiplexers") publishing informations with XBees. It is configured via Redis.
 

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 require 'sense/common'
 require 'logger'
 
@@ -417,6 +418,18 @@ module Sense
 					when "/"
 						a, b = stack.pop, stack.pop
 						stack.push(b / a)
+          when "<?"
+            a, b = stack.pop, stack.pop
+            stack.push(b < a ? 1 : 0)
+          when ">?"
+            a, b = stack.pop, stack.pop
+            stack.push(b > a ? 1 : 0)
+          when "<=?"
+            a, b = stack.pop, stack.pop
+            stack.push(b <= a ? 1 : 0)
+          when ">=?"
+            a, b = stack.pop, stack.pop
+            stack.push(b >= a ? 1 : 0)
 					else
 						raise TypeError, "Bad rpn" unless e.is_numeric?
 						stack.push(e.to_f)

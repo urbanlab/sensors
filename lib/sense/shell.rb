@@ -249,6 +249,7 @@ module Sense
 		# Produce readable description of a function from YARD registry
 		#
 		def describe function
+			YARD::Registry.load!(YARD::Registry.yardoc_file_for_gem('sense'))
 			doc = YARD::Registry["#{self.class}##{function}"]
 			return nil unless doc
 			descr = "\n#{doc.name(true)}(#{doc.tags(:param).inject([]){|a,p| a.push(p.name)}.join(" ")}) : #{doc.docstring}\n\n"

@@ -20,7 +20,7 @@ class String
 	#
 	def is_a_rpn?
 		self.split(" ").each do |e|
-			return false unless (e.is_numeric? or ["+", "-", "*", "/", "X"].include? e)
+			return false unless (e.is_numeric? or ["+", "-", "*", "/", "X", "<?", ">?", ">=?", "<=?"].include? e)
 		end
 		return true
 	end

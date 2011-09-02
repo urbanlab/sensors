@@ -16,10 +16,9 @@ module Sense
 		
 		# Print the list of multiplexers on my network
 		#
-		def list_multis #TODO limiter accès redis
+		def list_multi
 			$redis.list_multis.sort.each do |multi, config|
 				supported = $redis.support(config[:supported])
-				#online = config[:state] ? "ON" : "OFF"
 				puts "#{multi} : #{config[:description]} (supports : #{supported.join(", ")})"
 			end
 		end
@@ -49,8 +48,7 @@ module Sense
 		def list_unconfigured
 			$redis.list_multis(0).each do |multi, config|
 				supported = $redis.support(config[:supported])
-				online = config[:state] ? "ON" : "OFF"
-				puts "#{multi} (#{online}): #{config[:description]} (supports : #{supported.join(", ")})"
+				puts "#{multi} : #{config[:description]} (supports : #{supported.join(", ")})"
 			end
 		end
 		

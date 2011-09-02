@@ -160,7 +160,7 @@ module Sense
 					@log.warn("A client sent an invalid message.")
 					next
 				end
-				if @failed_cmds.include? msgid # Every daemon tried to contact the multi (blpop act as first waiting, first served)
+				if msgid && @failed_cmds.include?(msgid) # Every daemon tried to contact the multi (blpop act as first waiting, first served)
 					answer(msgid, false, "No daemon could contact the multiplexer")
 					next
 				end
@@ -189,7 +189,7 @@ module Sense
 					else       # Timeout error, transmit to another daemon
 						if not msgid			   # Generate an id only for daemons
 							msgid = rand.hash.abs
-							message = "#{msgid}:message"
+							message = "#{msgid}:#{message}"
 						end
 						@failed_cmds.push(msgid).unshift
 						#answer(msgid, false, "wait") # TODO utile ?
@@ -369,13 +369,16 @@ module Sense
 		# Call the callback to unregister a device
 		#
 		def unregister_device type, config
+			if not (config.is_a? Hash)
+				@log.warn("A client tried to delete a #{type} with an invalid message")
+				return false, "Bad message"
+			end
 			if not (config[:multiplexer].is_a? Integer or config[:multiplexer].is_a? String)
-				@log.warn("A client tried to delete a #{type} with bad multiplexer id : #{parse[:multiplexer]}")
+				@log.warn("A client tried to delete a #{type} with bad multiplexer id : #{config[:multiplexer]}")
 				return false, "Bad multiplexer id"
 			end
 			if not (config[:pin].is_a? Integer or config[:pin].is_a? String)
-				@log.warn("A client tried to delete a #{type} with bad pin : #{pin}")
-				answer(msgid, false, "Bad id")
+				@log.warn("A client tried to delete a #{type} with bad pin : #{config[:pin]}")
 				return false, "Bad id"
 			end
 			multi_id = get_multi_id(config[:multiplexer])

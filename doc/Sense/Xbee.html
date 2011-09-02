@@ -162,7 +162,6 @@ it sends and get
       <pre class="lines">
 
 
-12
 13
 14
 15
@@ -195,10 +194,13 @@ it sends and get
 42
 43
 44
-45</pre>
+45
+46
+47
+48</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/sense/xbee.rb', line 12</span>
+      <pre class="code"><span class="info file"># File 'lib/sense/xbee.rb', line 13</span>
 
 <span class='kw'>def</span> <span class='kw'>self</span><span class='period'>.</span><span class='id setup'>setup</span><span class='lparen'>(</span><span class='id device'>device</span><span class='comma'>,</span> <span class='id type'>type</span><span class='comma'>,</span> <span class='id verbose'>verbose</span> <span class='op'>=</span> <span class='kw'>false</span><span class='comma'>,</span> <span class='id baudrate'>baudrate</span> <span class='op'>=</span> <span class='int'>9600</span><span class='rparen'>)</span>
 	<span class='ivar'>@s</span> <span class='op'>=</span> <span class='kw'>nil</span>
@@ -219,7 +221,9 @@ it sends and get
 		<span class='kw'>else</span>
 			<span class='kw'>return</span> <span class='kw'>false</span>
 		<span class='kw'>end</span>
-		<span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id send_message'>send_message</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>'</span><span class='tstring_content'>+++</span><span class='tstring_end'>'</span></span><span class='rparen'>)</span> <span class='op'>==</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>OK\r</span><span class='tstring_end'>&quot;</span></span>
+		<span class='ivar'>@s</span><span class='period'>.</span><span class='id flush'>flush</span>
+		<span class='id ans'>ans</span> <span class='op'>=</span> <span class='id send_message'>send_message</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>'</span><span class='tstring_content'>+++</span><span class='tstring_end'>'</span></span><span class='rparen'>)</span>
+		<span class='kw'>return</span> <span class='kw'>false</span> <span class='kw'>unless</span> <span class='id ans'>ans</span><span class='period'>.</span><span class='id is_a?'>is_a?</span><span class='lparen'>(</span><span class='const'>String</span><span class='rparen'>)</span> <span class='op'>&amp;&amp;</span> <span class='id ans'>ans</span><span class='period'>.</span><span class='id end_with?'>end_with?</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>OK\r</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 		<span class='id send_message'>send_message</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>ATRE\r</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 		<span class='id opts'>opts</span><span class='period'>.</span><span class='id each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id k'>k</span><span class='comma'>,</span> <span class='id v'>v</span><span class='op'>|</span>
 			<span class='id send_message'>send_message</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>AT</span><span class='embexpr_beg'>#{</span><span class='id k'>k</span><span class='rbrace'>}</span><span class='tstring_content'> </span><span class='embexpr_beg'>#{</span><span class='id v'>v</span><span class='rbrace'>}</span><span class='tstring_content'>\r</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -227,7 +231,7 @@ it sends and get
 		<span class='id send_message'>send_message</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>ATWR\r</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 		<span class='id send_message'>send_message</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>ATCN\r</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
 		<span class='kw'>return</span> <span class='kw'>true</span>
-	<span class='kw'>rescue</span> <span class='const'>Errno</span><span class='comma'>,</span> <span class='const'>IOError</span> <span class='op'>=&gt;</span> <span class='id e'>e</span>
+	<span class='kw'>rescue</span> <span class='const'>StandardError</span> <span class='op'>=&gt;</span> <span class='id e'>e</span>
 		<span class='id puts'>puts</span> <span class='id e'>e</span> <span class='kw'>if</span> <span class='id verbose'>verbose</span>
 		<span class='kw'>return</span> <span class='kw'>false</span>
 	<span class='kw'>ensure</span>
@@ -244,7 +248,7 @@ it sends and get
 </div>
     
     <div id="footer">
-  Generated on Thu Sep  1 10:51:00 2011 by 
+  Generated on Fri Sep  2 12:14:57 2011 by 
   <a href="http://yardoc.org" title="Yay! A Ruby Documentation Tool" target="_parent">yard</a>
   0.7.2 (ruby-1.9.2).
 </div>

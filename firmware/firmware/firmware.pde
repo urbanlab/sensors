@@ -2,6 +2,7 @@
 #include <avr/eeprom.h>
 #include <Wire.h>
 //#define SERIAL_DEBUG
+#define CONF_XBEE
 
 const int signature = 12351;             // Should change at each firmware modification
 const int spaceSize = 2;                 // Size of personnal space of the tasks

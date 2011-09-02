@@ -1,6 +1,6 @@
 Sense
 =====
-version : 0.4.0
+version : 1.0.0
 
 Manage a wireless sensor's network controlled by arduinos (called "multiplexers") publishing informations with XBees. It is configured via Redis.
 
@@ -34,6 +34,8 @@ Library
 
 Arduino
 -------
-The folder "firmware" contain code of the firmware that must be load into each multiplexer.
+The folder "firmware" contains code of the firmware that must be load into each multiplexer.
 
-
+Configuration
+-------------
+The folder "conf" contains example config and profiles.

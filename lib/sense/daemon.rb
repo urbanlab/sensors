@@ -65,7 +65,7 @@ module Sense
 			path = path(:sensor, :value, multi_id, sensor)
 			config = get_config(:sensor, multi_id, sensor)
 			if config == nil
-				@log.error("Tried to publish a value from an unknown multiplexer : #{multi_id}")
+				@log.warn("Tried to publish a value from an unknown multiplexer : #{multi_id}")
 				return false
 			end
 			profile = get_profile(:sensor, config[:profile])
@@ -152,7 +152,7 @@ module Sense
 		# Read the messages from the client and call the callbacks
 		#
 		def process_messages
-			while true
+			loop do
 				chan, message = @redis_listener.blpop("#{PREFIX}.network:#{@network}.messages", 0)
 				@log.debug("A client sent the message : #{message}")
 				msgid, command, args = parse(message)
@@ -160,7 +160,10 @@ module Sense
 					@log.warn("A client sent an invalid message.")
 					next
 				end
-				
+				if msgid && @failed_cmds.include?(msgid) # Every daemon tried to contact the multi (blpop act as first waiting, first served)
+					answer(msgid, false, "No daemon could contact the multiplexer")
+					next
+				end
 				ans, info = case command
 					when "add_sensor"
 						register_device :sensor, args
@@ -183,18 +186,14 @@ module Sense
 						answer(msgid, true)
 					when false # Failure
 						answer(msgid, false, info)
-					else       # Timeout error
-						if @failed_cmds.include? msgid # Every daemon tries (blpop act as first waiting, first served)
-							answer(msgid, false, "No daemon could contact the multiplexer")
-						else                           # transmit to another daemon
-							if not msgid			   # Generate an id only for daemons
-								msgid = rand.hash.abs
-								message = "#{msgid}:message"
-							end
-							@failed_cmds.push(msgid).unshift
-							#answer(msgid, false, "wait") # TODO utile ?
-							@redis_listener.lpush("#{PREFIX}.network:#@network.messages", message) #TODO generate with path?
+					else       # Timeout error, transmit to another daemon
+						if not msgid			   # Generate an id only for daemons
+							msgid = rand.hash.abs
+							message = "#{msgid}:#{message}"
 						end
+						@failed_cmds.push(msgid).unshift
+						#answer(msgid, false, "wait") # TODO utile ?
+						@redis_listener.lpush("#{PREFIX}.network:#@network.messages", message) #TODO generate with path?
 				end
 			end
 		end
@@ -257,6 +256,7 @@ module Sense
 			return [false, "unimplemented method"] unless @on_actuator_state
 			case @on_actuator_state.call(multi_id, pin, message[:state])
 				when true
+					@log.info("Switched #{message[:state] == 1 ? "on" : "off"} #{multi_id}:#{pin}")
 					return true
 				when false
 					return false, "the multiplexer refused"
@@ -285,6 +285,7 @@ module Sense
 				when true
 					clean_up(id_multi)
 					config[:network] = @network
+					@log.info("Associated #{id_multi}")
 					set_multi_config(id_multi, config)
 					return true
 				when false
@@ -330,11 +331,16 @@ module Sense
 			begin
 				config.must_have(CONFIG[type][:necessary])
 				config.can_have(CONFIG[type][:optional])
+			rescue ArgumentError => error
+				@log.warn("A client tried to add a bad sensor config or profile : #{error.message}")
+				return false, "Incomplete config : #{error.message}"
+			end
+			begin
 				profile.must_have(PROFILE[type][:necessary])
 				profile.can_have(PROFILE[type][:optional])
 			rescue ArgumentError => error
-				@log.warn("A client tried to add a bad sensor config or profile : #{error.message}")
-				return false, "Incomplete config or profile : #{error.message}"
+				@log.error("The profile #{config[:profile]} is bad : #{error.message}")
+				return false, "The profile exists but is invalid : #{error.message}"
 			end
 			period = config[:period] || profile[:period]
 			if not period #TODO : allow non looping sensors ?
@@ -350,6 +356,7 @@ module Sense
 						multi_config[:network] = @network
 						set_multi_config multi_id, multi_config
 					end
+					@log.info("Add a #{type} on #{multi_id}:#{pin}")
 					@redis.hset(path(type, :config, multi_id), pin, config.to_json)
 					return true
 				when false
@@ -362,13 +369,16 @@ module Sense
 		# Call the callback to unregister a device
 		#
 		def unregister_device type, config
+			if not (config.is_a? Hash)
+				@log.warn("A client tried to delete a #{type} with an invalid message")
+				return false, "Bad message"
+			end
 			if not (config[:multiplexer].is_a? Integer or config[:multiplexer].is_a? String)
-				@log.warn("A client tried to delete a #{type} with bad multiplexer id : #{parse[:multiplexer]}")
+				@log.warn("A client tried to delete a #{type} with bad multiplexer id : #{config[:multiplexer]}")
 				return false, "Bad multiplexer id"
 			end
 			if not (config[:pin].is_a? Integer or config[:pin].is_a? String)
-				@log.warn("A client tried to delete a #{type} with bad pin : #{pin}")
-				answer(msgid, false, "Bad id")
+				@log.warn("A client tried to delete a #{type} with bad pin : #{config[:pin]}")
 				return false, "Bad id"
 			end
 			multi_id = get_multi_id(config[:multiplexer])
@@ -383,6 +393,7 @@ module Sense
 				when true
 					@redis.del(path(type, :value, multi_id, pin))
 					@redis.hdel(path(type, :config, multi_id), pin)
+					@log.info("Deleted a #{type} from #{multi_id}:#{pin}")
 					return true
 				when false
 					return false, "Refused by multiplexer"
@@ -415,4 +426,5 @@ module Sense
 		end
 	end
 end
+
 

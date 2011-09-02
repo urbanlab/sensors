@@ -1,4 +1,6 @@
 require 'io/wait'
+require 'serialport'
+require 'timeout'
 
 module Sense
 	# Xbee's configuration tools
@@ -8,7 +10,7 @@ module Sense
 		# @param[Symbol] type :daemon or :arduino
 		# @param[Boolean] verbose print what it sends and get
 		#
-		def self.setup(device, type, verbose = false)
+		def self.setup(device, type, verbose = false, baudrate = 9600)
 			@s = nil
 			@v = verbose
 			answers = []
@@ -21,13 +23,15 @@ module Sense
 			
 			begin
 				if device.is_a? String
-					@s = File.new device, "w+"
-				elsif device.is_a? File
+					@s = SerialPort.new device, baudrate
+				elsif device.is_a? File or device.is_a? SerialPort
 					@s = device
 				else
 					return false
 				end
-				return false unless send_message('+++') == "OK\r"
+				@s.flush
+				ans = send_message('+++')
+				return false unless ans.is_a?(String) && ans.end_with?("OK\r")
 				send_message("ATRE\r")
 				opts.each do |k, v|
 					send_message("AT#{k} #{v}\r")
@@ -35,7 +39,7 @@ module Sense
 				send_message("ATWR\r")
 				send_message("ATCN\r")
 				return true
-			rescue Errno, IOError => e
+			rescue StandardError => e
 				puts e if verbose
 				return false
 			ensure
@@ -58,7 +62,12 @@ module Sense
 					redo
 				end
 				sleep 0.1
-				ans = @s.gets("\r")
+				begin
+					Timeout.timeout(1.5){ans = @s.gets("\r")}
+				rescue Exception => e
+					return false if (try+=1) > 2
+					redo
+				end
 				if not ans
 					return false if (try+=1) > 2
 					redo

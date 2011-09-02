@@ -5,6 +5,7 @@ require 'io/wait'
 require 'logger'
 require 'sense/extensions'
 require 'sense/xbee'
+require 'serialport'
 
 module Sense
 	# Interface to serial port in order to get and send message to the multiplexers
@@ -23,9 +24,10 @@ module Sense
 		# is considered as lost
 		# @param [Integer] retry_nb Number of time to retry to send a command before
 		# the multiplexer is considered as disconnected
-		def initialize port, logger = Logger.new(nil), timeout = 1, retry_nb = 3
+		def initialize port, logger = Logger.new(nil), timeout = 0.4, retry_nb = 3
 			@down = false
 			@log = logger
+			@baudrate = 9600
 			@down_ports = []
 			@port = port || search_port
 			@serial = File.open(@port, "w+")
@@ -60,7 +62,7 @@ module Sense
 						sleep 1
 						@port = search_port
 						sleep 1
-						@serial = File.open(@port, "w+")
+						@serial = SerialPort.new(@port, @baudrate)#File.open(@port, "w+")
 						retry				
 					end
 				end
@@ -87,14 +89,14 @@ module Sense
 		#   @param [Integer] multi Id of the multiplexer
 		#
 		def reset(multi)
-			snd_message(/^#{multi} RST/, multi, :reset) == ""
+			snd_message(/^#{multi} RST/, multi, :reset) == "" ? true : nil
 		end
 	
 		# Ping a multiplexer : test if it is alive
 		# @macro multi
 		# @return [boolean] True if the multiplexer is alive
 		def ping(multi)
-			snd_message(/^#{multi} PONG/, multi, :ping) == ""
+			snd_message(/^#{multi} PONG/, multi, :ping) == "" ? true : nil
 		end
 	
 		# Add a task to a multiplexer.
@@ -140,7 +142,7 @@ module Sense
 		# @param [Integer] new Id of the multiplexer after the change
 		#
 		def change_id(old, new)
-			snd_message(/^#{new} ID/, old, :id, new) == ""
+			snd_message(/^#{new} ID/, old, :id, new) == "" ? true : nil
 		end
 	
 		# Get the list of implementations supported by an arduino
@@ -187,7 +189,6 @@ module Sense
 		private
 	
 		# Look for serial ports to listen to.
-		# TODO : send "+++" to test if it's a xbee and configure it ?
 		#
 		def search_port
 			port = nil
@@ -196,13 +197,14 @@ module Sense
 				candidates = Dir.glob("/dev/ttyUSB*")
 				not_tested = candidates - @down_ports
 				if not_tested.size == 0
+					@log.error("No xbee available, demon won't anything while not fixed") unless @down
+					@down = true
 					@down_ports.clear
 					not_tested = candidates
 				end
 				port = case not_tested.size
 					when 0
-						@log.error("No /dev/ttyUSB available, demon won't anything while not fixed") unless @down
-						@down = true
+						#@down = true
 						nil
 					else
 						port = not_tested.find do |port|
@@ -232,26 +234,31 @@ module Sense
 		#
 		def snd_message(pattern, multi, command, *args)
 			msg = "#{multi} #{CMD[command]} #{args.join(" ")}".chomp(" ") + "\n"
-			if @serial.closed?
-				@log.error("Could not send the command #{command}, the receiver isn't available")
-			else
-				@serial.write msg
-				@log.debug("Sent : \"#{msg.delete("\n")}\"")
-				if pattern
-					i = 0
-					begin
-						wait_for(pattern)
-					rescue Timeout::Error => e
-						if (i+=1) < @retry
-							@serial.write msg
-							@log.debug("Sent : \"#{msg.delete("\n")}\"")
-							retry
-						else
-							@log.warn("The multiplexer #{multi} did not answered to the command \"#{command}\"")
-							nil
+			begin
+				if @serial.closed?
+					@log.error("Could not send the command #{command}, the receiver isn't available")
+				else
+					@serial.write msg
+					@log.debug("Sent : \"#{msg.delete("\n")}\"")
+					if pattern
+						i = 0
+						begin
+							wait_for(pattern)
+						rescue Timeout::Error => e
+							if (i+=1) < @retry
+								@serial.write msg
+								@log.debug("Sent : \"#{msg.delete("\n")}\"")
+								retry
+							else
+								@log.info("The multiplexer #{multi} did not answered to the command \"#{command}\"")
+								nil
+							end
 						end
 					end
 				end
+			rescue StandardError => e
+				@log.error("Could not send message : serial is down")
+				nil
 			end
 		end
 	

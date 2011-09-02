@@ -1,9 +1,9 @@
 void setup(){
   Serial.begin(baudrate);
   delay(200);
-  #ifndef SERIAL_DEBUG
+  #ifdef CONF_XBEE
   configure_xbee();
-  #endif /*SERIAL_DEBUG*/
+  #endif /*CONF_XBEE*/
   restore_state();
   strcpy(messageSnd, "NEW");
   snd_complete();
@@ -128,12 +128,12 @@ boolean process_message(){
     case 'p':
       strcpy(messageSnd, "PONG");
       break;
-
+/*
     case 's':
       save_state();
       strcpy(messageSnd, "SAVED");
       break;
-
+*/
     case 'l':
       strcpy(messageSnd, "LIST ");
       for (byte j = 0 ; j < nbCmd ; j++){

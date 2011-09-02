@@ -2,25 +2,35 @@ require 'bombshell'
 require 'sense/client'
 require 'yard'
 
-# TODO network
 module Sense
 	# Interactive shell
 	class Shell < Bombshell::Environment
 		include Bombshell::Shell
 
-		prompt_with 'client'
+		prompt_with "sense@#{$r_options[:redis_host]}:#{$network}"
 		
 		before_launch do |arg|
 			$redis = Sense::Client.new $network, $r_options[:redis_host], $r_options[:redis_port]
+			puts "Connected to #{$r_options[:redis_host]}:#{$r_options[:redis_port]} on network #{$network}."
 		end
 		
 		# Print the list of multiplexers on my network
 		#
-		def list_multis #TODO limiter accès redis
+		def list_multi
 			$redis.list_multis.sort.each do |multi, config|
 				supported = $redis.support(config[:supported])
-				#online = config[:state] ? "ON" : "OFF"
 				puts "#{multi} : #{config[:description]} (supports : #{supported.join(", ")})"
+			end
+		end
+		
+		# Switch network
+		#
+		def switch_network network
+			if network.is_a? Integer
+				$network = network
+				$redis = Sense::Client.new $network, $r_options[:redis_host], $r_options[:redis_port]
+			else
+				puts "network must be an integer"
 			end
 		end
 		
@@ -38,8 +48,7 @@ module Sense
 		def list_unconfigured
 			$redis.list_multis(0).each do |multi, config|
 				supported = $redis.support(config[:supported])
-				online = config[:state] ? "ON" : "OFF"
-				puts "#{multi} (#{online}): #{config[:description]} (supports : #{supported.join(", ")})"
+				puts "#{multi} : #{config[:description]} (supports : #{supported.join(", ")})"
 			end
 		end
 		

@@ -5,8 +5,6 @@ require 'sense/serial'
 require 'logger'
 require 'optparse'
 
-# TODO limiter les accès redis
-
 # Launch the daemon
 #
 def launch
@@ -29,13 +27,9 @@ def launch
 	end
 
 	$redis.on_deleted_actuator do |id_multi, actuator|
-		if $redis.get_config(:actuator, id_multi, actuator) # if the actuator was running, should ensure it will stop TODO
-			ans = $serial.rem_task(id_multi, actuator)
-			next true if (ans == true) or (ans == false) #delete from redis only if the task is no more running
-			next nil
-		else
-			true #don't care if the multi knows it, the task wasn't running.
-		end
+		ans = $serial.rem_task(id_multi, actuator)
+		next true if (ans == true) or (ans == false) #delete from redis only if the task is no more running
+		next nil
 	end
 
 	$redis.on_actuator_state do |multi, pin, value|
@@ -58,15 +52,15 @@ def launch
 		$serial.reset(id_multi)
 	end
 	
-	$serial.on_new_multi do |id| #TODO : adapt multi-demon
+	$serial.on_new_multi do |id|
 		config = $redis.get_multi_config(id)
 		if (id == 0 or id == 255)  # Unconfigured, bad id
 			new_id = $redis.get_unassigned_id
 			if $serial.change_id(id, new_id)
-				$redis.set_multi_config(new_id, {network: 0, description: "no_name", supported: $serial.list_implementations(new_id), state: true})
+				$redis.set_multi_config(new_id, {network: 0, description: "no_name", supported: $serial.list_implementations(new_id)})
 			end
 		elsif (not ($redis.knows_multi? id))   # valid id, but not registered
-			$redis.set_multi_config(id, {network: 0, description: "no_name", supported: $serial.list_implementations(id), state: true})
+			$redis.set_multi_config(id, {network: 0, description: "no_name", supported: $serial.list_implementations(id)})
 		elsif (config[:network]) == $network # registered multiplexer on my network
 			restore_multi_state id
 		end
@@ -92,21 +86,24 @@ end
 #	
 def restore_multi_state multi_id
 	config = $redis.get_multi_config(multi_id)
-	return false unless config
+	if not config
+		$log.error("The database has a multi (#{multi_id}) without valid config")
+		return false unless config
+	end
+	
 	if ($serial.ping multi_id)
 		$redis.list(:sensor, multi_id).each do |pin, sensor_config|
 			profile = $redis.get_profile(:sensor, sensor_config[:profile])
-			next unless profile
+			if not config
+				$log.error("The database has a sensor (#{multi_id}:#{pin}) with unknown profile")
+				return false
+			end
 			period = sensor_config[:period] || profile[:period] || 0
 			$serial.add_task(multi_id, pin, profile[:function], period, *[profile[:option1], profile[:option2]])
 		end
-		config[:state] = true
-		$redis.set_multi_config(multi_id, config)
 		return true
 	else
-		$log.warn "Multiplexer #{multi_id} seems to be disconnected."
-		config[:state] = false
-		$redis.set_multi_config(multi_id, config)
+		$log.info "Multiplexer #{multi_id} seems to be out of sight."
 		return nil
 	end
 end
@@ -124,7 +121,7 @@ opts = OptionParser.new do |opts|
 		end		
 	end
 	
-	opts.on("-L", "--log-level LEVEL", {"debug" => 0, "info" => 1, "warn" => 2, "error" => 3, "fatal" => 4, "unknown" => 5}, "Verbosity of the logger (can be debug, info, warn, error, fatal or unknown, default warn)") do |level|
+	opts.on("-L", "--log-level LEVEL", {"debug" => 0, "info" => 1, "warn" => 2, "error" => 3, "fatal" => 4, "unknown" => 5}, "Verbosity of the logger (can be debug, info, warn, error, fatal or unknown, default info)") do |level|
 		options[:level] = level
 	end
 	
@@ -174,7 +171,7 @@ rescue Exception => e
 	$log = Logger.new(nil)
 end
 
-$log.level = options[:level]
+$log.level = options[:level] || 1
 $log.datetime_format = "%Y-%m-%d %H:%M:%S"
 $log.info("Starting daemon")
 begin

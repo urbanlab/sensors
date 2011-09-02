@@ -189,7 +189,6 @@ module Sense
 		private
 	
 		# Look for serial ports to listen to.
-		# TODO : send "+++" to test if it's a xbee and configure it ?
 		#
 		def search_port
 			port = nil
@@ -198,13 +197,14 @@ module Sense
 				candidates = Dir.glob("/dev/ttyUSB*")
 				not_tested = candidates - @down_ports
 				if not_tested.size == 0
+					@log.error("No xbee available, demon won't anything while not fixed") unless @down
+					@down = true
 					@down_ports.clear
 					not_tested = candidates
 				end
 				port = case not_tested.size
 					when 0
-						@log.error("No /dev/ttyUSB available, demon won't anything while not fixed") unless @down
-						@down = true
+						#@down = true
 						nil
 					else
 						port = not_tested.find do |port|
@@ -250,14 +250,14 @@ module Sense
 								@log.debug("Sent : \"#{msg.delete("\n")}\"")
 								retry
 							else
-								@log.warn("The multiplexer #{multi} did not answered to the command \"#{command}\"")
+								@log.info("The multiplexer #{multi} did not answered to the command \"#{command}\"")
 								nil
 							end
 						end
 					end
 				end
 			rescue StandardError => e
-				@log.warn("Could not send message : serial is down")
+				@log.error("Could not send message : serial is down")
 				nil
 			end
 		end

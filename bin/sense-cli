@@ -137,14 +137,6 @@ opts = OptionParser.new do |opts|
 		options[:load] = file
 	end
 	
-	opts.on("-d", "--delete-multiplexers", "Deletes all the multiplexers' configuration registered") do
-		options[:delete_multiplexers] = true
-	end
-	
-	opts.on_tail("-D", "--delete-all", "Deletes everything, even the profiles") do
-		options[:delete_all] = true
-	end
-	
 	opts.on_tail("-h", "--help", "Show this message") do
 		puts opts
 		exit
@@ -160,12 +152,7 @@ if options[:load]
 	load_from_file f
 	f.close
 end
-if options[:delete_multiplexers]
-	puts "Deleting multiplexers not implemented yet"
-end
-if options[:delete_all]
-	puts "Deleting all not implemented yet"
-end
+
 if options[:save_profiles]
 	f = File.new(options[:save_profiles], "w")
 	f << profiles_to_json

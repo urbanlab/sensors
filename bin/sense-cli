@@ -10,8 +10,9 @@ def load_cli_config
 		if not File.exists?(SENSE_CONF_FILE)
 			File.open(SENSE_CONF_FILE, "w") do |f|
 				f << <<-eof
-	host:localhost
-	port:6379
+host:localhost
+port:6379
+network:1
 				eof
 			end
 		else
@@ -19,7 +20,7 @@ def load_cli_config
 		end
 		options["port"] = Integer(options["port"])
 		options["network"] = Integer(options["network"])
-	rescue Errno::EACCES, Errno::ENOENT  => e
+	rescue Errno::EACCES, Errno::ENOENT, ArgumentError => e
 		puts "Failed to open cli configuration file, ignoring it"
 	rescue ArgumentError
 		puts "Malformed configuration file"
